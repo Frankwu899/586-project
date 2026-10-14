@@ -1,0 +1,80 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "project_demo_001",
+  "video_id": "video_demo_001",
+  "analysis_id": "analysis_demo_001",
+  "revision": 2,
+  "created_at": "2026-10-08T07:00:00Z",
+  "updated_at": "2026-10-08T07:05:00Z",
+  "status": "succeeded",
+  "video": {
+    "input_method": "file",
+    "source_url": "https://example.invalid/synthetic-demo-video",
+    "original_file_name": "SYNTHETIC_LumaCup_demo_NO_MEDIA.mp4",
+    "duration_seconds": 20.0
+  },
+  "public_metrics": {
+    "source_url": "https://example.invalid/synthetic-demo-video",
+    "captured_at": "2026-10-08T06:50:00Z",
+    "views": null,
+    "likes": null,
+    "comments": null
+  },
+  "model_run": {
+    "provider": "synthetic_fixture_not_an_api_run",
+    "model": "none",
+    "prompt_version": "proposal-0.1"
+  },
+  "segments": [
+    {
+      "segment_id": "segment_demo_001",
+      "start_seconds": 0.0,
+      "end_seconds": 4.0,
+      "roles": [
+        "hook"
+      ],
+      "spoken_text": "Meet LumaCup.",
+      "on_screen_text": "A cup for your daily routine.",
+      "visual_description": "A fictional cup is shown on a desk.",
+      "interpretation": "Introduces the fictional product; effectiveness has not been measured.",
+      "edited_fields": []
+    },
+    {
+      "segment_id": "segment_demo_002",
+      "start_seconds": 4.0,
+      "end_seconds": 15.0,
+      "roles": [
+        "product_demo"
+      ],
+      "spoken_text": "The lid lifts off for cleaning.",
+      "on_screen_text": "Removable lid",
+      "visual_description": "A hand lifts the lid; the interior of the cup is not visible.",
+      "interpretation": "The action illustrates a removable lid, but does not demonstrate broader performance claims.",
+      "edited_fields": [
+        "roles",
+        "visual_description"
+      ]
+    },
+    {
+      "segment_id": "segment_demo_003",
+      "start_seconds": 15.0,
+      "end_seconds": 20.0,
+      "roles": [
+        "cta"
+      ],
+      "spoken_text": "Explore the colors.",
+      "on_screen_text": "Find your color",
+      "visual_description": "Three illustrated cups appear beside a fictional brand name.",
+      "interpretation": "Invites further product exploration; no click or conversion data is available.",
+      "edited_fields": []
+    }
+  ],
+  "empty_result_reason": null,
+  "review": {
+    "editor_type": "user",
+    "original_revision": 1,
+    "user_confirmed": true,
+    "confirmed_at": "2026-10-08T07:05:00Z"
+  },
+  "error": null
+}
