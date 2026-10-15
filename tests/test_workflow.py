@@ -240,6 +240,77 @@ def test_pending_job_race_and_restart_recovery(service, monkeypatch):
     assert reopened.jobs[-1].error.retryable
 
 
+@pytest.mark.parametrize(("failure", "error_code"), [
+    ("exception", "generation_failed"),
+    ("invalid_result", "invalid_adapter_result"),
+    ("pending_race", "stale_result"),
+    ("running_race", "stale_result"),
+    ("restart_pending", "interrupted_job"),
+    ("restart_running", "interrupted_job"),
+])
+def test_failed_refinement_resolves_only_its_pending_feedback(service, monkeypatch, failure, error_code):
+    state = directions(service)
+    target = state.directions[0]
+    task_id = state.task.task_id
+    state = service.refine_direction(task_id, state.task.version, target.direction_id, target.revision,
+                                     state.task.current_brief, state.task.current_analysis, "Make it presenter-free")
+    target = state.directions[-1]
+    saved_directions = [item.model_dump(mode="json") for item in state.directions]
+    saved_feedback = state.feedback[0].model_dump(mode="json")
+    delegate = service.creative
+    original_update = service._update
+
+    class StoppedBackend(BaseException):
+        pass
+
+    def update(task_id, version, mutate):
+        saved = original_update(task_id, version, mutate)
+        job = saved.jobs[-1]
+        if job.operation == "refine":
+            if failure == "pending_race" and job.status == "pending":
+                original_update(task_id, saved.task.version, lambda task: setattr(task.task, "title", "Concurrent saved title"))
+            if failure == f"restart_{job.status}":
+                raise StoppedBackend
+        return saved
+
+    class FailingRefinement:
+        def refine_direction(self, brief, analysis, direction, feedback):
+            if failure == "exception":
+                raise RuntimeError("Synthetic adapter failure")
+            if failure == "running_race":
+                latest = service.store.get(task_id)
+                original_update(task_id, latest.task.version, lambda task: setattr(task.task, "title", "Concurrent saved title"))
+            result = delegate.refine_direction(brief, analysis, direction, feedback)
+            if failure == "invalid_result":
+                result.revision += 1
+            return result
+
+    monkeypatch.setattr(service, "_update", update)
+    service.creative = FailingRefinement()
+    instruction = "Make this direction presenter-free."
+
+    def refine():
+        return service.refine_direction(task_id, state.task.version, target.direction_id, target.revision,
+                                        state.task.current_brief, state.task.current_analysis, instruction)
+
+    if failure.startswith("restart_"):
+        with pytest.raises(StoppedBackend):
+            refine()
+        result = WorkflowService(service.store.path.parent).store.get(task_id)
+    else:
+        result = refine()
+    assert result.jobs[-1].status == "failed" and result.jobs[-1].error.code == error_code
+    feedback = result.feedback[-1]
+    assert feedback.status == "not_interpreted" and feedback.resulting_direction is None
+    assert feedback.instruction == instruction and feedback.target_direction == ref(target)
+    assert error_code in feedback.explanation
+    assert feedback.updated_at >= feedback.created_at
+    assert result.feedback[0].model_dump(mode="json") == saved_feedback
+    assert [item.model_dump(mode="json") for item in result.directions] == saved_directions
+    assert result.task.selected_direction is None and not result.production_briefs and not result.storyboards
+    assert WorkflowService(service.store.path.parent).store.get(task_id) == result
+
+
 @pytest.mark.parametrize("status", ["pending", "running", "failed", "partial"])
 def test_non_success_analysis_cannot_enter_creative_workflow(service, status):
     state = sample(service)

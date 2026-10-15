@@ -49,6 +49,19 @@ def invalidate(state, direction_id=None):
             output.currentness = "outdated"
 
 
+def _fail_job(state, job, error):
+    """Close a failed operation and its saved, uninterpreted refinement request."""
+    job.status, job.error = "failed", error
+    job.updated_at = now()
+    feedback_ref = job.input_refs.get("feedback") if job.operation == "refine" else None
+    if feedback_ref is not None:
+        feedback = find(state.feedback, feedback_ref)
+        if feedback.status == "pending":
+            feedback.status = "not_interpreted"
+            feedback.explanation = f"Refinement was not applied ({error.code}): {error.message} The original instruction is retained."
+            feedback.updated_at = job.updated_at
+
+
 class WorkflowService:
     def __init__(self, root: Path, recognition=None, creative=None, media=None):
         from .adapters import SampleCreativeAdapter, SampleRecognitionAdapter, UnconfiguredRecognitionAdapter
@@ -67,9 +80,7 @@ class WorkflowService:
                 def recover(state):
                     for job in state.jobs:
                         if job.status in ("pending", "running"):
-                            job.status = "failed"
-                            job.error = m.ErrorInfo(code="interrupted_job", message="The backend stopped before this job completed. Saved work is intact; retry the operation.", retryable=True)
-                            job.updated_at = now()
+                            _fail_job(state, job, m.ErrorInfo(code="interrupted_job", message="The backend stopped before this job completed. Saved work is intact; retry the operation.", retryable=True))
                 self._update(stored.task.task_id, None, recover)
 
     def create(self, title):
@@ -164,8 +175,7 @@ class WorkflowService:
                 raise
             def canceled(state):
                 job = next(j for j in state.jobs if j.job_id == job_id)
-                job.status = "failed"
-                job.error = m.ErrorInfo(code="stale_result", message="This task changed before the job could start. Saved edits were preserved; retry the operation.", retryable=True)
+                _fail_job(state, job, m.ErrorInfo(code="stale_result", message="This task changed before the job could start. Saved edits were preserved; retry the operation.", retryable=True))
             return self._update(task_id, None, canceled)
         result, error = None, None
         try:
@@ -177,11 +187,10 @@ class WorkflowService:
             job = next(j for j in state.jobs if j.job_id == job_id)
             job.updated_at = now()
             if state.task.version != active.task.version:
-                job.status = "failed"
-                job.error = m.ErrorInfo(code="stale_result", message="Inputs changed while this job ran. Its result was discarded; saved edits were preserved.", retryable=True)
+                _fail_job(state, job, m.ErrorInfo(code="stale_result", message="Inputs changed while this job ran. Its result was discarded; saved edits were preserved.", retryable=True))
                 return
             if error:
-                job.status, job.error = "failed", error
+                _fail_job(state, job, error)
                 return
             finish(state, result, context, job)
             if job.status != "failed":
@@ -192,8 +201,7 @@ class WorkflowService:
             # An invalid adapter result must not leave a running job or persist invalid records.
             def invalid(state):
                 job = next(j for j in state.jobs if j.job_id == job_id)
-                job.status = "failed"
-                job.error = m.ErrorInfo(code="invalid_adapter_result", message="The adapter returned data that failed the shared contract. No generated content was saved.")
+                _fail_job(state, job, m.ErrorInfo(code="invalid_adapter_result", message="The adapter returned data that failed the shared contract. No generated content was saved."))
             return self._update(task_id, None, invalid)
 
     def recognize(self, task_id, version, video_id=None):

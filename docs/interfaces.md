@@ -151,6 +151,8 @@ Rejected requests use `{"error":{"code":"...","message":"...","retryable":false}
 
 Generation operations persist `ProcessingJob` transitions and return the saved task even if the operation failed. Therefore an HTTP `200` does **not** establish recognition/generation success: inspect the job status/error and the analysis processing state. An unconfigured real upload records `real_analysis_not_configured` and produces no sample observations. A malformed adapter result records `invalid_adapter_result` without saving invalid generated content.
 
+A failed, stale, or interrupted refinement closes its linked pending feedback as `not_interpreted`, with an explanation containing the failure code. The original instruction and prior draft remain saved; this status does not turn the failed job into a success. The sample-loading CLI checks each new job's terminal status and expected result before advancing or reporting a completed walkthrough.
+
 The sample operations are synchronous; there is no background polling requirement or automatic retry loop. Retry by reopening the task and submitting a new explicit operation with current versions. A job completing after another write records `stale_result`, discards the delayed output, and preserves the newer saved work. The current job record and completed/failed jobs remain inspectable in task history. On backend startup, interrupted pending/running jobs become failed with `interrupted_job` and `retryable=true`; the task version increases. Reopen the task and retry explicitly. Run one backend worker so another worker cannot misclassify a live operation as interrupted. Do not retry permanent configuration/media errors without fixing their cause.
 
 ## Media boundary
