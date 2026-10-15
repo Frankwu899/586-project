@@ -1,12 +1,12 @@
 # Video Anatomy — Agent Instructions
 
-Every coding agent must read this file and the relevant interface documents before starting a task. This directory contains a proposed v0.1 documentation baseline, not a completed application.
+Every coding agent must read this file and the relevant interface documents before starting a task. The repository now extends the preserved v0.1 documentation baseline with the v0.3 frame-based sample application. Read the current implementation and latest handoff before making readiness claims.
 
 ## Read first
 
 1. `docs/project-brief.md`
 2. `docs/architecture.md`
-3. `docs/interfaces.md` and `contracts/analysis.schema.json` when touching shared data
+3. `docs/interfaces.md` and `contracts/v0.3.task-state.schema.json` when touching shared data (v0.1/v0.2 artifacts are historical snapshots)
 4. The current task and latest relevant handoff in `docs/handoff/`
 5. `docs/cloud-workflow.md` when setting up or handing work between local and Cloud environments
 
@@ -16,10 +16,10 @@ The conversation supplies product intent. Repository files supply the current sh
 
 ## Scope and implementation
 
-- The current milestone is architecture, interfaces, and working guides. Do not claim a runnable skeleton, deployment, or link-ingestion capability already exists.
-- The proposed React/Vite/TypeScript + FastAPI/Python stack is not yet validated. Record a stack decision before generating its setup commands.
+- The overnight implementation milestone is authorized by `overnight-skeleton-spec.md`. Its sample workflow uses React/Vite/TypeScript and FastAPI/Python; see `docs/decisions/skeleton-v0.2.md` and the latest handoff for actual validation. Sample behavior does not establish real recognition, public deployment, or link ingestion.
+- Keep the recorded stack and reproducible dependencies unless the owner approves a scope change. Distinguish Cloud checks from unexecuted local-machine checks.
 - Implement the smallest end-to-end workflow in the brief. Keep multi-video comparison, model training, generated storyboard images, and public hosting outside the midterm must-have scope unless the owner changes it.
-- Use seconds relative to the original video and stable IDs. Follow the canonical analysis schema and semantic rules. Preserve observations separately from interpretations.
+- Use zero-based integer reference frames with exclusive ends and stable IDs. Intake supplies actual frame boundaries and rational FPS; do not guess missing frame rates. Storyboard suggestions retain seconds independently of reference FPS. Follow the canonical analysis schema and semantic rules. Preserve observations separately from interpretations.
 - Keep provider-specific results behind an adapter. Do not assume every model supports strict JSON output, direct video URLs, identical timestamps, or the same transport.
 - Retain original analysis revisions. User-approved creative direction is required before storyboard generation. Do not overwrite edited work with a regenerated result.
 - Do not fabricate metrics, completed tests, accuracy, source rights, or successful API access. Label synthetic data.

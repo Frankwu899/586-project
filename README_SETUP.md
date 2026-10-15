@@ -1,64 +1,138 @@
-# Video Anatomy — English Repository Starter
+# Video Anatomy — local sample skeleton
 
-**English edition: 14 October 2026. Based on the proposed v0.1 baseline of 8 October 2026. Contract version remains `0.1.0`.**
+The v0.3 application connects task/brief persistence, local video upload, sample analysis review, two creative directions, saved feedback and approval, production brief/storyboard editing, and export. Recognition and creative generation in the complete demonstration are explicitly fictional/sample. Arbitrary uploads are saved and inspected, but real analysis returns **not configured**. No API key or paid request is required.
 
-This package contains documentation, a proposed analysis schema, synthetic examples, and empty team record templates. It is not a running application. The English edition preserves the original 16 file paths and adds two handoff/workflow documents. The JSON schema, JSON examples, and CSV headers are unchanged.
+Start with `docs/handoff/frame-timing-review.md` and the initial `docs/handoff/overnight-skeleton-review.md` for actual readiness, executed checks, and remaining work. `overnight-skeleton-spec.md` records the task scope; `docs/decisions/skeleton-v0.2.md` records the technical defaults. Cloud verification does not mean Frank's Mac or Andrea's computer has been configured or tested.
 
-## Replace the earlier starter
+## Runtime requirements
 
-1. Keep your existing Git repository and its history. Do not create a new repository or copy this package into a second nested project folder.
-2. If you have edited any starter files since copying them, preserve those edits and compare the corresponding files before replacing them. Replace matching starter files individually; merge folder contents so unrelated files remain intact. Do not delete whole repository folders.
-3. Copy the contents of `repository-starter-en` into your existing repository root. `AGENTS.md`, `CLAUDE.md`, and this file should sit directly at the root, alongside `docs`, `contracts`, `examples`, and `data`.
-4. Ask the local coding agent to read the updated documents and inspect the diff using Prompt A in `docs/cloud-workflow.md`.
-5. Commit and push the starter on a documentation task branch. Review its pull request and merge it into `main` as the project integrator, or explicitly select the pushed branch for Cloud work. A file copied onto your Mac is not yet available in the GitHub repository.
-6. Create or select a Codex Cloud environment connected to the same GitHub repository, then begin a new Cloud task. Use Prompt C in `docs/cloud-workflow.md` after the setup is ready.
+Install these on each computer that will run the application:
 
-This package does not create a GitHub repository, configure permissions, install runtimes, or move an existing local conversation into Cloud.
-
-## Read in this order
-
-1. `AGENTS.md` — shared agent instructions.
-2. `docs/project-brief.md` — product goal, scope, and unresolved decisions.
-3. `docs/architecture.md` — candidate modules and stack.
-4. `docs/interfaces.md` — shared data semantics and workflow rules.
-5. `docs/handoff/2026-10-14-setup.md` — reported setup progress and remaining work.
-6. `docs/cloud-workflow.md` — local replacement, GitHub handoff, Cloud setup, and copyable prompts.
-
-When changing shared data, also read the schema and both JSON examples. Claude Code's project entry point is `CLAUDE.md`.
-
-## File map
-
-| File or directory | Purpose |
+| Requirement | Version / use |
 |---|---|
-| `AGENTS.md` / `CLAUDE.md` | Shared coding-agent instructions and Claude entry point |
-| `docs/project-brief.md` | Confirmed product decisions and midterm boundaries |
-| `docs/architecture.md` | Candidate architecture; implementation choices remain proposals |
-| `docs/interfaces.md` | Data exchange, review, revision, and dependency rules |
-| `contracts/analysis.schema.json` | Proposed structural validation for AnalysisResult |
-| `examples/analysis_result.original.json` | Synthetic original model-result example, revision 1 |
-| `examples/analysis_result.json` | Synthetic user-revised example, revision 2 |
-| `data/templates/README.md` | Instructions for the five CSV templates |
-| `data/templates/*.csv` | Empty collection, annotation, creative review, spike, and cost records |
-| `docs/handoff/TEMPLATE.md` | Reusable task, device, and agent handoff template |
-| `docs/handoff/2026-10-14-setup.md` | Initial setup handoff based on the owner's reports |
-| `docs/cloud-workflow.md` | Local-to-Cloud workflow and starter prompts |
+| Python | 3.12; Cloud runtime inspected: 3.12.14. Use a project virtual environment. |
+| Node.js / npm | Node ≥22.12 and npm ≥10; Cloud inspected: Node 24.19.0, npm 11.9.0. |
+| FFmpeg and ffprobe | Both on PATH, with H.264 (`libx264`) and AAC support for sample generation/intake; Cloud inspected: 7.1.5. |
+| Browser | A modern local browser for the app. Playwright Chromium is needed for automated browser checks. |
+| Git | Obtain the source checkout; GitHub CLI is optional. |
 
-## Contract authority and evidence limits
+Python packages are pinned in `requirements.lock`; `requirements.in` identifies direct dependencies. Frontend packages are pinned by `frontend/package-lock.json`. Do not reuse the previously reported Mac Python 3.9 environment; install Python 3.12 and check the active executable. A Git pull does not transfer Python environments, Node packages, API keys, task data, or media.
 
-`contracts/analysis.schema.json` governs fields, types, and structural constraints. `docs/interfaces.md` governs cross-field rules, revision dependencies, and business semantics. Resolve any conflict together in the same PR, including affected examples and consumers.
+## Install dependencies
 
-No real videos, brand performance data, API keys, or actual model outputs are included. Both JSON files are synthetic; they cannot establish model accuracy. CSV files contain headers only. Unknown numeric values remain blank in CSV and `null` in JSON. Zero means an observed zero. Keep the source and collection time for public metrics.
+The commands below use a macOS/Linux shell. Run from the repository root after the required runtimes are installed:
 
-`start_seconds` and `end_seconds` refer to the original reference video, in seconds, not milliseconds or a newly generated video's timeline. Schema validation alone cannot enforce every time boundary, revision lineage, or dependency rule. Backend semantic validation is also required.
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.lock
+npm --prefix frontend ci
+```
 
-## Installation and runtime status
+Install the Chromium browser used by Playwright for verification:
 
-There are no application startup commands yet: no application code, `package.json`, or dependency manifest is included. The React/Vite/TypeScript and FastAPI/Python combination remains a candidate. Record the stack decision, validate it, and then pin versions and document actual installation and startup commands.
+```bash
+cd frontend
+npx playwright install chromium
+cd ..
+```
 
-The owner prefers Cloud for ongoing coding and unattended tasks. The team still plans to run and inspect the demo locally. These are separate choices: Cloud coding does not deploy the application, and a local demo does not require local-only coding. Install the chosen application's runtimes on each machine that will actually run it.
+On supported Linux hosts, Playwright may also need system browser libraries (`npx playwright install --with-deps chromium` from `frontend/` when installation permissions are available). If an existing Chromium is available, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its absolute path instead. A missing automated-browser runtime does not change the app's sample/provider labels; report any browser check that could not execute.
 
-## Verification of this edition
+## Start the app
 
-The English edition was checked for completeness against the original 16 paths and for remaining Chinese text. The schema, both JSON examples, and all five CSV templates were compared byte-for-byte with the original starter. Both examples were parsed and checked for time bounds, stable IDs, revision lineage, edited fields, date/time ordering, and metric-source consistency. A full JSON Schema validator was not rerun for this translation; the schema and example bytes are unchanged.
+Use two terminals from the repository root. Backend:
 
-These checks concern the documentation package and fixtures only. No application, provider integration, deployed service, or browser workflow was executed.
+```bash
+.venv/bin/python -m uvicorn backend.app.api:app --host 127.0.0.1 --port 8000
+```
+
+Frontend:
+
+```bash
+npm --prefix frontend run dev
+```
+
+Open [the local app](http://127.0.0.1:5173). Vite proxies `/api` to port 8000; [the API reference](http://127.0.0.1:8000/docs) documents the actual routes. Use one backend worker for this team demonstration. The app is not publicly deployed.
+
+The backend stores SQLite task data in `.local-data/tasks.sqlite3` and media under `.local-data/media/`. Set `VIDEO_ANATOMY_DATA_DIR` before starting to use another directory. `.env.example` documents all supported settings; the application does **not** automatically load a `.env` file. Export desired values in the terminal, for example:
+
+```bash
+export VIDEO_ANATOMY_DATA_DIR="$PWD/.local-data"
+```
+
+Keep uploads, generated media, runtime task data, secrets, and caches out of Git. Back up or transfer the entire data directory separately if local progress needs to move between computers. Source checkout and generated JSON fixture alone do not transfer playable media.
+
+## Open the fictional sample
+
+In the app, create a task, enter/save a brief if desired, and load the dedicated synthetic sample into that task before uploading a real video. With no existing brief, sample loading supplies a fictional LumaCup brief. Request sample recognition, expand observations, play/seek the matching video using frame timecode or previous/next frame, save a content/role correction if needed, and use **Use this reviewed analysis**.
+
+Generate two directions, try **Make it presenter-free**, inspect the changed draft, explicitly approve it, and generate the production brief/storyboard. Edit/save output text and export. Refresh/reopen to check persistence. Saving an upstream brief or analysis revision keeps earlier work but marks dependent creative work outdated and removes dependent approval.
+
+A radio-button direction choice is saved separately from approval and survives refresh. Selecting a different draft does not approve it; explicit approval of the current revision is still required for production.
+
+Alternatively, seed a task through the same persistent services before starting the backend for that data directory, then open the app's task list. The demo assumes one service process; startup recovery must not run beside active generation using the same storage:
+
+```bash
+.venv/bin/python scripts/load_sample.py
+```
+
+This creates matching media and sample analysis ready for human review. To inspect a fully populated fictional walkthrough, including **scripted** correction, review/approval, refinement, and edited outputs:
+
+```bash
+.venv/bin/python scripts/load_sample.py --complete
+```
+
+Scripted approval is demonstration data, not Frank's or Andrea's real approval. `--data-dir PATH` selects storage; `--write-fixture PATH` additionally saves a validated JSON snapshot. Each run creates a new task.
+
+For standalone sample-media generation:
+
+```bash
+.venv/bin/python scripts/generate_sample_media.py --output .local-data/sample/lumacup_shapes_v1.mp4
+```
+
+The clip is ten seconds at 640×360, 20 fps, H.264/AAC: original cup-shaped graphics, on-screen English labels, a synthetic melody, and two chimes. There is no human speech, real footage, or measured product effectiveness. Loading an unrelated upload does not enable sample recognition. Schema-only legacy examples contain a fictional `NO_MEDIA.mp4` name and are not playback assets.
+
+## Media limits and sample refinement
+
+Implemented intake is `.mp4` with exactly one H.264 video stream and zero or one AAC audio stream. Default limits are 50 MiB, 180 seconds, and 1920×1920 pixels. The backend reads the rational frame rate and each decoded frame timestamp, then validates media. Reference observations use zero-based frame ranges; the player shows `HH:MM:SS:FF` with absolute frame indices. Constant, fractional (for example 29.97), and variable-rate clips use their own measured timing. Timecode is nominal non-drop-frame and approximate for fractional/variable rates. Storyboard suggestions continue to use seconds without an FPS setting. The backend reports unsupported/unreadable inputs, missing media, or missing tooling. Limits and inspection timeouts are configurable in `.env.example`, and the active configuration appears at `/api/config`. Source URLs are provenance only; platform downloading is deferred. See the handoff for the precise media cases actually tested.
+
+The creative sample recognizes case-insensitive `Make this direction presenter-free.`, `Make it presenter-free`, and `presenter-free`, with optional final period/exclamation mark. It changes the draft and later approved production plan to product-only visuals/text with no spoken dialogue. Other instructions remain saved in feedback history as **not interpreted**, without pretending a new draft was generated. Real providers and broader prompt interpretation remain future work.
+
+## Verify the checkout
+
+After dependencies and the browser runtime are available, run the ordered gate script from the repository root:
+
+```bash
+bash scripts/verify.sh
+```
+
+It checks installed Python dependency consistency, generated schemas, Python lint/tests, generated frontend types, timing unit tests, TypeScript, frontend lint/build, and the automated browser walkthrough. The browser tests start isolated local servers. Read the actual output; a written test or a successful HTTP response alone is not evidence that recognition or the full UI passed. Actual execution results and unexecuted checks are recorded in `docs/handoff/frame-timing-review.md`.
+
+For a contract change, regenerate and verify the shared artifacts:
+
+```bash
+.venv/bin/python scripts/export_contracts.py
+npm --prefix frontend run contracts:generate
+.venv/bin/python scripts/export_contracts.py --check
+npm --prefix frontend run contracts:check
+```
+
+## Developer map
+
+| Path | Purpose |
+|---|---|
+| `backend/app/models.py` | Authoritative v0.3 records and semantic validation. |
+| `contracts/v0.3.*.schema.json`, `frontend/src/generated/contracts.ts` | Generated schemas and frontend types. |
+| `backend/app/api.py`, `backend/app/service.py` | HTTP routes, version/approval/currentness gates and workflow operations. |
+| `backend/app/adapters.py` | Andrea's recognition boundary and Frank's creative/production boundary. |
+| `backend/app/media.py`, `backend/app/storage.py` | Media validation/storage and persistent task storage. |
+| `backend/app/migration.py`, `backend/app/frame_migration.py` | Explicit v0.1 fixture import and automatic archived v0.2 migration; no invented FPS. |
+| `backend/app/timing.py`, `frontend/src/timing.ts` | Frame/media-time conversion and timecode display. |
+| `frontend/src/` | Plain usable application UI. |
+| `scripts/load_sample.py`, `scripts/generate_sample_media.py` | Reproducible sample records and matching media. |
+| `docs/interfaces.md` | Actual requests/results/errors, adapter entry points, valid examples, timing and revision rules. |
+| `docs/architecture.md`, `docs/project-brief.md` | Module boundaries and confirmed product scope. |
+| `docs/reference-review-guide.md`, `data/templates/` | Human annotation guide and preserved/extended team worksheets. |
+| `docs/handoff/frame-timing-review.md` | Latest verification, limitations, handoff and Git state. |
+
+All v0.1 and v0.2 schemas/examples are preserved unchanged. Saved v0.2 tasks migrate automatically at startup, with exact original JSON archived transactionally in SQLite. Matching available media supplies the frame map; unknown timing retains legacy seconds and disables new creative use until the source is uploaded and analyzed again. See `docs/interfaces.md` for the explicit migration command and the `examples/v0.3.legacy-migrated.json` schema-only result. Existing CSV templates remain compatible; the current `reference_review_v0.3.csv` worksheet uses frames; old worksheets retain their original seconds columns. Never treat synthetic fixtures or public engagement counts as evidence of recognition accuracy or marketing effectiveness.
