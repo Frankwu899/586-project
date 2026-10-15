@@ -1,49 +1,56 @@
-# Architecture Direction
+# Architecture — frame timing v0.3
 
-**Candidate v0.1. The stack has not yet been selected or tested. English edition: 14 October 2026.**
-
-Candidate stack: React + Vite + TypeScript frontend, FastAPI + Python backend, project JSON and media in local application-data directories, and a small provider adapter. Select and validate the technical approach before pinning versions, creating dependency manifests, or publishing actual setup commands.
+React/Vite/TypeScript serves the browser workspace; FastAPI/Python owns the persistent task workflow. Pydantic v2 models define the shared contract. Deterministic sample adapters exercise the complete workflow, and the real recognition adapter returns an explicit unconfigured error. Stack choices and inspected runtime versions are recorded in `docs/decisions/skeleton-v0.2.md`; the frame-timing follow-up is recorded in `docs/decisions/frame-timing-v0.3.md` and `docs/handoff/frame-timing-review.md`.
 
 ## Modules and boundaries
 
-| Module | Responsibility | Boundary |
+| Module | Implementation | Responsibility |
 |---|---|---|
-| Web workspace | Collect brief/video, play video, edit segments, approve direction, display storyboard | Read/write projects through the backend API; never hold provider API keys |
-| Project service | Manage stable IDs, revisions, approval state, and storage paths | BrandBrief, VideoAsset, AnalysisResult |
-| Media intake | Validate input, read duration, choose file-upload or supported link path | Produce a normalized VideoAsset; give a clear failure reason |
-| Analysis adapter | Call the selected model, parse/normalize output, and validate contracts | Return a consistent AnalysisResult to the UI |
-| Creative workflow | Generate directions from the brief and reviewed analysis; generate storyboard after approval | Record the exact brief and analysis revisions used |
-| Local storage | Store project JSON, immutable analysis revisions, and media | Configure paths so storage implementation can later be replaced |
+| Web workspace | `frontend/src/` | Enter brief, play/seek associated media, review event content and section roles, compare/refine/approve directions, edit/export outputs. Reads/writes the backend; contains no provider credentials. |
+| HTTP API | `backend/app/api.py` | Validate request shapes and return task records or structured errors. Swagger documentation is available at local `/docs`. |
+| Workflow service | `backend/app/service.py` | Enforce exact input revisions, correction restrictions, confirmation, approval, currentness, and optimistic task versions. |
+| Persistent storage | `backend/app/storage.py` | Store each validated task aggregate as JSON in SQLite; transactional updates compare the expected task version. |
+| Media intake | `backend/app/media.py` | Validate configured limits, inspect codecs, duration, rational FPS and decoded frame timestamps with ffprobe, store files by generated identifiers, and locate playback media. |
+| Provider adapters | `backend/app/adapters.py` | Normalize recognition and creative requests/results. Sample implementations are deterministic; provider transports remain behind this boundary. |
+| Contracts | `backend/app/models.py`, `contracts/v0.3.*.schema.json` | Authoritative models, generated schemas, semantic and exact-reference validation. Generated frontend types share these schemas. |
+| Timing | `backend/app/timing.py`, `frontend/src/timing.ts` | Map integer reference frames to actual media timestamps; format nominal non-drop timecode. |
+| Legacy migration | `backend/app/migration.py`, `backend/app/frame_migration.py` | Explicit v0.1 import and automatic archived v0.2 conversion; never invent source FPS. |
 
 ```mermaid
 flowchart TD
-    UI["Web workspace"] --> API["Local backend API"]
-    API --> STORE["Project JSON and local media"]
-    API --> ADAPTER["Analysis / creative adapter"]
-    ADAPTER --> MODEL["Model API"]
-    ADAPTER --> VALIDATE["Schema and semantic validation"]
-    VALIDATE --> API
+    UI[React workspace] --> API[FastAPI routes]
+    API --> SERVICE[Versioned workflow service]
+    SERVICE --> STORE[SQLite task aggregates]
+    SERVICE --> MEDIA[Local media and ffprobe]
+    SERVICE --> ADAPTER[Recognition and creative adapters]
+    ADAPTER --> SAMPLE[Deterministic sample implementation]
+    ADAPTER --> REAL[Real recognition: unconfigured]
+    SERVICE --> VALIDATE[Pydantic and semantic validation]
+    VALIDATE --> STORE
 ```
 
-Validate uploaded files as well as provider results. Do not assume all APIs accept arbitrary platform URLs, support strict JSON output, or return equally accurate timestamps. Implement an adapter for the selected provider first; a large multi-model platform is not an initial requirement.
+## Records and persistence
 
-## Application execution versus coding environment
+Each task contains append-only content revisions for the brief, analysis, directions, feedback, and production outputs, plus current-reference pointers. Confirmation, approval, and current/outdated metadata can change without inventing a content revision. Original recognized content and earlier human edits remain available. Task versions are separate from artifact content revisions: every successful mutation increments the task version, so another tab or a delayed operation cannot silently overwrite newer work.
 
-For the planned local demonstration, the browser connects to the backend on the team's computer; the backend calls a remote model API. Media and project JSON are stored in configured local application-data directories.
+The default data directory is ignored `.local-data/`, configurable with `VIDEO_ANATOMY_DATA_DIR`. SQLite holds task state in `tasks.sqlite3`; media lives below `media/`. Runtime data is not tracked source. Storage checks task membership and exact revision references on load and save. Startup atomically archives and migrates saved v0.2 payloads using their matching media; missing or unrepresentable timing remains explicitly archived seconds with creative gates disabled. Old schema/example files remain unchanged. The team demonstration runs one backend worker; there is no queue, multi-user authentication, or hosted deployment in this skeleton.
 
-Codex may develop and test the same code in Cloud. That Cloud coding workspace is separate from the Mac, and its working files, dependencies, and credentials are separate. Cloud development is not public application deployment. Actual Cloud integration tests need their own permitted media, dependencies, credentials, and network access.
+Evidence events are the sole editable recognized content. Content sections contain time intervals, role interpretation, and event IDs. They do not independently duplicate transcripts. Visual/audio events can overlap; primary sections are ordered and nonoverlapping. Corrections preserve observation IDs/times/provenance and clear affected interpretation. Source intervals use zero-based integer frames with exclusive ends. The video stores decoded presentation boundaries and the browser playback origin, supporting constant, fractional and variable rates. Planned storyboard times remain seconds and do not depend on reference FPS.
 
-GitHub holds code, documentation, and small synthetic fixtures. It does not automatically synchronize local media, API keys, Python environments, or application project data. When switching computers or environments, transfer necessary media/project data separately and record the method in the handoff.
+## Processing and dependency gates
 
-## Jobs and state
+Operations execute synchronously for the small sample workflow and persist processing/job results. The contract reserves pending/running/succeeded/failed job states and partial analysis coverage; the operational creative gate accepts only a current, confirmed, successful analysis. Failed, incomplete, partial, stale, or wrong-task analyses cannot become creative input. The adapter owns extraction coverage; an unimplemented category means `not_analyzed`, never assumed absence.
 
-Analysis can take time. Define `pending`, `running`, `succeeded`, and `failed` states and explicit retry behavior. Use measured provider latency to decide whether the UI should poll or wait for a request. A message queue is not required before a real scaling need is observed. Retries must not silently replace approved results.
+The service checks the request's expected task version before committing results. Retrying is an explicit new operation using current inputs. Startup marks interrupted pending/running jobs failed with `interrupted_job`; it does not automatically resume them. Analysis reruns preserve the previous analysis under its original ID and create a new analysis identity. Corrected analysis creates a new revision of the same identity. Upstream changes retain downstream content, mark it outdated, and remove dependent approval. A refined direction is a new draft requiring explicit approval; selection alone is insufficient.
 
-## Implementation sequence
+Production generation consumes the exact selected approved direction and its brief, analysis, and feedback revisions. Editing outputs saves new revisions. Regeneration is explicit and preserves manual work in history. Export includes origin, currentness, and source/version context; it is not an approval bypass.
 
-1. Test one owned or permitted clip with a candidate provider; record actual inputs, outputs, latency, and cost.
-2. Use synthetic fixtures to exercise the interface and contracts for brief entry, analysis correction, direction approval, and text storyboard output.
-3. Replace fixtures with a real adapter; check observation versus interpretation, timestamp accuracy, and failure messages.
-4. Verify save/reopen, stale-output handling after revisions, and reproducible startup instructions.
+## Sample media and provider replacement
 
-These are planned implementation steps. This documentation package has not implemented or tested the application. If link ingestion fails, record the conditions and use the tested file-upload fallback rather than claiming universal platform support.
+`scripts/generate_sample_media.py` creates a ten-second fictional illustrated clip using original bitmap labels, geometric shapes, and synthetic tones. The dedicated sample loader creates matching media and sample observations. There is no human speech, live footage, or demonstrated real product efficacy. Separate schema-only examples may contain fictional speech; they never prove playback evidence.
+
+An ordinary upload follows real mode and cannot receive prepared sample findings. Andrea can replace `UnconfiguredRecognitionAdapter` using the documented recognition request/result boundary without teaching the UI provider-specific formats. Frank can replace the sample creative implementation using the same exact brief/analysis/direction/feedback boundary. Paid requests and provider credentials are unnecessary for the baseline.
+
+## Coding environment and local demonstration
+
+Cloud is the development and verification environment. Frank's Mac and Andrea's machine need their own runtimes, dependencies, media tooling, and generated sample media; Git does not transfer them. Their local browser connects to the local frontend/backend, and each installation stores its own task data. Cloud checks do not establish that either local computer is configured or tested. Public hosting, platform downloads, background job infrastructure, multi-video comparison, and model training remain deferred.
