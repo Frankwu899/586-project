@@ -2,7 +2,15 @@
 
 The v0.3 application connects task/brief persistence, local video upload, sample analysis review, two creative directions, saved feedback and approval, production brief/storyboard editing, and export. Recognition and creative generation in the complete demonstration are explicitly fictional/sample. Arbitrary uploads are saved and inspected, but real analysis returns **not configured**. No API key or paid request is required.
 
-Start with `docs/handoff/frame-timing-review.md` and the initial `docs/handoff/overnight-skeleton-review.md` for actual readiness, executed checks, and remaining work. `overnight-skeleton-spec.md` records the task scope; `docs/decisions/skeleton-v0.2.md` records the technical defaults. Cloud verification does not mean Frank's Mac or Andrea's computer has been configured or tested.
+Start with the [integration handoff](docs/handoff/skeleton-integration-and-branches.md) for current integration checks and publication status. The [frame-timing handoff](docs/handoff/frame-timing-review.md) and initial [skeleton handoff](docs/handoff/overnight-skeleton-review.md) record earlier runs. `overnight-skeleton-spec.md` records the original task scope; `docs/decisions/skeleton-v0.2.md` records the technical defaults. Cloud verification does not mean Frank's Mac or Andrea's computer has been configured or tested.
+
+## Team Git workflow
+
+Read [branch workflow](docs/branch-workflow.md) for the beginner walkthrough and [module ownership](docs/module-ownership.md) for actual source files and shared-file coordination. `main` is the only permanent shared branch. Create temporary `<type>/<module>/<specific-task>` branches from updated `main`, make coherent commits, push, open a PR, review/test, then merge through the permitted route. Every branch contains the complete app; module scopes do not require new directories.
+
+Andrea owns the next real recognition adapter task; Frank owns the next real creative-generation task. Their intended branches are `feat/video-analysis/first-real-provider` and `feat/creative-direction/first-real-provider`. Preparation remains **pending until verified after baseline integration**; use the final integration report for actual branch names and exact base commits. This setup does not implement providers or make paid API calls.
+
+On your Mac, first inspect `git status --short`, `git branch --show-current`, and `git remote -v`, then run `git fetch origin`. Preserve local changes on their current task branch or in a separate worktree before switching. With a clean checkout, run `git switch main` and `git pull --ff-only origin main`; if a fast-forward fails, inspect the divergent work without resetting it. Cloud work does not update this checkout or install its dependencies. Follow the runtime/setup steps below. The older `docs/cloud-workflow.md` is a historical starter guide; this README describes the runnable application.
 
 ## Runtime requirements
 
@@ -106,7 +114,7 @@ After dependencies and the browser runtime are available, run the ordered gate s
 bash scripts/verify.sh
 ```
 
-It checks installed Python dependency consistency, generated schemas, Python lint/tests, generated frontend types, timing unit tests, TypeScript, frontend lint/build, and the automated browser walkthrough. The browser tests start isolated local servers. Read the actual output; a written test or a successful HTTP response alone is not evidence that recognition or the full UI passed. Actual execution results and unexecuted checks are recorded in `docs/handoff/frame-timing-review.md`.
+It checks installed Python dependency consistency, generated schemas, Python lint/tests, generated frontend types, timing unit tests, TypeScript, frontend lint/build, and the automated browser walkthrough. The browser tests start isolated local servers. Read the actual output; a written test or a successful HTTP response alone is not evidence that recognition or the full UI passed. Current integration results and unexecuted checks are recorded in [the integration handoff](docs/handoff/skeleton-integration-and-branches.md); the frame-timing handoff records the earlier run.
 
 For a contract change, regenerate and verify the shared artifacts:
 
@@ -133,6 +141,8 @@ npm --prefix frontend run contracts:check
 | `docs/interfaces.md` | Actual requests/results/errors, adapter entry points, valid examples, timing and revision rules. |
 | `docs/architecture.md`, `docs/project-brief.md` | Module boundaries and confirmed product scope. |
 | `docs/reference-review-guide.md`, `data/templates/` | Human annotation guide and preserved/extended team worksheets. |
-| `docs/handoff/frame-timing-review.md` | Latest verification, limitations, handoff and Git state. |
+| `docs/branch-workflow.md`, `docs/module-ownership.md` | Module task naming, actual source map, owners and shared-file coordination. |
+| `docs/handoff/skeleton-integration-and-branches.md` | Current integration verification, limitations and Git handoff. |
+| `docs/handoff/frame-timing-review.md` | Earlier frame-timing verification and limitations. |
 
 All v0.1 and v0.2 schemas/examples are preserved unchanged. Saved v0.2 tasks migrate automatically at startup, with exact original JSON archived transactionally in SQLite. Matching available media supplies the frame map; unknown timing retains legacy seconds and disables new creative use until the source is uploaded and analyzed again. See `docs/interfaces.md` for the explicit migration command and the `examples/v0.3.legacy-migrated.json` schema-only result. Existing CSV templates remain compatible; the current `reference_review_v0.3.csv` worksheet uses frames; old worksheets retain their original seconds columns. Never treat synthetic fixtures or public engagement counts as evidence of recognition accuracy or marketing effectiveness.

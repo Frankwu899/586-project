@@ -7,8 +7,9 @@ Every coding agent must read this file and the relevant interface documents befo
 1. `docs/project-brief.md`
 2. `docs/architecture.md`
 3. `docs/interfaces.md` and `contracts/v0.3.task-state.schema.json` when touching shared data (v0.1/v0.2 artifacts are historical snapshots)
-4. The current task and latest relevant handoff in `docs/handoff/`
-5. `docs/cloud-workflow.md` when setting up or handing work between local and Cloud environments
+4. The current task and latest relevant handoff in `docs/handoff/`; start with `docs/handoff/skeleton-integration-and-branches.md` for baseline integration verification
+5. `docs/branch-workflow.md` and `docs/module-ownership.md` for task naming, actual file boundaries and shared-file coordination
+6. `README_SETUP.md` for current setup and Cloud-to-local use. `docs/cloud-workflow.md` preserves the earlier documentation-only starter workflow; its old setup assumptions and prompts are historical.
 
 Use English for repository documentation and new handoffs unless the owner requests otherwise. Keep schema keys, enums, IDs, and API identifiers stable when editing prose.
 
@@ -27,7 +28,10 @@ The conversation supplies product intent. Repository files supply the current sh
 ## Git and review
 
 - Before editing, inspect the repository, current branch, working-tree changes, and relevant recent commits. Preserve unrelated changes.
-- Work on a task branch. The team workflow authorizes preparing a Commit, Push, and PR for the assigned task; describe changes and actual validation. Never infer permission to merge into `main` from permission to prepare a PR.
+- Keep `main` as the only permanent shared branch. Use temporary `<type>/<module>/<specific-task>` branches as documented in `docs/branch-workflow.md`; scopes name work, not separate repositories or directory layouts. Preserve existing historical branches during integration setup.
+- The team workflow authorizes preparing a commit, push, and PR for the assigned task; describe changes and actual validation. Never infer permission to merge into `main` from permission to prepare a PR. An explicit task authorization to merge applies after required checks and repository review rules are satisfied; do not bypass protections.
+- Coordinate changes to `backend/app/models.py`, `backend/app/adapters.py`, `backend/app/service.py`, and `backend/app/api.py` before parallel work. Record the shared edits, responsible editor and merge order; regenerate contracts/types together with consumers. Keep provider-specific implementations separate where practical.
+- Use meaningful new commit messages such as `feat(video-analysis): normalize provider output`; do not rename historical commits. Start subsequent tasks from updated `main`, after inspecting and preserving local changes.
 - Do not force-push, delete branches, rewrite shared history, discard changes, or clean untracked files as a routine sync step.
 - If a remote integration is unavailable, provide exact commands or instructions and report what remains undone. Do not claim that a local commit reached GitHub.
 - Run only relevant checks for the current change. A provider, browser, or end-to-end check that was not executed must be marked “not run.”
