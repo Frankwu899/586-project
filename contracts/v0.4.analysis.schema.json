@@ -1,0 +1,1149 @@
+{
+  "$defs": {
+    "ContentSegment": {
+      "additionalProperties": false,
+      "properties": {
+        "start_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Frame"
+        },
+        "end_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Frame"
+        },
+        "legacy_seconds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegacySeconds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "segment_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "video_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Video Id",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "hook",
+              "product_demo",
+              "proof",
+              "cta",
+              "other"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "interpretation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interpretation"
+        }
+      },
+      "required": [
+        "start_frame",
+        "end_frame",
+        "legacy_seconds",
+        "segment_id",
+        "video_id",
+        "roles",
+        "evidence_ids",
+        "interpretation"
+      ],
+      "title": "ContentSegment",
+      "type": "object"
+    },
+    "Correction": {
+      "additionalProperties": false,
+      "properties": {
+        "target_type": {
+          "enum": [
+            "event",
+            "segment"
+          ],
+          "title": "Target Type",
+          "type": "string"
+        },
+        "target_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Target Id",
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "text",
+            "description",
+            "roles",
+            "visual_details"
+          ],
+          "title": "Field",
+          "type": "string"
+        },
+        "before": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "after": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "target_type",
+        "target_id",
+        "field",
+        "before",
+        "after"
+      ],
+      "title": "Correction",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "visual_action": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Visual Action",
+          "type": "string"
+        },
+        "on_screen_text": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "On Screen Text",
+          "type": "string"
+        },
+        "speech": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Speech",
+          "type": "string"
+        },
+        "music": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Music",
+          "type": "string"
+        },
+        "sfx": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Sfx",
+          "type": "string"
+        }
+      },
+      "required": [
+        "visual_action",
+        "on_screen_text",
+        "speech",
+        "music",
+        "sfx"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "ErrorInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "ErrorInfo",
+      "type": "object"
+    },
+    "EvidenceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "start_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Frame"
+        },
+        "end_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Frame"
+        },
+        "legacy_seconds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegacySeconds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "event_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "video_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Video Id",
+          "type": "string"
+        },
+        "lane": {
+          "enum": [
+            "visual",
+            "audio"
+          ],
+          "title": "Lane",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "visual_action",
+            "on_screen_text",
+            "speech",
+            "music",
+            "sfx"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        },
+        "method": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Method",
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "visual_details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VisualDetails"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "start_frame",
+        "end_frame",
+        "legacy_seconds",
+        "event_id",
+        "video_id",
+        "lane",
+        "kind",
+        "text",
+        "description",
+        "source",
+        "method",
+        "uncertainty",
+        "visual_details"
+      ],
+      "title": "EvidenceEvent",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LegacySeconds": {
+      "additionalProperties": false,
+      "description": "Preserved legacy interval when source media is unavailable for probing.",
+      "properties": {
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start_seconds",
+        "end_seconds"
+      ],
+      "title": "LegacySeconds",
+      "type": "object"
+    },
+    "ObservationGroup_ProductPresentation_": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observations"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "error": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ProductPresentation"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "items",
+        "error"
+      ],
+      "title": "ObservationGroup[ProductPresentation]",
+      "type": "object"
+    },
+    "ObservationGroup_VisualAction_": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observations"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "error": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VisualAction"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "items",
+        "error"
+      ],
+      "title": "ObservationGroup[VisualAction]",
+      "type": "object"
+    },
+    "ObservationGroup_VisualSubject_": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observations"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "error": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VisualSubject"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "items",
+        "error"
+      ],
+      "title": "ObservationGroup[VisualSubject]",
+      "type": "object"
+    },
+    "Origin": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "sample",
+            "provider",
+            "manual",
+            "legacy"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "description"
+      ],
+      "title": "Origin",
+      "type": "object"
+    },
+    "ProductPresentation": {
+      "additionalProperties": false,
+      "properties": {
+        "product_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Product Subject Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "presentation_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "appearance",
+                "feature_demo",
+                "use_case",
+                "result_display",
+                "comparison",
+                "packaging",
+                "unboxing",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Presentation Type"
+        },
+        "description": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_subject_ids",
+        "presentation_type",
+        "description"
+      ],
+      "title": "ProductPresentation",
+      "type": "object"
+    },
+    "ReviewState": {
+      "additionalProperties": false,
+      "properties": {
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "confirmed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confirmed At"
+        }
+      },
+      "required": [
+        "user_confirmed",
+        "confirmed_at"
+      ],
+      "title": "ReviewState",
+      "type": "object"
+    },
+    "VisualAction": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "hold",
+                "pick_up",
+                "put_down",
+                "open",
+                "close",
+                "pour",
+                "apply",
+                "operate",
+                "assemble",
+                "disassemble",
+                "wear",
+                "eat_drink",
+                "point",
+                "move",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Action Type"
+        },
+        "actor_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "title": "Actor Subject Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "target_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "title": "Target Subject Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "description": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "actor_subject_ids",
+        "target_subject_ids",
+        "description"
+      ],
+      "title": "VisualAction",
+      "type": "object"
+    },
+    "VisualDetails": {
+      "additionalProperties": false,
+      "description": "Event-local observations inheriting their parent source-frame interval.",
+      "properties": {
+        "subjects": {
+          "$ref": "#/$defs/ObservationGroup_VisualSubject_"
+        },
+        "actions": {
+          "$ref": "#/$defs/ObservationGroup_VisualAction_"
+        },
+        "product_presentations": {
+          "$ref": "#/$defs/ObservationGroup_ProductPresentation_"
+        }
+      },
+      "required": [
+        "subjects",
+        "actions",
+        "product_presentations"
+      ],
+      "title": "VisualDetails",
+      "type": "object"
+    },
+    "VisualSubject": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "kind": {
+                    "const": "other"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "roles": {
+                    "contains": {
+                      "const": "other"
+                    },
+                    "type": "array"
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "subject_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "person",
+                "animal",
+                "plant",
+                "physical_object",
+                "digital_interface",
+                "graphic",
+                "environment",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Kind"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Description"
+        },
+        "roles": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "if": {
+                    "contains": {
+                      "const": "other"
+                    }
+                  },
+                  "then": {
+                    "maxItems": 1
+                  }
+                }
+              ],
+              "items": {
+                "enum": [
+                  "product",
+                  "presenter",
+                  "product_user",
+                  "context",
+                  "other"
+                ],
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Roles"
+        }
+      },
+      "required": [
+        "subject_id",
+        "kind",
+        "label",
+        "description",
+        "roles"
+      ],
+      "title": "VisualSubject",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.4.0",
+      "default": "0.4.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "analysis_id": {
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+      "title": "Analysis Id",
+      "type": "string"
+    },
+    "revision": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "task_id": {
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+      "title": "Task Id",
+      "type": "string"
+    },
+    "video_id": {
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+      "title": "Video Id",
+      "type": "string"
+    },
+    "duration_seconds": {
+      "exclusiveMinimum": 0,
+      "title": "Duration Seconds",
+      "type": "number"
+    },
+    "frame_count": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Frame Count"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "running",
+        "succeeded",
+        "partial",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/EvidenceEvent"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/ContentSegment"
+      },
+      "title": "Segments",
+      "type": "array"
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "origin": {
+      "$ref": "#/$defs/Origin"
+    },
+    "original_revision": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Original Revision",
+      "type": "integer"
+    },
+    "review": {
+      "$ref": "#/$defs/ReviewState"
+    },
+    "corrections": {
+      "items": {
+        "$ref": "#/$defs/Correction"
+      },
+      "title": "Corrections",
+      "type": "array"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ErrorInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "empty_result_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Empty Result Reason"
+    }
+  },
+  "required": [
+    "schema_version",
+    "created_at",
+    "updated_at",
+    "analysis_id",
+    "revision",
+    "task_id",
+    "video_id",
+    "duration_seconds",
+    "frame_count",
+    "status",
+    "events",
+    "segments",
+    "coverage",
+    "origin",
+    "original_revision",
+    "review",
+    "corrections",
+    "error",
+    "empty_result_reason"
+  ],
+  "title": "AnalysisResult",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/video-anatomy/contracts/v0.4.analysis.schema.json",
+  "$comment": "Generated by scripts/export_contracts.py from backend/app/models.py. Cross-record references, interval semantics and workflow gates also require runtime validation."
+}

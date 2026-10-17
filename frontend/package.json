@@ -1,7 +1,7 @@
 {
   "name": "video-anatomy-web",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "engines": {
     "node": ">=22.12.0",
@@ -13,10 +13,11 @@
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
     "preview": "vite preview --host 127.0.0.1",
-    "contracts:generate": "json2ts -i ../contracts/v0.3.task-state.schema.json -o src/generated/contracts.ts",
+    "contracts:generate": "node scripts/generate-contracts.mjs --write",
     "contracts:check": "node scripts/check-contracts.mjs",
     "test:e2e": "playwright test",
-    "test:unit": "node --test tests/*.test.mjs"
+    "test:unit": "node --test tests/*.test.mjs",
+    "test:e2e:providers": "playwright test --config playwright.providers.config.ts"
   },
   "dependencies": {
     "react": "19.2.0",

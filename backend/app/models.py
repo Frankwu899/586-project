@@ -1,4 +1,4 @@
-"""Authoritative v0.3 records and semantic validation for Video Anatomy.
+"""Authoritative v0.4 records and semantic validation for Video Anatomy.
 
 Frame intervals in events/segments belong to the reference video; storyboard
 row times remain seconds in the planned new video. JSON Schema is generated from these models.
@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timezone
-from typing import Annotated, Literal
+from typing import Annotated, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, field_validator, model_validator
 
 ID = Annotated[str, StringConstraints(pattern=r"^[A-Za-z][A-Za-z0-9_-]{1,63}$")]
-Nonempty = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+Nonempty = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, pattern=r"\S")]
 Seconds = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 PositiveSeconds = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 Revision = Annotated[int, Field(ge=1)]
@@ -21,6 +21,11 @@ PositiveInteger = Annotated[int, Field(gt=0, strict=True)]
 Role = Literal["hook", "product_demo", "proof", "cta", "other"]
 EventKind = Literal["visual_action", "on_screen_text", "speech", "music", "sfx"]
 CoverageStatus = Literal["not_analyzed", "observations", "none_found", "failed"]
+SubjectKind = Literal["person", "animal", "plant", "physical_object", "digital_interface", "graphic", "environment", "other"]
+SubjectRole = Literal["product", "presenter", "product_user", "context", "other"]
+ActionType = Literal["hold", "pick_up", "put_down", "open", "close", "pour", "apply", "operate", "assemble", "disassemble", "wear", "eat_drink", "point", "move", "other"]
+ProductPresentationType = Literal["appearance", "feature_demo", "use_case", "result_display", "comparison", "packaging", "unboxing", "other"]
+StorageID = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{32}\.mp4$")]
 
 
 def utc_now() -> datetime:
@@ -39,7 +44,7 @@ class ContractModel(BaseModel):
 
 
 class Record(ContractModel):
-    schema_version: Literal["0.3.0"] = "0.3.0"
+    schema_version: Literal["0.4.0"] = "0.4.0"
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
@@ -69,6 +74,146 @@ class ErrorInfo(ContractModel):
     code: Nonempty
     message: Nonempty
     retryable: bool = False
+
+
+class VisualSubject(ContractModel):
+    subject_id: ID
+    kind: SubjectKind | None
+    label: Nonempty
+    description: Nonempty | None
+    roles: Annotated[list[SubjectRole], Field(min_length=1, json_schema_extra={
+        "uniqueItems": True,
+        "allOf": [{"if": {"contains": {"const": "other"}}, "then": {"maxItems": 1}}],
+    })] | None
+
+    model_config = ConfigDict(json_schema_extra={"allOf": [{
+        "if": {"anyOf": [
+            {"properties": {"kind": {"const": "other"}}},
+            {"properties": {"roles": {"type": "array", "contains": {"const": "other"}}}},
+        ]},
+        "then": {"properties": {"description": {"type": "string", "minLength": 1, "pattern": r"\S"}}},
+    }]})
+
+    @model_validator(mode="after")
+    def valid_roles(self):
+        if self.roles is not None:
+            if len(set(self.roles)) != len(self.roles):
+                raise ValueError("subject roles must be unique")
+            if "other" in self.roles and len(self.roles) != 1:
+                raise ValueError("other must be the only subject role")
+        if (self.kind == "other" or "other" in (self.roles or [])) and self.description is None:
+            raise ValueError("an other subject kind or role requires an explanatory description")
+        return self
+
+
+class VisualAction(ContractModel):
+    action_type: ActionType | None
+    actor_subject_ids: list[ID] = Field(json_schema_extra={"uniqueItems": True})
+    target_subject_ids: list[ID] = Field(json_schema_extra={"uniqueItems": True})
+    description: Nonempty
+
+    @field_validator("actor_subject_ids", "target_subject_ids")
+    @classmethod
+    def unique_references(cls, value):
+        if len(set(value)) != len(value):
+            raise ValueError("action subject references must be unique")
+        return value
+
+
+class ProductPresentation(ContractModel):
+    product_subject_ids: list[ID] = Field(min_length=1, json_schema_extra={"uniqueItems": True})
+    presentation_type: ProductPresentationType | None
+    description: Nonempty
+
+    @field_validator("product_subject_ids")
+    @classmethod
+    def unique_references(cls, value):
+        if len(set(value)) != len(value):
+            raise ValueError("product subject references must be unique")
+        return value
+
+
+Observation = TypeVar("Observation")
+
+
+class ObservationGroup(ContractModel, Generic[Observation]):
+    status: CoverageStatus
+    items: list[Observation]
+    error: ErrorInfo | None
+
+    model_config = ConfigDict(json_schema_extra={"allOf": [
+        {"if": {"properties": {"status": {"const": "observations"}}},
+         "then": {"properties": {"items": {"minItems": 1}}},
+         "else": {"properties": {"items": {"maxItems": 0}}}},
+        {"if": {"properties": {"status": {"const": "failed"}}},
+         "then": {"properties": {"error": {"type": "object"}}},
+         "else": {"properties": {"error": {"type": "null"}}}},
+    ]})
+
+    @model_validator(mode="after")
+    def truthful_coverage(self):
+        if bool(self.items) != (self.status == "observations"):
+            raise ValueError("structured group observations status requires nonempty items; other statuses require empty items")
+        if (self.status == "failed") != (self.error is not None):
+            raise ValueError("structured group error is required exactly when status is failed")
+        return self
+
+
+class VisualDetails(ContractModel):
+    """Event-local observations inheriting their parent source-frame interval."""
+
+    subjects: ObservationGroup[VisualSubject]
+    actions: ObservationGroup[VisualAction]
+    product_presentations: ObservationGroup[ProductPresentation]
+
+    @model_validator(mode="after")
+    def local_references(self):
+        subjects = {subject.subject_id: subject for subject in self.subjects.items}
+        if len(subjects) != len(self.subjects.items):
+            raise ValueError("subject IDs must be unique within an event")
+        for action in self.actions.items:
+            if any(ref not in subjects for ref in [*action.actor_subject_ids, *action.target_subject_ids]):
+                raise ValueError("action references must resolve to subjects in the same event")
+        for presentation in self.product_presentations.items:
+            for ref in presentation.product_subject_ids:
+                if ref not in subjects or "product" not in (subjects[ref].roles or []):
+                    raise ValueError("product presentation references must resolve to local subjects with the product role")
+        return self
+
+    def has_failures(self) -> bool:
+        return any(group.status == "failed" for group in (self.subjects, self.actions, self.product_presentations))
+
+
+def validate_visual_details_correction(before: VisualDetails | dict | None,
+                                       after: VisualDetails | dict | None) -> VisualDetails:
+    """Validate an atomic label edit without repairing or replacing observations.
+
+    Subject IDs and item positions identify the existing observations. Actions
+    and presentations have no independent IDs; their relationship arrays and
+    positions stay fixed while their category/description leaves can change.
+    """
+    if before is None or after is None:
+        raise ValueError("structured corrections require existing visual details; missing extraction cannot be added or removed")
+    old = VisualDetails.model_validate(before.model_dump() if isinstance(before, VisualDetails) else before)
+    new = VisualDetails.model_validate(after.model_dump() if isinstance(after, VisualDetails) else after)
+    for name, editable in (
+        ("subjects", {"kind", "roles", "label", "description"}),
+        ("actions", {"action_type", "description"}),
+        ("product_presentations", {"presentation_type", "description"}),
+    ):
+        previous, current = getattr(old, name), getattr(new, name)
+        if previous.status != current.status or previous.error != current.error:
+            raise ValueError("structured corrections cannot change extraction status or errors")
+        if len(previous.items) != len(current.items):
+            raise ValueError("structured corrections cannot add or delete observations")
+        old_items = [item.model_dump_json() for item in previous.items]
+        new_items = [item.model_dump_json() for item in current.items]
+        if old_items != new_items and sorted(old_items) == sorted(new_items):
+            raise ValueError("structured corrections cannot reorder existing observations")
+        for left, right in zip(previous.items, current.items, strict=True):
+            if left.model_dump(exclude=editable) != right.model_dump(exclude=editable):
+                raise ValueError("structured corrections cannot change subject IDs, item order or relationship references")
+    return new
 
 
 class PublicMetrics(ContractModel):
@@ -153,18 +298,36 @@ class FrameTiming(ContractModel):
         return self
 
 
+class PlaybackRepresentation(ContractModel):
+    """Browser derivative with one measured presentation frame per source frame."""
+
+    storage_id: StorageID
+    video_codec: Literal["h264"]
+    audio_codec: Literal["aac"] | None
+    duration_seconds: PositiveSeconds
+    frame_timing: FrameTiming
+
+    @model_validator(mode="after")
+    def valid_duration(self):
+        if not math.isclose(self.frame_timing.frame_boundaries_seconds[-1], self.duration_seconds,
+                            rel_tol=0, abs_tol=1e-6):
+            raise ValueError("playback final frame boundary must equal its measured duration")
+        return self
+
+
 class VideoAsset(Record):
     video_id: ID
     task_id: ID
     purpose: Literal["reference", "draft"] = "reference"
     input_method: Literal["file", "sample", "legacy"]
-    storage_id: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{32}\.mp4$")] | None = None
+    storage_id: StorageID | None = None
     content_sha256: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")] | None = None
     sample_key: str | None = None
     original_file_name: str | None = None
     source_url: str | None = None
     duration_seconds: PositiveSeconds | None = None
     frame_timing: FrameTiming | None = None
+    playback: PlaybackRepresentation | None = None
     width: Annotated[int, Field(gt=0)] | None = None
     height: Annotated[int, Field(gt=0)] | None = None
     video_codec: str | None = None
@@ -185,6 +348,11 @@ class VideoAsset(Record):
             raise ValueError("final frame boundary must equal measured video duration")
         if self.intake_status == "failed" and self.error is None:
             raise ValueError("failed media requires an actionable error")
+        if self.playback is not None:
+            if self.frame_timing is None or self.playback.frame_timing.frame_count != self.frame_timing.frame_count:
+                raise ValueError("playback requires one presentation frame for each original source frame")
+            if self.playback.storage_id == self.storage_id:
+                raise ValueError("playback derivative must preserve the original stored asset separately")
         if self.public_metrics is not None and self.public_metrics.source_url != self.source_url:
             raise ValueError("public metrics must describe this video's source")
         return self
@@ -238,6 +406,7 @@ class EvidenceEvent(ReferenceInterval):
     source: Nonempty
     method: Nonempty
     uncertainty: str | None = None
+    visual_details: VisualDetails | None = None
 
     @model_validator(mode="after")
     def valid_event(self):
@@ -246,6 +415,8 @@ class EvidenceEvent(ReferenceInterval):
             raise ValueError("event kind must use its visual/audio lane")
         if self.text is None and self.description is None:
             raise ValueError("event needs recognized text or an observation description")
+        if self.visual_details is not None and self.kind != "visual_action":
+            raise ValueError("visual details are permitted only on visual_action events")
         return self
 
 
@@ -294,14 +465,18 @@ class ReviewState(ContractModel):
 class Correction(ContractModel):
     target_type: Literal["event", "segment"]
     target_id: ID
-    field: Literal["text", "description", "roles"]
+    field: Literal["text", "description", "roles", "visual_details"]
     before: JsonValue
     after: JsonValue
 
     @model_validator(mode="after")
     def allowed_field(self):
         if (self.target_type == "segment") != (self.field == "roles"):
-            raise ValueError("only event text/descriptions and segment roles are editable")
+            raise ValueError("only event text/descriptions/visual details and segment roles are editable")
+        if self.field == "visual_details":
+            revised = validate_visual_details_correction(self.before, self.after)
+            self.before = VisualDetails.model_validate(self.before).model_dump(mode="json")
+            self.after = revised.model_dump(mode="json")
         return self
 
 
@@ -338,6 +513,8 @@ class AnalysisResult(Record):
             raise ValueError("nonempty analysis must not carry an empty-result reason")
         if self.original_revision != 1 or self.original_revision > self.revision:
             raise ValueError("analysis original revision must remain 1")
+        if self.revision == 1 and self.corrections:
+            raise ValueError("original extraction cannot contain human correction history")
         if self.review.confirmed_at is not None and not self.created_at <= self.review.confirmed_at <= self.updated_at:
             raise ValueError("confirmation time must fall within analysis creation/update times")
         event_map = {event.event_id: event for event in self.events}
@@ -367,10 +544,13 @@ class AnalysisResult(Record):
             has_events = any(event.kind == kind for event in self.events)
             if has_events != (coverage == "observations"):
                 raise ValueError(f"{kind} coverage must agree with canonical observations")
-        if self.status == "succeeded" and "failed" in self.coverage.model_dump().values():
+        failed_extraction = "failed" in self.coverage.model_dump().values() or any(
+            event.visual_details is not None and event.visual_details.has_failures() for event in self.events
+        )
+        if self.status == "succeeded" and failed_extraction:
             raise ValueError("failed extraction categories require partial analysis status")
-        if self.status == "partial" and "failed" not in self.coverage.model_dump().values():
-            raise ValueError("partial analysis must identify failed extraction categories")
+        if self.status == "partial" and not failed_extraction:
+            raise ValueError("partial analysis must identify failed extraction categories or structured groups")
         return self
 
 
@@ -594,10 +774,20 @@ def _validate_references(state: TaskState) -> None:
         if original.video_id != analysis.video_id or original.origin != analysis.origin or original.frame_count != analysis.frame_count:
             raise ValueError("analysis revisions must preserve video identity, frame count and origin")
         if analysis.revision > 1:
+            # Legacy imports can contain only the original and a later snapshot.
+            # Preserve every available earlier log without inventing missing revisions.
+            previous = max((item for item in state.analyses
+                            if item.analysis_id == analysis.analysis_id and item.revision < analysis.revision),
+                           key=lambda item: item.revision)
+            if analysis.corrections[:len(previous.corrections)] != previous.corrections:
+                raise ValueError("analysis corrections must preserve all earlier correction history")
+            for field in ("status", "coverage", "error", "empty_result_reason"):
+                if getattr(analysis, field) != getattr(original, field):
+                    raise ValueError("analysis corrections cannot change extraction status or coverage")
             old_events = {event.event_id: event for event in original.events}
             old_segments = {segment.segment_id: segment for segment in original.segments}
-            if set(old_events) != {event.event_id for event in analysis.events} or set(old_segments) != {segment.segment_id for segment in analysis.segments}:
-                raise ValueError("analysis corrections must preserve observation and section IDs")
+            if list(old_events) != [event.event_id for event in analysis.events] or list(old_segments) != [segment.segment_id for segment in analysis.segments]:
+                raise ValueError("analysis corrections must preserve observation and section IDs and order")
             for event in analysis.events:
                 old = old_events[event.event_id]
                 for field in ("video_id", "start_frame", "end_frame", "legacy_seconds", "lane", "kind", "source", "method", "uncertainty"):
@@ -620,8 +810,8 @@ def _validate_references(state: TaskState) -> None:
                     raise ValueError("correction log before-value does not match its recorded lineage")
                 target[correction.field] = correction.after
             for event in analysis.events:
-                for field in ("text", "description"):
-                    if getattr(event, field) != replay_events[event.event_id][field]:
+                for field in ("text", "description", "visual_details"):
+                    if event.model_dump()[field] != replay_events[event.event_id][field]:
                         raise ValueError("changed event content requires a complete correction log")
             for segment in analysis.segments:
                 if segment.roles != replay_segments[segment.segment_id]["roles"]:

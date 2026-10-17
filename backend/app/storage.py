@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable
 
 from .frame_migration import migrate_v02_task
+from .contract_migration import migrate_v03_task
 from .models import TaskState, validate_state
 
 
@@ -43,16 +44,18 @@ class TaskStore:
 
     def _read_state(self, db: sqlite3.Connection, task_id: str, payload: str) -> TaskState:
         data = json.loads(payload)
-        if data.get("task", {}).get("schema_version") != "0.2.0":
+        source_version = data.get("task", {}).get("schema_version")
+        if source_version not in ("0.2.0", "0.3.0"):
             return validate_state(TaskState.model_validate(data))
-        state = migrate_v02_task(data, self.media_root)
+        state = (migrate_v02_task(data, self.media_root) if source_version == "0.2.0"
+                 else migrate_v03_task(data))
         if state.task.task_id != task_id:
             raise ValueError("stored task identity does not match its payload")
         db.execute("""INSERT INTO task_migration_archive
             (task_id, source_schema_version, target_schema_version, original_task_version,
              migrated_task_version, original_payload, original_sha256)
             VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                   (task_id, "0.2.0", "0.3.0", data["task"]["version"], state.task.version,
+                   (task_id, source_version, state.task.schema_version, data["task"]["version"], state.task.version,
                     payload, hashlib.sha256(payload.encode()).hexdigest()))
         db.execute("UPDATE tasks SET version = ?, payload = ? WHERE id = ?",
                    (state.task.version, state.model_dump_json(), task_id))

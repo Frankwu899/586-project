@@ -5,7 +5,7 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export type SchemaVersion = "0.3.0";
+export type SchemaVersion = "0.4.0";
 export type CreatedAt = string;
 export type UpdatedAt = string;
 export type TaskId = string;
@@ -16,7 +16,7 @@ export type Version = number;
 export type Id = string;
 export type Revision = number;
 export type CurrentVideoId = string | null;
-export type SchemaVersion1 = "0.3.0";
+export type SchemaVersion1 = "0.4.0";
 export type CreatedAt1 = string;
 export type UpdatedAt1 = string;
 export type BriefId = string;
@@ -40,7 +40,7 @@ export type Tone = string | null;
 export type ProductionLimits = string | null;
 export type ProhibitedClaims = string[];
 export type Briefs = BrandTaskBrief[];
-export type SchemaVersion2 = "0.3.0";
+export type SchemaVersion2 = "0.4.0";
 export type CreatedAt2 = string;
 export type UpdatedAt2 = string;
 export type VideoId = string;
@@ -66,10 +66,14 @@ export type MediaStartSeconds = number;
 export type FrameBoundariesSeconds = [number, number, ...number[]];
 export type RateMode = "constant" | "variable";
 export type Source = "probed";
+export type StorageId1 = string;
+export type VideoCodec = "h264";
+export type AudioCodec = "aac" | null;
+export type DurationSeconds1 = number;
 export type Width = number | null;
 export type Height = number | null;
-export type VideoCodec = string | null;
-export type AudioCodec = string | null;
+export type VideoCodec1 = string | null;
+export type AudioCodec1 = string | null;
 export type HasAudio = boolean | null;
 export type IntakeStatus = "ready" | "failed" | "missing";
 export type Kind = "sample" | "provider" | "manual" | "legacy";
@@ -83,14 +87,14 @@ export type Code = string;
 export type Message = string;
 export type Retryable = boolean;
 export type Videos = VideoAsset[];
-export type SchemaVersion3 = "0.3.0";
+export type SchemaVersion3 = "0.4.0";
 export type CreatedAt3 = string;
 export type UpdatedAt3 = string;
 export type AnalysisId = string;
 export type Revision2 = number;
 export type TaskId3 = string;
 export type VideoId1 = string;
-export type DurationSeconds1 = number;
+export type DurationSeconds2 = number;
 export type FrameCount1 = number | null;
 export type Status = "pending" | "running" | "succeeded" | "partial" | "failed";
 export type StartFrame = number | null;
@@ -106,6 +110,54 @@ export type Description1 = string | null;
 export type Source1 = string;
 export type Method = string;
 export type Uncertainty = string | null;
+export type Status1 = "not_analyzed" | "observations" | "none_found" | "failed";
+export type SubjectId = string;
+export type Kind2 =
+  | ("person" | "animal" | "plant" | "physical_object" | "digital_interface" | "graphic" | "environment" | "other")
+  | null;
+export type Label = string;
+export type Description2 = string | null;
+export type Roles =
+  | [
+      "product" | "presenter" | "product_user" | "context" | "other",
+      ...("product" | "presenter" | "product_user" | "context" | "other")[]
+    ]
+  | null;
+export type Items = VisualSubject[];
+export type Status2 = "not_analyzed" | "observations" | "none_found" | "failed";
+export type ActionType =
+  | (
+      | "hold"
+      | "pick_up"
+      | "put_down"
+      | "open"
+      | "close"
+      | "pour"
+      | "apply"
+      | "operate"
+      | "assemble"
+      | "disassemble"
+      | "wear"
+      | "eat_drink"
+      | "point"
+      | "move"
+      | "other"
+    )
+  | null;
+export type ActorSubjectIds = string[];
+export type TargetSubjectIds = string[];
+export type Description3 = string;
+export type Items1 = VisualAction[];
+export type Status3 = "not_analyzed" | "observations" | "none_found" | "failed";
+/**
+ * @minItems 1
+ */
+export type ProductSubjectIds = [string, ...string[]];
+export type PresentationType =
+  | ("appearance" | "feature_demo" | "use_case" | "result_display" | "comparison" | "packaging" | "unboxing" | "other")
+  | null;
+export type Description4 = string;
+export type Items2 = ProductPresentation[];
 export type Events = EvidenceEvent[];
 export type StartFrame1 = number | null;
 export type EndFrame1 = number | null;
@@ -114,14 +166,14 @@ export type VideoId3 = string;
 /**
  * @minItems 1
  */
-export type Roles = [
+export type Roles1 = [
   "hook" | "product_demo" | "proof" | "cta" | "other",
   ...("hook" | "product_demo" | "proof" | "cta" | "other")[]
 ];
 export type EvidenceIds = string[];
 export type Interpretation = string | null;
 export type Segments = ContentSegment[];
-export type VisualAction = "not_analyzed" | "observations" | "none_found" | "failed";
+export type VisualAction1 = "not_analyzed" | "observations" | "none_found" | "failed";
 export type OnScreenText = "not_analyzed" | "observations" | "none_found" | "failed";
 export type Speech = "not_analyzed" | "observations" | "none_found" | "failed";
 export type Music = "not_analyzed" | "observations" | "none_found" | "failed";
@@ -131,12 +183,12 @@ export type UserConfirmed = boolean;
 export type ConfirmedAt = string | null;
 export type TargetType = "event" | "segment";
 export type TargetId = string;
-export type Field = "text" | "description" | "roles";
+export type Field = "text" | "description" | "roles" | "visual_details";
 export type JsonValue = unknown;
 export type Corrections = Correction[];
 export type EmptyResultReason = string | null;
 export type Analyses = AnalysisResult[];
-export type SchemaVersion4 = "0.3.0";
+export type SchemaVersion4 = "0.4.0";
 export type CreatedAt4 = string;
 export type UpdatedAt4 = string;
 export type DirectionId = string;
@@ -161,17 +213,17 @@ export type ApprovalStatus = "draft" | "approved";
 export type ApprovedAt = string | null;
 export type Currentness = "current" | "outdated";
 export type Directions = CreativeDirection[];
-export type SchemaVersion5 = "0.3.0";
+export type SchemaVersion5 = "0.4.0";
 export type CreatedAt5 = string;
 export type UpdatedAt5 = string;
 export type FeedbackId = string;
 export type Revision4 = number;
 export type TaskId5 = string;
 export type Instruction = string;
-export type Status1 = "pending" | "applied" | "not_interpreted";
+export type Status4 = "pending" | "applied" | "not_interpreted";
 export type Explanation = string | null;
 export type Feedback = CreativeFeedback[];
-export type SchemaVersion6 = "0.3.0";
+export type SchemaVersion6 = "0.4.0";
 export type CreatedAt6 = string;
 export type UpdatedAt6 = string;
 export type OutputId = string;
@@ -188,7 +240,7 @@ export type Cta1 = string;
 export type ProductionNotes1 = string[];
 export type Evidence1 = EvidenceReference[];
 export type ProductionBriefs = ProductionCreativeBrief[];
-export type SchemaVersion7 = "0.3.0";
+export type SchemaVersion7 = "0.4.0";
 export type CreatedAt7 = string;
 export type UpdatedAt7 = string;
 export type OutputId1 = string;
@@ -212,13 +264,13 @@ export type Sound = string | null;
 export type Cta2 = string | null;
 export type Evidence2 = EvidenceReference[];
 export type Storyboards = TextStoryboard[];
-export type SchemaVersion8 = "0.3.0";
+export type SchemaVersion8 = "0.4.0";
 export type CreatedAt8 = string;
 export type UpdatedAt8 = string;
 export type JobId = string;
 export type TaskId8 = string;
 export type Operation = "analyze" | "directions" | "refine" | "production";
-export type Status2 = "pending" | "running" | "succeeded" | "failed";
+export type Status5 = "pending" | "running" | "succeeded" | "failed";
 export type VideoId5 = string | null;
 export type ResultType = string | null;
 export type Attempt = number;
@@ -294,10 +346,11 @@ export interface VideoAsset {
   source_url: SourceUrl;
   duration_seconds: DurationSeconds;
   frame_timing: FrameTiming | null;
+  playback: PlaybackRepresentation | null;
   width: Width;
   height: Height;
-  video_codec: VideoCodec;
-  audio_codec: AudioCodec;
+  video_codec: VideoCodec1;
+  audio_codec: AudioCodec1;
   has_audio: HasAudio;
   intake_status: IntakeStatus;
   origin: Origin;
@@ -321,6 +374,16 @@ export interface FrameTiming {
   frame_boundaries_seconds: FrameBoundariesSeconds;
   rate_mode: RateMode;
   source: Source;
+}
+/**
+ * Browser derivative with one measured presentation frame per source frame.
+ */
+export interface PlaybackRepresentation {
+  storage_id: StorageId1;
+  video_codec: VideoCodec;
+  audio_codec: AudioCodec;
+  duration_seconds: DurationSeconds1;
+  frame_timing: FrameTiming;
 }
 export interface Origin {
   kind: Kind;
@@ -346,7 +409,7 @@ export interface AnalysisResult {
   revision: Revision2;
   task_id: TaskId3;
   video_id: VideoId1;
-  duration_seconds: DurationSeconds1;
+  duration_seconds: DurationSeconds2;
   frame_count: FrameCount1;
   status: Status;
   events: Events;
@@ -372,6 +435,7 @@ export interface EvidenceEvent {
   source: Source1;
   method: Method;
   uncertainty: Uncertainty;
+  visual_details: VisualDetails | null;
 }
 /**
  * Preserved legacy interval when source media is unavailable for probing.
@@ -380,18 +444,59 @@ export interface LegacySeconds {
   start_seconds: StartSeconds;
   end_seconds: EndSeconds;
 }
+/**
+ * Event-local observations inheriting their parent source-frame interval.
+ */
+export interface VisualDetails {
+  subjects: ObservationGroupVisualSubject;
+  actions: ObservationGroupVisualAction;
+  product_presentations: ObservationGroupProductPresentation;
+}
+export interface ObservationGroupVisualSubject {
+  status: Status1;
+  items: Items;
+  error: ErrorInfo | null;
+}
+export interface VisualSubject {
+  subject_id: SubjectId;
+  kind: Kind2;
+  label: Label;
+  description: Description2;
+  roles: Roles;
+}
+export interface ObservationGroupVisualAction {
+  status: Status2;
+  items: Items1;
+  error: ErrorInfo | null;
+}
+export interface VisualAction {
+  action_type: ActionType;
+  actor_subject_ids: ActorSubjectIds;
+  target_subject_ids: TargetSubjectIds;
+  description: Description3;
+}
+export interface ObservationGroupProductPresentation {
+  status: Status3;
+  items: Items2;
+  error: ErrorInfo | null;
+}
+export interface ProductPresentation {
+  product_subject_ids: ProductSubjectIds;
+  presentation_type: PresentationType;
+  description: Description4;
+}
 export interface ContentSegment {
   start_frame: StartFrame1;
   end_frame: EndFrame1;
   legacy_seconds: LegacySeconds | null;
   segment_id: SegmentId;
   video_id: VideoId3;
-  roles: Roles;
+  roles: Roles1;
   evidence_ids: EvidenceIds;
   interpretation: Interpretation;
 }
 export interface Coverage {
-  visual_action: VisualAction;
+  visual_action: VisualAction1;
   on_screen_text: OnScreenText;
   speech: Speech;
   music: Music;
@@ -450,7 +555,7 @@ export interface CreativeFeedback {
   target_direction: VersionRef;
   brief_ref: VersionRef;
   analysis_ref: VersionRef;
-  status: Status1;
+  status: Status4;
   resulting_direction: VersionRef | null;
   explanation: Explanation;
 }
@@ -511,7 +616,7 @@ export interface ProcessingJob {
   job_id: JobId;
   task_id: TaskId8;
   operation: Operation;
-  status: Status2;
+  status: Status5;
   input_refs: InputRefs;
   video_id: VideoId5;
   result_ref: VersionRef | null;
