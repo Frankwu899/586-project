@@ -66,12 +66,14 @@ def _fail_job(state, job, error):
 
 class WorkflowService:
     def __init__(self, root: Path, recognition=None, creative=None, media=None, *,
-                 real_recognition=None, real_creative=None, provider_settings=None):
+                 real_recognition=None, real_creative=None, provider_settings=None,
+                 m2_assistance=None):
         from .adapters import SampleCreativeAdapter, SampleRecognitionAdapter, UnconfiguredRecognitionAdapter
         from .media import MediaStore
         from .providers.config import ProviderSettings
         from .providers.creative import OpenAICreativeAdapter
         from .providers.recognition import ProviderRecognitionAdapter
+        from .providers.m2 import build_m2_assistance
         self.store = TaskStore(root)
         self.media = media or MediaStore(root / "media")
         self.provider_settings = provider_settings or replace(ProviderSettings.from_env(), cache_dir=root / "provider-cache")
@@ -81,6 +83,7 @@ class WorkflowService:
             if self.provider_settings.api_key else UnconfiguredRecognitionAdapter())
         self.creative = creative or SampleCreativeAdapter()
         self.real_creative = real_creative or OpenAICreativeAdapter(self.provider_settings)
+        self.m2_assistance = m2_assistance or build_m2_assistance(self.provider_settings)
         self._recover_interrupted_jobs()
 
     def _creative_execute(self, context, job_id, operation):
@@ -137,20 +140,37 @@ class WorkflowService:
     def create(self, title):
         return self.store.create(m.TaskState(task=m.CreativeTask(task_id=uid("task"), title=title)))
 
-    def _update(self, task_id, version, mutate):
+    def _update(self, task_id, version, mutate, *, require_m2_ready=False, preserve_m2_inputs=False):
         def apply(state):
             mutate(state)
             state.task.updated_at = now()
-        return self.store.update(task_id, version, apply)
+        return self.store.update(task_id, version, apply, require_m2_ready=require_m2_ready,
+                                 preserve_m2_inputs=preserve_m2_inputs)
 
     def save_brief(self, task_id, version, fields):
-        def change(state):
-            previous = find(state.briefs, state.task.current_brief) if state.task.current_brief else None
-            brief = m.BrandTaskBrief(brief_id=previous.brief_id if previous else uid("brief"), revision=previous.revision + 1 if previous else 1, task_id=task_id, **fields)
-            state.briefs.append(brief)
-            state.task.current_brief = ref(brief)
-            invalidate(state)
-        return self._update(task_id, version, change)
+        # Compatibility callers use the same confirmation, equality and atomic
+        # checkpoint rules as the editor, never an alternate revision pathway.
+        return self.store.save_applied_brief(task_id, version, fields, invalidate).task
+
+    def apply_m2(self, task_id, request):
+        return self.store.apply_m2_draft(task_id, request, invalidate)
+
+    def assist_m2(self, task_id, request):
+        from .providers.m2 import validate_assistance_response
+        from .providers.base import ProviderError
+        draft = self.store.get_m2_draft(task_id)
+        if draft.draft_version != request.draft_version:
+            raise WorkflowError("m2_stale_proposal", "Your inputs changed. Run extraction again.")
+        try:
+            response = self.m2_assistance.assist(request, draft)
+            response = validate_assistance_response(response, request, draft)
+        except ProviderError as exc:
+            raise WorkflowError(exc.code, exc.message, 422, exc.retryable) from exc
+        except Exception as exc:
+            raise WorkflowError("m2_assistance_failed", "Couldn’t extract details. Your input is saved; continue editing or try again.", 422, True) from exc
+        if self.store.get_m2_draft(task_id).draft_version != draft.draft_version:
+            raise WorkflowError("m2_stale_proposal", "Your inputs changed. Run extraction again.")
+        return response
 
     def load_sample(self, task_id, version):
         from .sample import sample_brief
@@ -169,7 +189,7 @@ class WorkflowService:
                 state.briefs.append(brief)
                 state.task.current_brief = ref(brief)
             state.task.progress = "analysis"
-        return self._update(task_id, version, change)
+        return self._update(task_id, version, change, preserve_m2_inputs=True)
 
     def upload(self, task_id, version, filename, stream, source_url=None):
         before = self.store.get(task_id)
@@ -219,7 +239,7 @@ class WorkflowService:
             video = next((v for v in state.videos if v.video_id == state.task.current_video_id), None)
             context["source_sha256"] = video.content_sha256 if video else None
             state.jobs.append(m.ProcessingJob(job_id=job_id, task_id=task_id, operation=operation, status="pending", input_refs=context.get("input_refs", {}), video_id=state.task.current_video_id, attempt=1 + sum(j.operation == operation for j in state.jobs)))
-        queued = self._update(task_id, version, pending)
+        queued = self._update(task_id, version, pending, require_m2_ready=operation != "analyze")
         def running(state):
             next(j for j in state.jobs if j.job_id == job_id).status = "running"
         try:
@@ -446,7 +466,7 @@ class WorkflowService:
             state.task.selected_direction = selected
             state.task.chosen_direction = selected
             state.task.progress = "production"
-        return self._update(task_id, version, change)
+        return self._update(task_id, version, change, require_m2_ready=True)
 
     def generate_outputs(self, task_id, version, direction_ref, brief_ref, analysis_ref):
         def prepare(state):

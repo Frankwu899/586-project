@@ -1,7 +1,8 @@
-"""Lossless v0.3-to-v0.4 extension; the storage caller archives original bytes.
+"""Lossless v0.3 extension into the current contract; storage archives original bytes.
 
 The new nullable fields describe work that was not performed in older records.
 Migration does not create observations, playback media, reviews or revisions.
+The v0.5 claim extension records historical permission as unrecorded.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
 
 from .models import TaskState, validate_state
+from .m2_migration import add_v05_fields
 
 ROOT = Path(__file__).resolve().parents[2]
 _V03_VALIDATOR = Draft202012Validator(
@@ -38,5 +40,6 @@ def migrate_v03_task(payload: dict) -> TaskState:
     state = deepcopy(payload)
     _V03_VALIDATOR.validate(state)
     add_v04_fields(state)
+    add_v05_fields(state)
     state["task"]["version"] += 1
     return validate_state(state)

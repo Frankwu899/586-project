@@ -1,8 +1,8 @@
-# Video Anatomy — v0.4 local workflow
+# Video Anatomy — v0.5 local workflow
 
 Combine one brand/task brief and one reference video with reviewed evidence, two creative directions, explicit approval, an editable production brief and a text storyboard. The dedicated fictional sample works offline. Real tasks use replaceable OpenAI adapters for visual/OCR evidence, timestamped speech and creative generation when configured. Offline and real-media tests passed; live recognition accuracy has **not** been evaluated in this delivery.
 
-Read [the implementation handoff](docs/handoff/bilingual-provider-contracts.md), [interfaces](docs/interfaces.md) and [provider decisions](docs/decisions/real-provider-v0.4.md). The committed [requirements package](docs/video-anatomy-handoff/README_FIRST.md) is preserved documentation; its historical snapshots must not replace current application files.
+Read [the M2 implementation handoff](docs/handoff/m2-brief-experience.md), [the provider foundation](docs/handoff/bilingual-provider-contracts.md), [interfaces](docs/interfaces.md) and [provider decisions](docs/decisions/real-provider-v0.4.md). The committed [requirements package](docs/video-anatomy-handoff/README_FIRST.md) is preserved documentation; its historical snapshots must not replace current application files.
 
 ## Install
 
@@ -35,7 +35,7 @@ npm --prefix frontend run dev
 
 Open [the app](http://127.0.0.1:5173) or [API reference](http://127.0.0.1:8000/docs). Use one backend worker. No public deployment or authentication is provided.
 
-Create a task, save a brief, and load the dedicated sample before uploading anything to that task. Analyze, inspect/correct observations, and click **Use this reviewed analysis**. Generate two directions, edit/refine one, explicitly approve it, then generate/edit/export the production brief and storyboard. Upstream edits preserve history, clear dependent approval and mark outputs outdated. The sample understands the literal presenter-free instruction; other instructions remain saved as uninterpreted feedback.
+Create a task and add what you know in **Brand & task**. Partial inputs save independently; you can upload/review a reference before completing them. Confirm at least one usable claim, supply audience/platform/goal/positive duration, then **Review inputs → Apply inputs**. No task value is preselected. Loading the dedicated sample in a new task supplies clearly fictional data only when it will not replace your partial inputs. Analyze, inspect/correct observations, and click **Use this reviewed analysis**. Generate two directions, edit/refine one, explicitly approve it, then generate/edit/export the production brief and storyboard. Applying changed inputs preserves history, clears dependent approval and marks outputs outdated. Draft editing alone and identical Apply preserve approval/output history; pending structured edits must be applied or discarded before new creative actions. The sample understands the literal presenter-free instruction; other instructions remain saved as uninterpreted feedback.
 
 For an actual reference, create another task and upload an MP4. Without a backend key, analysis reports unconfigured. With providers configured, the same review/approval steps apply. Partial observations are inspectable and their existing labels editable, but extraction status cannot be repaired through corrections. Rerun recognition and obtain a successful result before confirmation and creative use.
 
@@ -46,6 +46,7 @@ For an actual reference, create another task and upload an MP4. Without a backen
 | Setting | Default / purpose |
 |---|---|
 | `OPENAI_API_KEY` | Unset; backend only. |
+| `VIDEO_M2_PROVIDER`, `OPENAI_M2_MODEL` | `openai`, `gpt-4.1-mini`; independent bounded notes extraction/task suggestions. `disabled` keeps manual editing available. |
 | `VIDEO_VISION_PROVIDER`, `VIDEO_TRANSCRIPTION_PROVIDER`, `VIDEO_CREATIVE_PROVIDER` | `openai`; independent capabilities. |
 | `OPENAI_VISION_MODEL`, `OPENAI_CREATIVE_MODEL` | `gpt-4.1-mini`; independent settings. |
 | `OPENAI_TRANSCRIPTION_MODEL` | `whisper-1`, for usable segment timestamps. |
@@ -77,7 +78,7 @@ Visual/OCR findings cover sampled frames, not every frame or precise shot bounda
 
 `VIDEO_ANATOMY_DATA_DIR` defaults to ignored `.local-data/`, containing SQLite aggregates, original/proxy media and `provider-cache/`. Cache keys include source hash, model/provider, prompt/schema/preparation versions and settings. Hits create a fresh analysis identity without claiming a new provider run. Corrections never overwrite original extraction or enter recognition cache. Safe diagnostics in `provider-cache/runs.jsonl` record usage/timing/references; unknown usage/billed cost stays null. Cache content is private local data.
 
-Back up the entire data directory before upgrading/moving machines. Saved v0.3 tasks migrate to v0.4 with `visual_details=null` and `playback=null`; exact original JSON is archived transactionally in SQLite. No labels, language guesses, proxy or fresh review are invented. Existing v0.2 timing migration and explicit v0.1 import remain supported. Historic schemas/examples remain unchanged. See [interfaces](docs/interfaces.md).
+Back up the entire data directory before upgrading/moving machines. Independent M2 drafts live in the same SQLite database with their own versions. Saved v0.4 tasks migrate transactionally to v0.5, retaining history/approval and recording claim confirmation as `legacy_unrecorded`; review and confirm before new creative actions. Earlier v0.3 tasks additionally gain `visual_details=null` and `playback=null`. Exact original JSON is archived transactionally in SQLite. No labels, language guesses, proxy or fresh review are invented. Existing v0.2 timing migration and explicit v0.1 import remain supported. Historic schemas/examples remain unchanged. See [interfaces](docs/interfaces.md).
 
 ## Verify offline
 
@@ -97,7 +98,7 @@ npm --prefix frontend run test:e2e:providers
 npm --prefix frontend run contracts:generate
 ```
 
-The TypeScript generator omits unsupported conditional clauses only from its generation input; full JSON schemas and Python semantic validation remain authoritative. Current examples are `examples/v0.4.*.json`. Seed playable synthetic media with `.venv/bin/python scripts/load_sample.py --complete`; scripted confirmation/approval is demo data, not human review.
+The TypeScript generator omits unsupported conditional clauses only from its generation input; full JSON schemas and Python semantic validation remain authoritative. Current examples are `examples/v0.5.*.json`; v0.4 examples remain historical. Seed playable synthetic media with `.venv/bin/python scripts/load_sample.py --complete`; scripted confirmation/approval is demo data, not human review.
 
 ## Live evaluation and team review
 

@@ -221,9 +221,9 @@ def test_pending_job_race_and_restart_recovery(service, monkeypatch):
     state = ready(service)
     original_update = service._update
     intervened = False
-    def update(task_id, version, mutate):
+    def update(task_id, version, mutate, **kwargs):
         nonlocal intervened
-        saved = original_update(task_id, version, mutate)
+        saved = original_update(task_id, version, mutate, **kwargs)
         if not intervened and saved.jobs[-1].status == "pending":
             intervened = True
             original_update(task_id, saved.task.version, lambda task: setattr(task.task, "title", "Concurrent title"))
@@ -263,8 +263,8 @@ def test_failed_refinement_resolves_only_its_pending_feedback(service, monkeypat
     class StoppedBackend(BaseException):
         pass
 
-    def update(task_id, version, mutate):
-        saved = original_update(task_id, version, mutate)
+    def update(task_id, version, mutate, **kwargs):
+        saved = original_update(task_id, version, mutate, **kwargs)
         job = saved.jobs[-1]
         if job.operation == "refine":
             if failure == "pending_race" and job.status == "pending":
@@ -365,6 +365,22 @@ def test_archived_unknown_timing_cannot_be_confirmed_or_used_for_creative(servic
     with pytest.raises(WorkflowError) as confirmation:
         service.confirm_analysis(state.task.task_id, state.task.version, state.task.current_analysis)
     assert confirmation.value.code == "frame_timing_unavailable"
+    with pytest.raises(WorkflowError) as generation:
+        service.generate_directions(state.task.task_id, state.task.version, state.task.current_brief, state.task.current_analysis)
+    assert generation.value.code == "m2_legacy_review_required"
+    assert service.store.get(state.task.task_id) == state
+    original_analysis = state.analyses[-1].model_dump()
+    draft = service.store.get_m2_draft(state.task.task_id)
+    reviewed = service.store.save_m2_draft(state.task.task_id, m.M2DraftUpdate(
+        expected_draft_version=draft.draft_version, fields=draft.fields,
+        claims=[claim.model_copy(update={"confirmed_for_use": True}) for claim in draft.claims],
+        source_notes=draft.source_notes,
+    ))
+    state = service.apply_m2(state.task.task_id, m.M2ApplyRequest(
+        expected_draft_version=reviewed.draft_version, expected_version=state.task.version,
+        based_on_brief=state.task.current_brief,
+    )).task
+    assert state.analyses[-1].model_dump() == original_analysis
     with pytest.raises(WorkflowError) as generation:
         service.generate_directions(state.task.task_id, state.task.version, state.task.current_brief, state.task.current_analysis)
     assert generation.value.code == "frame_timing_unavailable"

@@ -42,6 +42,8 @@ def mutate(client, state, route, **fields):
 def recognize(client, state):
     state = mutate(client, state, "brief", brief={
         "brand_company": "DemoCup 品牌", "product": "随行杯", "selling_points": ["方便携带"],
+        "claim_details": [{"claim_id": "claim_portable", "statement": "方便携带",
+                           "confirmation_origin": "user_confirmed"}],
         "approved_messages": ["通勤随行 · Take it anywhere"], "target_audience": "commuters 通勤者",
         "platform": "short video", "communication_goal": "认识品牌", "target_duration_seconds": 12,
         "prohibited_claims": ["未经验证的保温、转化率提升"], "production_limits": "No presenter；预算有限",

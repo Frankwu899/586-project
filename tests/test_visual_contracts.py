@@ -16,12 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def details():
-    return json.loads((ROOT / "examples/v0.4.visual-analysis.json").read_text())["events"][0]["visual_details"]
+    return json.loads((ROOT / "examples/v0.5.visual-analysis.json").read_text())["events"][0]["visual_details"]
 
 
 @pytest.fixture
 def analysis():
-    return json.loads((ROOT / "examples/v0.4.visual-analysis.json").read_text())
+    return json.loads((ROOT / "examples/v0.5.visual-analysis.json").read_text())
 
 
 def test_synthetic_example_preserves_bilingual_words_and_schema(analysis):
@@ -29,7 +29,7 @@ def test_synthetic_example_preserves_bilingual_words_and_schema(analysis):
     assert parsed.events[1].text == "DemoCup 随行杯 · Shop now"
     assert parsed.events[2].text == "这款 DemoCup，take it anywhere。"
     assert parsed.origin.kind == "sample" and "No media" in parsed.origin.description
-    schema = json.loads((ROOT / "contracts/v0.4.analysis.schema.json").read_text())
+    schema = json.loads((ROOT / "contracts/v0.5.analysis.schema.json").read_text())
     Draft202012Validator(schema).validate(parsed.model_dump(mode="json"))
     assert AnalysisResult.model_validate_json(parsed.model_dump_json()) == parsed
 
@@ -161,7 +161,7 @@ def test_missing_or_failed_groups_cannot_be_fabricated_by_correction(details):
 
 
 def test_full_state_requires_complete_nested_correction_replay(details):
-    data = json.loads((ROOT / "examples/v0.4.sample-task.json").read_text())
+    data = json.loads((ROOT / "examples/v0.5.sample-task.json").read_text())
     for item in data["analyses"]:
         item["events"][0]["visual_details"] = deepcopy(details)
     revised = data["analyses"][-1]
@@ -180,7 +180,7 @@ def test_full_state_requires_complete_nested_correction_replay(details):
 
 
 def test_playback_retains_source_metadata_and_uses_its_own_clock():
-    original = json.loads((ROOT / "examples/v0.4.sample-task.json").read_text())["videos"][0]
+    original = json.loads((ROOT / "examples/v0.5.sample-task.json").read_text())["videos"][0]
     source = deepcopy(original)
     proxy_timing = deepcopy(original["frame_timing"])
     proxy_timing["media_start_seconds"] = 1.5
@@ -202,7 +202,7 @@ def test_playback_retains_source_metadata_and_uses_its_own_clock():
 
 
 def test_generated_schema_enforces_group_local_status_and_unknown_values(analysis):
-    validator = Draft202012Validator(json.loads((ROOT / "contracts/v0.4.analysis.schema.json").read_text()))
+    validator = Draft202012Validator(json.loads((ROOT / "contracts/v0.5.analysis.schema.json").read_text()))
     for mutate in (
         lambda d: d["subjects"].update(status="none_found"),
         lambda d: d["actions"].update(error={"code": "failed", "message": "Failed", "retryable": False}),

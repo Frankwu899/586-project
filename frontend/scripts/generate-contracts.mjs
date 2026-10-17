@@ -18,8 +18,8 @@ function structuralSchema(value) {
 }
 
 export async function generateContracts() {
-  const schema = JSON.parse(await readFile('../contracts/v0.4.task-state.schema.json', 'utf8'));
-  return compile(structuralSchema(schema), 'TaskState');
+  const schema = JSON.parse(await readFile('../contracts/v0.5.m2.schema.json', 'utf8'));
+  return compile(structuralSchema(schema), 'M2ContractBundle');
 }
 
 if (process.argv.includes('--write')) {

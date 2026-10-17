@@ -40,19 +40,19 @@ function OutputEditor({ brief, storyboard, mutate, busy }: { brief: ProductionCr
   </form>;
 }
 
-export default function Production({ state, mutate, busy }: { state: TaskState; mutate: Mutate; busy: boolean }) {
+export default function Production({ state, mutate, busy, m2Blocked }: { state: TaskState; mutate: Mutate; busy: boolean; m2Blocked: boolean }) {
   const brief = state.production_briefs.find((item) => item.output_id === state.task.current_production_brief?.id && item.revision === state.task.current_production_brief.revision);
   const storyboard = state.storyboards.find((item) => item.output_id === state.task.current_storyboard?.id && item.revision === state.task.current_storyboard.revision);
   const approved = state.directions.find((item) => item.direction_id === state.task.selected_direction?.id && item.revision === state.task.selected_direction.revision && item.approval_status === 'approved' && item.currentness === 'current');
-  return <section className="panel" aria-labelledby="production-heading">
+  return <section id="production" className="panel" aria-labelledby="production-heading">
     <h2 id="production-heading">5. Production materials and exports</h2>
     <p className="muted">Generate from the exact approved direction. Regeneration creates a new saved output and preserves previous work in history.</p>
-    <button type="button" disabled={busy || !approved} onClick={() => mutate('/outputs/generate', { direction_ref: state.task.selected_direction, brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis })}>{brief ? 'Regenerate production materials' : 'Generate production materials'}</button>
+    <button type="button" disabled={busy || m2Blocked || !approved} onClick={() => mutate('/outputs/generate', { direction_ref: state.task.selected_direction, brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis })}>{brief ? 'Regenerate production materials' : 'Generate production materials'}</button>
     {!approved && <p className="muted">Explicitly approve a current direction to generate production materials.</p>}
     {brief && storyboard && <>
       {brief.currentness === 'outdated' && <p className="notice">These outputs are outdated because an upstream input changed. Your saved work is preserved. Approve an updated direction before regenerating.</p>}
       <p className="muted">Sources: brand/task brief r{brief.brief_ref.revision}, analysis r{brief.analysis_ref.revision}, approved direction r{brief.direction_ref.revision}. {brief.origin.description}</p>
-      <div className="actions"><a className="button" href={`/api/tasks/${state.task.task_id}/export/brief.md`} download>Export brief (Markdown)</a><a className="button" href={`/api/tasks/${state.task.task_id}/export/storyboard.csv`} download>Export storyboard (CSV)</a></div>
+      <div className="actions"><a className="button" href={`/api/tasks/${state.task.task_id}/export/brief.md`} download>{brief.currentness === 'outdated' ? 'Export historical brief' : 'Export brief'} (Markdown)</a><a className="button" href={`/api/tasks/${state.task.task_id}/export/storyboard.csv`} download>{storyboard.currentness === 'outdated' ? 'Export historical storyboard' : 'Export storyboard'} (CSV)</a></div>
       <OutputEditor key={`${brief.output_id}:${brief.revision}:${storyboard.output_id}:${storyboard.revision}`} brief={brief} storyboard={storyboard} mutate={mutate} busy={busy} />
     </>}
   </section>;

@@ -1,6 +1,42 @@
-# Interface contract — v0.4.0
+# Interface contract — v0.5.0
 
-`backend/app/models.py` is the authoritative maintained record definition. Pydantic performs runtime and semantic validation; `scripts/export_contracts.py` generates `contracts/v0.4.task-state.schema.json` and `contracts/v0.4.analysis.schema.json`. Frontend types are generated from the task schema into `frontend/src/generated/contracts.ts`. Change the models, generated artifacts, validators, fixtures, and consumers together. The v0.1, v0.2 and v0.3 schemas/examples remain unchanged as historical snapshots; current records use v0.4.0. The TypeScript generator omits JSON Schema conditionals from its structural input because it cannot represent them; authoritative schemas and runtime validators retain those constraints.
+`backend/app/models.py` is the authoritative maintained record definition. Pydantic performs runtime and semantic validation; `scripts/export_contracts.py` generates `contracts/v0.5.task-state.schema.json`, `contracts/v0.5.analysis.schema.json` and the independent `contracts/v0.5.m2.schema.json`. Frontend types are generated from the M2 bundle, which includes TaskState and independent endpoint models, into `frontend/src/generated/contracts.ts`. Change the models, generated artifacts, validators, fixtures, and consumers together. The v0.1–v0.4 schemas/examples remain unchanged as historical snapshots; current records use v0.5.0. The TypeScript generator omits JSON Schema conditionals from its structural input because it cannot represent them; authoritative schemas and runtime validators retain those constraints.
+
+## M2 editor and applied input contract
+
+M2 is the user-provided **Brand & task** input. M7 remains the generated production creative brief. See [the v0.5 decision](decisions/m2-v0.5.md) for ownership and transaction rationale.
+
+- `M2Fields`: nullable `brand_company`, `product`, `target_audience`, `platform`, `communication_goal`, `target_duration_seconds`, `available_footage`, `presenters`, `locations`, `tone`, `production_limits`; `approved_messages` and `prohibited_claims` lists. No hidden task defaults. Optional unknowns remain unset, distinct from explicit “none available.”
+- `M2Claim`: `claim_id`, exact `statement`, optional `supporting_notes`, `source_urls`, `qualification`, and `confirmed_for_use`. Changed statement/qualification clears confirmation. At least one confirmed non-placeholder claim and all six required fields are necessary to Apply.
+- `M2Draft`: `task_id`, independent `draft_version`, `based_on_brief`, `fields`, `claims`, `source_notes`, `reviewed_input_checkpoint`, `has_pending_inputs`, `legacy_review_required`, `missing_fields`, `updated_at`. Computed readiness is server-owned. The checkpoint covers structured values and excluded claims, not source notes or unaccepted proposals.
+- `BrandTaskBrief.claim_details`: ordered `ClaimDetail` records with the same content as a draft claim and `confirmation_origin` instead of its editable boolean. Current applications use `user_confirmed`; legacy records use `legacy_unrecorded`. `selling_points` exactly matches the ordered statements. Only included, confirmed claims enter new provider snapshots. Qualifications, support, URLs and prohibitions reach M6/M7; user confirmation never certifies factual truth.
+- `M2AssistanceRequest`: `draft_version`, `request_id`, `mode` (`extract` or `suggest_task_field`), and optional `requested_field` (audience/goal only). Source text/current context come from that saved draft.
+- `M2AssistanceResponse`: `request_id`, `source_draft_version`, `provider_mode` (`real`/`fake`), bounded `candidates` and `unresolved_notes`. A candidate has `candidate_id`, allowlisted `target`, typed `value`, `origin` (`extracted`/`suggested`) and exact `source_excerpt` for extracted facts. Claims have no confirmation or server identity fields. UI selection/editing is local until one batch adoption.
+
+| Method and task-relative path | Request → response |
+|---|---|
+| `GET /m2/draft` | Latest `M2Draft`; seeds from the applied brief if needed. |
+| `POST /m2/draft` | `{expected_draft_version, fields, claims, source_notes}` → `M2Draft`; task version unchanged. |
+| `POST /m2/apply` | `{expected_draft_version, expected_version, based_on_brief}` → `{changed, draft, task}`. |
+| `POST /m2/discard` | `{expected_draft_version}` → restored applied draft, or empty input only; task/reference/history retained. |
+| `POST /m2/assist` | `M2AssistanceRequest` → proposals; no persistence/task mutation; verifies source draft before and after provider response. |
+| `POST /m2/adopt` | `{source_draft_version, request_id, candidates}` → one atomic `M2Draft` update; new claims remain unconfirmed. |
+
+All paths are below `/api/tasks/{task_id}`. Saved draft optimistic conflicts return `m2_draft_conflict`; stale extraction/adoption returns `m2_stale_proposal`. Required-field, claim, pending-edit and legacy gates use `m2_incomplete`, `m2_unconfirmed_claims`, `m2_pending_changes`, `m2_legacy_review_required` in the existing error envelope. Local text remains visible on failed saves, with retry and explicit reload/discard choices.
+
+Apply checks versions and complete input in a single SQLite transaction, compares every provider-relevant value (including optional details and claim IDs/conditions), and creates one new formal revision only for meaningful changes. Identical Apply preserves task version, approval and output eligibility. Exact retries are idempotent; failures roll back task and checkpoint. Changed Apply retains history and marks dependents outdated. Draft autosaves never pass through task update or overwrite the full task response in the UI.
+
+Creative request `brief_ref` and `analysis_ref` may be null at HTTP admission so incomplete input gets an actionable M2 error; service validation still requires exact current references before starting creative work.
+
+Pending structured edits block new direction generation, refinement, approval and production admission transactionally. Reference operations remain available. Already admitted creative work may complete against its original applied input while a draft is edited; changed formal Apply still triggers the existing stale-response guard. Source notes and unaccepted proposals alone do not block generation.
+
+### Saved v0.4 migration
+
+`m2_migration.py::migrate_v04_task` validates the archived v0.4 schema, retains exact applied wording/revision pointers/content/history/reviews/approvals/currentness, adds deterministic claim metadata with `legacy_unrecorded`, and advances only the task concurrency version. SQLite archives the original JSON/hash and replacement in one transaction. A seeded partial draft requires explicit new claim review before creative actions; migration does not invalidate or regenerate saved outputs. Earlier imports now emit v0.5 with honest legacy metadata while preserving their existing timing rules. Historical v0.4 schema and fixture bytes remain intact.
+
+### M2 assistance providers
+
+`providers/m2.py::M2AssistanceAdapter.assist(request, draft)` is independent of M6. `OpenAIM2AssistanceAdapter` uses the existing bounded transport with `VIDEO_M2_PROVIDER` / `OPENAI_M2_MODEL`; `disabled` leaves the complete manual workflow available. Typed validation rejects unsupported fields, fabricated/untraceable excerpts, invalid values and permission fields. Exact qualified assertions are retained. HTTP(S) source links are stored only. `FakeM2AssistanceAdapter` is explicit test injection, never selected by real-provider failure. No `ProcessingJob.operation` enum or global brand/profile service is added. Live quality requires separate authorized evaluation; passing offline fixtures does not establish it.
 
 ## Records and ownership
 
@@ -68,7 +104,7 @@ JSON null expresses an unknown category; the string `"null"`, empty roles, `[nul
 
 ## Revision and approval rules
 
-A task's optimistic `version` increases on every persisted mutation. Send the latest version with a mutation; `version_conflict` means reload the task and reconsider the pending edit. Artifact `revision` numbers identify content versions and have a different purpose.
+A task's optimistic `version` increases on formal task mutations. Independent M2 draft writes and no-op Apply do not change it. Send the latest version with a mutation; `version_conflict` means reload the task and reconsider the pending edit. Artifact `revision` numbers identify content versions and have a different purpose.
 
 - The original extraction stays at analysis revision 1. Content/role corrections append a revision with the same analysis/event/section IDs, preserve timing/provenance, record before/after changes, and clear review confirmation. Allowed corrections are OCR/speech text, visual description, section roles and restricted visual labels. Identity, timing, lanes/kinds, evidence links, and provenance are not correction fields. Affected interpretation is cleared.
 - **Use this reviewed analysis** confirms the exact current revision separately. Confirmation metadata does not create an artificial content revision. Rerunning recognition creates a new analysis ID and preserves prior results.
@@ -84,11 +120,11 @@ Structured corrections submit a full `visual_details` object in the event edit. 
 
 ## Saved v0.3 task migration
 
-`backend/app/contract_migration.py::migrate_v03_task(payload)` validates the historical schema and adds `visual_details=null` to every event and `playback=null` to every video. It changes record schema versions to v0.4.0 and increments only the optimistic task version; it preserves artifact IDs/revisions, timestamps, corrections, exact citations, reviews and approvals. It neither reruns extraction nor creates a playback derivative. `TaskStore` runs this migration at startup or load, archiving the exact original JSON and SHA-256 in `task_migration_archive` within the same transaction. Failure rolls back both archive and replacement; reopening is idempotent. The archive remains readable through SQLite's `original_payload` column. Back up the full data directory and media before transferring it.
+`backend/app/contract_migration.py::migrate_v03_task(payload)` validates the historical schema and adds `visual_details=null` to every event and `playback=null` to every video. It emits v0.5.0 with legacy-unrecorded claim metadata and increments only the optimistic task version; it preserves artifact IDs/revisions, timestamps, corrections, exact citations, reviews and approvals. It neither reruns extraction nor creates a playback derivative. `TaskStore` runs this migration at startup or load, archiving the exact original JSON and SHA-256 in `task_migration_archive` within the same transaction. Failure rolls back both archive and replacement; reopening is idempotent. The archive remains readable through SQLite's `original_payload` column. Back up the full data directory and media before transferring it.
 
 ## Saved v0.2 task migration
 
-`backend/app/frame_migration.py::migrate_v02_task(payload, media_root)` converts all reference intervals and analysis revisions using one actual frame map per video and emits v0.4.0 directly with null structured details and playback. `TaskStore` runs migration at startup and on loading a legacy row. It validates the preserved v0.2 schema, checks saved media identity when a SHA-256 is present, retains IDs, correction logs, exact references and output seconds, and increments the task version once. For available matching media, review/approval and current creative content remain valid. The SQLite `task_migration_archive` table stores the exact original JSON string and its SHA-256 in the same transaction as replacement; a failed migration leaves the old record unchanged. Reopening is idempotent. Back up the complete data directory, including media, before transferring it between machines.
+`backend/app/frame_migration.py::migrate_v02_task(payload, media_root)` converts all reference intervals and analysis revisions using one actual frame map per video and emits v0.5.0 directly with null structured details/playback and legacy-unrecorded claim metadata. `TaskStore` runs migration at startup and on loading a legacy row. It validates the preserved v0.2 schema, checks saved media identity when a SHA-256 is present, retains IDs, correction logs, exact references and output seconds, and increments the task version once. For available matching media, review/approval and current creative content remain valid. The SQLite `task_migration_archive` table stores the exact original JSON string and its SHA-256 in the same transaction as replacement; a failed migration leaves the old record unchanged. Reopening is idempotent. Back up the complete data directory, including media, before transferring it between machines.
 
 If media is missing, changed, unreadable, or old subframe intervals cannot preserve section/citation relationships after rounding, the archived analysis keeps `legacy_seconds: {start_seconds, end_seconds}` with null frame fields/count. Its video's frame timing is null; no default FPS is invented. Content and historical review remain readable, but affected creative artifacts become outdated and approval is cleared. Confirmation and new creative use return `frame_timing_unavailable`; upload and analyze the source again to continue. This legacy fallback cannot mix with frame intervals in one analysis.
 
@@ -103,11 +139,11 @@ The existing `examples/analysis_result.original.json`, `examples/analysis_result
   --output .local-data/legacy-migrated.json
 ```
 
-The current migrated fixture is `examples/v0.4.legacy-migrated.json`; earlier versioned fixtures remain unchanged. Segment text/observations become canonical events with stable derived IDs, while sections reference them. Missing/unknown values and fictional provenance remain explicit. No real provider/model run is invented. The legacy media record has no storage ID and remains `missing`; `SYNTHETIC_LumaCup_demo_NO_MEDIA.mp4` is a historical fictional name, not a playback asset. Its source has no known FPS, so original intervals remain in `legacy_seconds` with null frame fields, structured details and playback. This CLI produces contract data, not an uploaded playable task. Do not substitute it for the dedicated generated sample workflow.
+The current migrated fixture is `examples/v0.5.legacy-migrated.json`; earlier versioned fixtures remain unchanged. Segment text/observations become canonical events with stable derived IDs, while sections reference them. Missing/unknown values and fictional provenance remain explicit. No real provider/model run is invented. The legacy media record has no storage ID and remains `missing`; `SYNTHETIC_LumaCup_demo_NO_MEDIA.mp4` is a historical fictional name, not a playback asset. Its source has no known FPS, so original intervals remain in `legacy_seconds` with null frame fields, structured details and playback. This CLI produces contract data, not an uploaded playable task. Do not substitute it for the dedicated generated sample workflow.
 
 ## HTTP operations
 
-Routes are implemented in `backend/app/api.py`; the local OpenAPI reference is `http://127.0.0.1:8000/docs`. Requests and responses are JSON except multipart upload, video playback, and exports. Every task mutation returns the complete saved `TaskState`; use the returned `task.version` for the next mutation. IDs and revision references in this table come from that saved state, never from unsaved UI fields.
+Routes are implemented in `backend/app/api.py`; the local OpenAPI reference is `http://127.0.0.1:8000/docs`. Requests and responses are JSON except multipart upload, video playback, and exports. Formal task mutations return the complete saved `TaskState`; use the returned `task.version` for the next mutation. M2 draft endpoints return only the separately versioned editor state. Apply returns `{changed, draft, task}`. IDs and revision references in this table come from that saved state, never from unsaved UI fields.
 
 For compactness, `V` below means required `expected_version`; `I` means `V`, `brief_ref`, and `analysis_ref`. Each reference uses `{id, revision}`.
 
@@ -118,7 +154,7 @@ For compactness, `V` below means required `expected_version`; `I` means `V`, `br
 | `POST /api/tasks` | `{title}` → new task (`201`). |
 | `GET /api/tasks` | Array of saved task aggregates. |
 | `GET /api/tasks/{task_id}` | Reopen one saved task aggregate. |
-| `POST /api/tasks/{task_id}/brief` | `{V, brief}`; brief contains user input fields only, without server-owned identity/revision/timestamps. |
+| `POST /api/tasks/{task_id}/brief` | Compatibility Apply: `{V, brief}` with explicit `user_confirmed` claim metadata; rejects pending drafts; identical content preserves task version/approval. No server-owned identity/revision/timestamps. |
 | `POST /api/tasks/{task_id}/sample` | `{V}`; requires a task with no video, creates matching synthetic media and a sample brief if no brief exists. |
 | `POST /api/tasks/{task_id}/video` | Multipart `file`, `expected_version`, optional `source_url`; measures/validates media and sets real mode. |
 | `GET /api/tasks/{task_id}/media/{video_id}` | Saved MP4 playback response; video must belong to this task. |
@@ -216,7 +252,7 @@ Settings are capability-scoped in `providers/config.py`: `VIDEO_VISION_PROVIDER`
 
 Recognition cache keys include original content hash, source timing, preparation/normalization/prompt/schema versions, provider/model settings and relevant limits/language settings. Internal `provider-cache/runs.jsonl` diagnostics record capability, provider/model, job/output context where available, timing, attempts, cache status and safe failure codes. Usage includes explicit units when reported; unknown usage/cost is null with an explanation. Fixtures and mocked transports validate integration only. Live evaluation requires explicit opt-in, a positive budget, credentials and permitted media; successful offline checks do not establish English/Chinese recognition quality or provider latency.
 
-A valid sample adapter exercise is the `recognize` operation in the HTTP example above, which resolves `backend/app/sample.py::sample_analysis` through the same request boundary. `examples/v0.4.sample-task.json` contains the full saved sample with overlapping visual/audio events; the legacy migrated fixture separately exercises fictional speech without claiming matched speech playback. Run `scripts/load_sample.py --complete` to regenerate a complete local walkthrough with actual matching media, instead of treating serialized storage references as files available on another computer.
+A valid sample adapter exercise is the `recognize` operation in the HTTP example above, which resolves `backend/app/sample.py::sample_analysis` through the same request boundary. `examples/v0.5.sample-task.json` contains the full saved sample with overlapping visual/audio events; the legacy migrated fixture separately exercises fictional speech without claiming matched speech playback. Run `scripts/load_sample.py --complete` to regenerate a complete local walkthrough with actual matching media, instead of treating serialized storage references as files available on another computer.
 
 ### Creative generation
 

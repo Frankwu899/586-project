@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
-import type { TaskState } from './generated/contracts';
+import type { FormEvent, RefObject } from 'react';
+import type { M2Draft, TaskState } from './generated/contracts';
 import { ApiError, request } from './api';
-import BriefEditor from './BriefEditor';
+import BriefEditor, { type M2EditorStatus } from './BriefEditor';
 import AnalysisReview from './AnalysisReview';
 import Directions from './Directions';
 import Production from './Production';
@@ -32,7 +32,12 @@ function History({ state }: { state: TaskState }) {
   </section>;
 }
 
-function Workspace({ state, config, mutate, busy }: { state: TaskState; config: Config | null; mutate: Mutate; busy: boolean }) {
+function Workspace({ state, config, mutate, busy, onApplied, flushRef, m2Status, onStatusChange }: {
+  state: TaskState; config: Config | null; mutate: Mutate; busy: boolean;
+  onApplied: (state: TaskState) => void;
+  flushRef: RefObject<(() => Promise<M2Draft>) | null>;
+  m2Status: M2EditorStatus; onStatusChange: (status: M2EditorStatus) => void;
+}) {
   const player = useRef<HTMLVideoElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sourceUrl, setSourceUrl] = useState('');
@@ -45,11 +50,12 @@ function Workspace({ state, config, mutate, busy }: { state: TaskState; config: 
   const playbackTiming = video?.playback?.frame_timing ?? frameTiming;
   const currentFrame = playbackTiming ? frameAtTime(playback && playback.videoId === video?.video_id ? playback.time : 0, playbackTiming) : null;
   const canSeek = video?.intake_status === 'ready' && Boolean(playbackTiming) && !mediaError;
+  const m2Blocked = m2Status.loading || m2Status.pending || m2Status.unsaved || m2Status.legacyReviewRequired || !brief;
   const nextAction = analysis?.status === 'failed'
     ? 'Analysis failed. Read the processing error, resolve the reported issue, and request analysis again. The dedicated synthetic sample is available in a new task.'
     : analysis?.status === 'pending' || analysis?.status === 'running' ? 'Analysis is still processing. Reopen this saved task to refresh its status.'
       : analysis?.status === 'partial' ? 'Partial analysis is not eligible for creative generation in this skeleton. Resolve failed categories and run analysis again.'
-        : !brief ? 'Save your brand/task brief or load the dedicated sample.' : !video ? 'Load the dedicated sample or upload a reference.' : !analysis ? 'Run analysis for the saved reference.' : !frameTiming || analysis.frame_count === null ? 'Reference frame timing is unavailable. Upload the source video and analyze it again before confirming this legacy analysis.' : !analysis.review.user_confirmed ? 'Review observations, save any corrections, and confirm the analysis.' : !state.task.selected_direction ? 'Compare directions and explicitly approve one.' : 'Generate or edit your production materials.';
+        : !brief ? 'Add what you know, or start with a reference. Apply complete inputs before creative directions.' : !video ? 'Load the dedicated sample or upload a reference.' : !analysis ? 'Run analysis for the saved reference.' : !frameTiming || analysis.frame_count === null ? 'Reference frame timing is unavailable. Upload the source video and analyze it again before confirming this legacy analysis.' : !analysis.review.user_confirmed ? 'Review observations, save any corrections, and confirm the analysis.' : m2Blocked ? 'Review and apply your input changes, or discard them, before creative actions.' : !state.task.selected_direction ? 'Compare directions and explicitly approve one.' : 'Generate or edit your production materials.';
   const seek = (frame: number) => {
     if (player.current && playbackTiming && video) {
       const time = frameSeekTime(frame, playbackTiming);
@@ -70,12 +76,12 @@ function Workspace({ state, config, mutate, busy }: { state: TaskState; config: 
     if (await mutate('/video', body)) { setFile(null); setMediaError(''); }
   };
   return <>
-    <section className="panel"><h1>{state.task.title}</h1><p><Badge warning={state.task.mode === 'sample'}>{state.task.mode === 'sample' ? 'Fictional sample task' : 'Uploaded reference task'}</Badge><span className="muted">Saved task version {state.task.version}</span></p><p className="notice"><strong>Next:</strong> {nextAction}</p></section>
-    <BriefEditor key={`${brief?.brief_id ?? 'new'}:${brief?.revision ?? 0}`} brief={brief} mutate={mutate} busy={busy} />
-    <section className="panel" aria-labelledby="reference-heading"><h2 id="reference-heading">2. Reference video</h2>
+    <section className="panel"><h1>{state.task.title}</h1><p><Badge warning={state.task.mode === 'sample'}>{state.task.mode === 'sample' ? 'Fictional sample task' : video ? 'Uploaded reference task' : 'Reference not added'}</Badge><span className="muted">Saved task version {state.task.version}</span></p><p className="notice"><strong>Next:</strong> {nextAction}</p></section>
+    <BriefEditor state={state} onApplied={onApplied} flushRef={flushRef} onStatusChange={onStatusChange} busy={busy} />
+    <section id="reference" className="panel" aria-labelledby="reference-heading"><h2 id="reference-heading">2. Reference video</h2>
       <p className="muted">The dedicated synthetic clip has matched sample observations. Uploaded videos use the configured recognition provider; missing configuration and extraction failures are reported explicitly.</p>
       {config?.analysis_output_language && <p className="muted">Analysis descriptions: {config.analysis_output_language}. Creative drafts: {config.creative_output_language ?? 'server configuration'}. Recognized on-screen text and speech retain their source wording.</p>}
-      {!state.videos.length && <div className="actions"><button disabled={busy} type="button" onClick={() => mutate('/sample')}>Load synthetic sample</button><small>Uses your saved brief, or fills a fictional example when no brief is saved.</small></div>}
+      {!state.videos.length && <div className="actions"><button disabled={busy} type="button" onClick={() => mutate('/sample')}>Load synthetic sample</button><small>Keeps your inputs; a blank task receives a fictional example.</small></div>}
       <details open={!video}><summary>Upload a reference file</summary>
         {config && <p className="muted">Supported: {config.supported_extensions.join(', ')} / {config.supported_video_codecs.join(', ')} video{config.supported_audio_codecs.length ? `; optional ${config.supported_audio_codecs.join(', ')} audio` : ''}. Limit {(config.max_upload_bytes / 1024 / 1024).toFixed(0)} MiB, {config.max_duration_seconds}s, {config.max_width}×{config.max_height}. {config.language_assumption}.</p>}
         <form onSubmit={upload}><fieldset disabled={busy}>
@@ -97,8 +103,9 @@ function Workspace({ state, config, mutate, busy }: { state: TaskState; config: 
       </>}
     </section>
     {analysis && <AnalysisReview key={`${analysis.analysis_id}:${analysis.revision}`} analysis={analysis} frameTiming={video?.video_id === analysis.video_id ? frameTiming : null} mutate={mutate} busy={busy} seek={seek} canSeek={canSeek && video?.video_id === analysis.video_id} />}
-    <Directions state={state} mutate={mutate} busy={busy} />
-    <Production state={state} mutate={mutate} busy={busy} />
+    {m2Blocked && <p className="notice">Creative actions require applied inputs with no pending changes. Save, review and apply your inputs, or discard changes. Reference work remains available.</p>}
+    <Directions state={state} mutate={mutate} busy={busy} m2Blocked={m2Blocked} />
+    <Production state={state} mutate={mutate} busy={busy} m2Blocked={m2Blocked} />
     <History state={state} />
   </>;
 }
@@ -112,11 +119,20 @@ export default function App() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const activeId = useRef<string | null>(null);
+  const flushRef = useRef<(() => Promise<M2Draft>) | null>(null);
+  const [m2Status, setM2Status] = useState<M2EditorStatus>({ pending: false, unsaved: false, loading: true, legacyReviewRequired: false, missing: [] });
   const activate = (state: TaskState) => {
+    if (activeId.current !== state.task.task_id) setM2Status({ pending: false, unsaved: false, loading: true, legacyReviewRequired: false, missing: [] });
     activeId.current = state.task.task_id;
     localStorage.setItem('video-anatomy-task', state.task.task_id);
-    setActive(state);
-    setTasks((previous) => [state, ...previous.filter((item) => item.task.task_id !== state.task.task_id)]);
+    setActive((previous) => previous?.task.task_id === state.task.task_id && previous.task.version > state.task.version ? previous : state);
+    setTasks((previous) => {
+      const newer = previous.find((item) => item.task.task_id === state.task.task_id && item.task.version > state.task.version);
+      return [newer ?? state, ...previous.filter((item) => item.task.task_id !== state.task.task_id)];
+    });
+  };
+  const acceptApplied = (state: TaskState) => {
+    if (activeId.current === state.task.task_id) activate(state);
   };
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +146,13 @@ export default function App() {
   }, []);
   const openTask = async (id: string) => {
     setBusy(true); setError(''); setNotice('');
-    try { activate(await request<TaskState>(`/tasks/${id}`)); } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not reopen task.'); } finally { setBusy(false); }
+    try {
+      await flushRef.current?.();
+      const saved = await request<TaskState>(`/tasks/${id}`);
+      // Editing stays available during the read; preserve text entered while it ran.
+      await flushRef.current?.();
+      activate(saved);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not reopen task.'); } finally { setBusy(false); }
   };
   const mutate: Mutate = async (path, payload = {}) => {
     if (!active || busy) return false;
@@ -139,6 +161,7 @@ export default function App() {
     if (payload instanceof FormData) payload.set('expected_version', String(active.task.version));
     const body = payload instanceof FormData ? payload : { ...payload, expected_version: active.task.version };
     try {
+      if (path.startsWith('/directions/') || path === '/outputs/generate') await flushRef.current?.();
       const saved = await request<TaskState>(`/tasks/${taskId}${path}`, body);
       if (activeId.current === taskId) activate(saved);
       const failedJob = saved.jobs.find((job) => job.status === 'failed' && !active.jobs.some((previous) => previous.job_id === job.job_id && previous.status === 'failed'));
@@ -155,10 +178,15 @@ export default function App() {
   };
   const createTask = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError(''); setNotice('');
-    try { activate(await request<TaskState>('/tasks', { title })); setTitle(''); } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not create task.'); } finally { setBusy(false); }
+    try {
+      await flushRef.current?.();
+      const created = await request<TaskState>('/tasks', { title });
+      await flushRef.current?.();
+      activate(created); setTitle('');
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not create task.'); } finally { setBusy(false); }
   };
-  return <><header><h1>Video Anatomy</h1><p>Review reference evidence. Choose a direction. Prepare a production plan.</p></header><main>
-    <aside><h2>Tasks</h2><form onSubmit={createTask}><Field label="New task title"><input required value={title} onChange={(event) => setTitle(event.target.value)} disabled={busy} /></Field><button type="submit" disabled={busy || !title.trim()}>Create task</button></form>
+  return <><header><h1>video anatomy.</h1><p>From a reference to a considered production plan.</p></header><main>
+    <aside>{active && <nav aria-label="Workflow" className="workflow-rail"><a href="#inputs">Inputs</a><a href="#reference">Reference</a><a href="#directions">Directions</a><a href="#production">Production</a></nav>}<h2>Tasks</h2><form onSubmit={createTask}><Field label="New task title"><input required value={title} onChange={(event) => setTitle(event.target.value)} disabled={busy} /></Field><button type="submit" disabled={busy || !title.trim()}>Create task</button></form>
       <ul>{tasks.map((item) => <li key={item.task.task_id}><button type="button" aria-current={active?.task.task_id === item.task.task_id ? 'page' : undefined} onClick={() => openTask(item.task.task_id)} disabled={busy}>{item.task.title}<small>{item.task.mode} · {item.task.progress}</small></button></li>)}</ul>
       {active && <button type="button" className="secondary" disabled={busy} onClick={() => openTask(active.task.task_id)}>Reopen saved task</button>}
     </aside>
@@ -166,7 +194,7 @@ export default function App() {
       {error && <p role="alert" className="error">{error}</p>}
       {busy && <p role="status" className="notice">Saving or processing…</p>}
       {notice && !busy && <p role="status" className="success">{notice}</p>}
-      {active ? <Workspace key={active.task.task_id} state={active} config={config} mutate={mutate} busy={busy} /> : <section className="panel"><h2>Start a video planning task</h2><p>Create a task, enter a brand brief, and upload a reference or load the dedicated synthetic sample.</p><p className="notice">Uploaded references use configured providers. The separate sample workflow uses fictional results. This team demonstration does not measure creative effectiveness.</p></section>}
+      {active ? <Workspace key={active.task.task_id} state={active} config={config} mutate={mutate} busy={busy} onApplied={acceptApplied} flushRef={flushRef} m2Status={m2Status} onStatusChange={setM2Status} /> : <section className="panel"><h2>Start a video planning task</h2><p>Create a task, add what you know, and upload a reference or load the dedicated synthetic sample.</p><p className="notice">Uploaded references use configured providers. The separate sample workflow uses fictional results. This team demonstration does not measure creative effectiveness.</p></section>}
     </div>
-  </main><footer>Video Anatomy · single-user team demonstration · contract v0.4 · sample results are fictional</footer></>;
+  </main><footer>Video Anatomy · single-user team demonstration · contract v0.5 · sample results are fictional</footer></>;
 }

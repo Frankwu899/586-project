@@ -1,4 +1,4 @@
-"""Local HTTP boundary; all mutations return the complete persisted TaskState."""
+"""Local HTTP boundary; editor drafts use their own independent version channel."""
 from __future__ import annotations
 
 import os
@@ -11,7 +11,9 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .media import MediaError
-from .models import Nonempty, TaskState, VersionRef
+from .models import (M2ApplyRequest, M2ApplyResult, M2DiscardRequest, M2Draft, M2DraftUpdate,
+                     Nonempty, TaskState, VersionRef)
+from .m2_assistance_models import M2AdoptRequest, M2AssistanceRequest, M2AssistanceResponse
 from .service import WorkflowService
 from .storage import WorkflowError
 
@@ -46,8 +48,8 @@ class CorrectAnalysis(AnalysisMutation):
 
 
 class Inputs(Mutation):
-    brief_ref: VersionRef
-    analysis_ref: VersionRef
+    brief_ref: VersionRef | None = None
+    analysis_ref: VersionRef | None = None
 
 
 class DirectionMutation(Inputs):
@@ -78,7 +80,7 @@ class EditOutputs(Mutation):
 
 
 def create_app(data_dir: Path | None = None, *, service: WorkflowService | None = None) -> FastAPI:
-    app = FastAPI(title="Video Anatomy", version="0.4.0")
+    app = FastAPI(title="Video Anatomy", version="0.5.0")
     svc = service or WorkflowService(Path(data_dir or os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data")))
     app.state.service = svc
 
@@ -99,7 +101,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "schema_version": "0.4.0",
+        return {"status": "ok", "schema_version": "0.5.0",
                 "real_analysis": "configured" if svc.provider_settings.api_key else "unconfigured",
                 "creative_generation": "provider_for_real_tasks" if svc.provider_settings.api_key else "unconfigured_for_real_tasks",
                 "sample_workflow": "available_offline"}
@@ -129,6 +131,30 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
         if set(body.brief) & {"task_id", "brief_id", "revision", "schema_version", "created_at", "updated_at"}:
             raise WorkflowError("immutable_brief_field", "Brief identity, revision, and timestamps are managed by the server.", 422)
         return svc.save_brief(task_id, body.expected_version, body.brief)
+
+    @app.get("/api/tasks/{task_id}/m2/draft", response_model=M2Draft)
+    def m2_draft(task_id: str):
+        return svc.store.get_m2_draft(task_id)
+
+    @app.post("/api/tasks/{task_id}/m2/draft", response_model=M2Draft)
+    def m2_save(task_id: str, body: M2DraftUpdate):
+        return svc.store.save_m2_draft(task_id, body)
+
+    @app.post("/api/tasks/{task_id}/m2/apply", response_model=M2ApplyResult)
+    def m2_apply(task_id: str, body: M2ApplyRequest):
+        return svc.apply_m2(task_id, body)
+
+    @app.post("/api/tasks/{task_id}/m2/discard", response_model=M2Draft)
+    def m2_discard(task_id: str, body: M2DiscardRequest):
+        return svc.store.discard_m2_draft(task_id, body.expected_draft_version)
+
+    @app.post("/api/tasks/{task_id}/m2/assist", response_model=M2AssistanceResponse)
+    def m2_assist(task_id: str, body: M2AssistanceRequest):
+        return svc.assist_m2(task_id, body)
+
+    @app.post("/api/tasks/{task_id}/m2/adopt", response_model=M2Draft)
+    def m2_adopt(task_id: str, body: M2AdoptRequest):
+        return svc.store.adopt_m2_proposals(task_id, body)
 
     @app.post("/api/tasks/{task_id}/sample", response_model=TaskState)
     def sample(task_id: str, body: Mutation):

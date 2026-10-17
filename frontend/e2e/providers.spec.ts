@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TaskState } from '../src/generated/contracts';
+import { applyInputs, editBrand, fillInputs } from './m2-helpers';
 
 async function mutation(page: Page, name: string, route: string, within = page.locator('body')): Promise<TaskState> {
   const pending = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(route));
@@ -31,8 +32,8 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
       'Target audience': '中文与 English 用户', 'Publishing platform': '短视频',
       'Communication goal': '介绍产品并邀请查看颜色', 'Target duration (seconds)': '12',
     };
-    for (const [name, value] of Object.entries(briefFields)) await page.getByLabel(name, { exact: true }).fill(value);
-    await mutation(page, 'Save brand/task brief', '/brief');
+    await fillInputs(page, briefFields);
+    await applyInputs(page);
     await page.getByLabel('Reference video file', { exact: true }).setInputFiles(mediaPath);
     let state = await mutation(page, 'Upload reference', '/video');
     const source = state.videos[0];
@@ -118,6 +119,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
       expect(await readFile((await (await pending).path())!, 'utf8')).toContain(content);
     }
     await page.reload();
+    await editBrand(page);
     await expect(page.getByLabel('Brand/company', { exact: true })).toHaveValue('Luma 乐玛');
     await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('LumaCup 创意简报 — 中英双语');
     const visualSection = corrected.segments.findIndex((segment) => segment.evidence_ids.includes(visual.event_id));
@@ -172,4 +174,95 @@ test('partial and legacy structured coverage stays visible without editable extr
   await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Generate two sample directions', exact: true })).toBeDisabled();
   await expect(page.getByLabel(`Structured visual details · ${visual.event_id}`, { exact: true }).getByRole('combobox')).toHaveCount(0);
+});
+
+test('M2 proposals preserve mixed notes, show replacements and adopt a selected batch only once', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  await page.getByLabel('New task title', { exact: true }).fill('Mixed-language proposal review');
+  const initial = await mutation(page, 'Create task', '/tasks');
+  await editBrand(page);
+  await page.getByLabel('Brand/company', { exact: true }).fill('Existing supplied brand');
+  await page.getByText('Paste your notes', { exact: true }).click();
+  const notes = 'Brand: Luma 乐玛\nProduct: LumaCup 随行杯\nSelling point: Removable lid';
+  await page.getByLabel('Source notes', { exact: true }).fill(notes);
+  const response = page.waitForResponse((item) => new URL(item.url()).pathname.endsWith('/m2/assist'));
+  await page.getByRole('button', { name: 'Extract details', exact: true }).click();
+  expect((await response).ok()).toBeTruthy();
+  const review = page.getByRole('region', { name: 'Review proposed details', exact: true });
+  await expect(review.locator('article')).toHaveCount(3);
+  await expect(review).toContainText('Deterministic test assistance');
+  await expect(review).toContainText('Current: Existing supplied brand');
+  await expect(review.getByLabel('Proposed Brand/company 1', { exact: true })).toHaveValue('Luma 乐玛');
+  await expect(review.locator('blockquote').first()).toContainText('Brand: Luma 乐玛');
+  await expect(page.getByLabel('Brand/company', { exact: true })).toHaveValue('Existing supplied brand');
+  await expect(page.getByRole('button', { name: 'Use selected details', exact: true })).toBeDisabled();
+  const before = await (await page.request.get(`/api/tasks/${initial.task.task_id}/m2/draft`)).json();
+  // Selecting and editing rows are local; keyboard activation also exercises proposal review.
+  for (const label of ['Select Brand/company proposal 1', 'Select Product proposal 2']) {
+    await review.getByRole('checkbox', { name: label, exact: true }).focus();
+    await page.keyboard.press('Space');
+  }
+  await review.getByLabel('Proposed Product 2', { exact: true }).fill('LumaCup 随行杯 — explicitly edited');
+  await review.getByRole('button', { name: 'Dismiss Selling point proposal 3', exact: true }).click();
+  const untouched = await (await page.request.get(`/api/tasks/${initial.task.task_id}/m2/draft`)).json();
+  expect(untouched.draft_version).toBe(before.draft_version);
+  expect(untouched.claims).toEqual([]);
+  await page.screenshot({ path: '../.local-data/m2-ui-evidence/proposal-review-1440.png', fullPage: true });
+  await review.screenshot({ path: '../.local-data/m2-ui-evidence/proposal-details-1440.png' });
+  const adoption = page.waitForResponse((item) => new URL(item.url()).pathname.endsWith('/m2/adopt'));
+  await page.getByRole('button', { name: 'Use selected details', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  const adoptedResponse = await adoption;
+  expect(adoptedResponse.ok(), await adoptedResponse.text()).toBeTruthy();
+  const adopted = await adoptedResponse.json();
+  expect(adopted.draft_version).toBe(before.draft_version + 1);
+  expect(adopted.fields.brand_company).toBe('Luma 乐玛');
+  expect(adopted.fields.product).toBe('LumaCup 随行杯 — explicitly edited');
+  expect(adopted.fields.target_audience).toBeNull();
+  expect(adopted.source_notes).toBe(notes);
+  expect(adopted.claims).toEqual([]);
+  const state: TaskState = await (await page.request.get(`/api/tasks/${initial.task.task_id}`)).json();
+  expect(state.task.version).toBe(initial.task.version);
+  expect(state.briefs).toEqual([]);
+});
+
+test('M2 stale assistance and provider errors keep newer manual text and offer an honest retry', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('New task title', { exact: true }).fill('Stale assistance does not overwrite');
+  const initial = await mutation(page, 'Create task', '/tasks');
+  await editBrand(page);
+  await page.getByText('Paste your notes', { exact: true }).click();
+  await page.getByLabel('Source notes', { exact: true }).fill('Brand: Luma 乐玛\nProduct: LumaCup 随行杯\nSelling point: Removable lid');
+  let release!: () => void;
+  const hold = new Promise<void>((resolveHold) => { release = resolveHold; });
+  let received!: () => void;
+  const ready = new Promise<void>((resolveReady) => { received = resolveReady; });
+  await page.route('**/m2/assist', async (route) => {
+    const response = await route.fetch();
+    received();
+    await hold;
+    await route.fulfill({ response });
+  });
+  await page.getByRole('button', { name: 'Extract details', exact: true }).click();
+  await ready;
+  await page.getByLabel('Product', { exact: true }).fill('My newer product text 新');
+  await expect(page.getByTestId('m2-save-status')).toContainText('Draft saved');
+  release();
+  await expect(page.getByRole('alert')).toContainText('Your inputs changed. Run extraction again.');
+  await expect(page.getByRole('button', { name: 'Use selected details', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Product', { exact: true })).toHaveValue('My newer product text 新');
+  await page.setViewportSize({ width: 390, height: 960 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '../.local-data/m2-ui-evidence/stale-proposal-390.png', fullPage: true });
+  await page.unroute('**/m2/assist');
+  await page.route('**/m2/assist', (route) => route.fulfill({ status: 502, json: { error: { code: 'm2_invalid_assistance', message: 'Couldn’t extract usable details. Retry or continue editing manually.', retryable: true } } }));
+  await page.getByRole('button', { name: 'Run extraction again', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Couldn’t extract details. You can continue editing.');
+  await expect(page.getByRole('region', { name: 'Review proposed details', exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Product', { exact: true })).toHaveValue('My newer product text 新');
+  await expect(page.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
+  const state: TaskState = await (await page.request.get(`/api/tasks/${initial.task.task_id}`)).json();
+  expect(state.briefs).toEqual([]);
+  expect(state.task.version).toBe(initial.task.version);
 });
