@@ -1,0 +1,47 @@
+{
+  "notice": "Synthetic expected-content cases only. No media assets, recognition outcomes, timing accuracy or benchmark scores are supplied. Pair with permitted real sample clips before live evaluation.",
+  "cases": [
+    {
+      "case_id": "english",
+      "expected_speech_text": "Open the lid. Keep your drink warm.",
+      "expected_on_screen_text": "Warm for 6 hours",
+      "input_brief": "A reusable cup for commuting.",
+      "checks": [
+        "preserve English source words",
+        "keep speech separate from screen text",
+        "treat thermal performance as an advertising claim"
+      ]
+    },
+    {
+      "case_id": "chinese",
+      "expected_speech_text": "旋开杯盖，随时喝水。",
+      "expected_on_screen_text": "保温 6 小时",
+      "input_brief": "面向通勤人群的随行杯。",
+      "checks": [
+        "preserve Chinese source wording",
+        "preserve number and unit",
+        "round-trip corrections and export"
+      ]
+    },
+    {
+      "case_id": "mixed",
+      "expected_speech_text": "这款 DemoCup，take it anywhere。",
+      "expected_on_screen_text": "DemoCup 随行杯 · Shop now",
+      "input_brief": "品牌 DemoCup，目标受众 commuters。",
+      "checks": [
+        "preserve mixed language inside one utterance",
+        "do not translate away the brand token"
+      ]
+    },
+    {
+      "case_id": "cross_language",
+      "expected_speech_text": "Twist to open.",
+      "expected_on_screen_text": "旋转开盖",
+      "input_brief": "中英文素材均可使用。",
+      "checks": [
+        "store different audio and caption languages independently",
+        "do not merge the two sources into one quotation"
+      ]
+    }
+  ]
+}
