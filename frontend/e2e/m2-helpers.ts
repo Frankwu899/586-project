@@ -1,13 +1,20 @@
 import { expect, type Page } from '@playwright/test';
 import type { TaskState } from '../src/generated/contracts';
 
+export async function area(page: Page, name: 'inputs' | 'reference' | 'directions' | 'production') {
+  if (!await page.locator(`#area-${name}`).isVisible()) await page.locator(`#tab-${name}`).click();
+  await expect(page.locator(`#area-${name}`)).toBeVisible();
+}
+
 export async function editBrand(page: Page) {
+  await area(page, 'inputs');
   if (!await page.getByLabel('Brand/company', { exact: true }).isVisible()) {
     await page.getByRole('button', { name: 'Edit brand & product', exact: true }).click();
   }
 }
 
 export async function editTask(page: Page) {
+  await area(page, 'inputs');
   if (!await page.getByLabel('Target audience', { exact: true }).isVisible()) {
     await page.getByRole('button', { name: 'Edit task details', exact: true }).click();
   }
@@ -42,6 +49,7 @@ export async function draftSaved(page: Page) {
 }
 
 export async function applyInputs(page: Page, evidencePath?: string): Promise<TaskState> {
+  await area(page, 'inputs');
   await page.getByRole('button', { name: /^(Review inputs|Review changes)$/ }).last().click();
   await expect(page.getByRole('heading', { name: 'Review your inputs.', exact: true })).toBeVisible();
   if (evidencePath) await page.getByTestId('m2-editor').screenshot({ path: evidencePath });

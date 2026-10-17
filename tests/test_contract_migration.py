@@ -34,13 +34,19 @@ def test_v03_upgrade_preserves_all_content_review_history_and_citations(legacy):
     assert converted["task"]["version"] == legacy["task"]["version"] + 1
     converted["task"]["version"] -= 1
     for record in [converted["task"], *(r for values in converted.values() if isinstance(values, list) for r in values)]:
-        assert record["schema_version"] == "0.5.0"
+        assert record["schema_version"] == "0.6.0"
         record["schema_version"] = "0.3.0"
     for brief in converted["briefs"]:
         details = brief.pop("claim_details")
         assert [claim["statement"] for claim in details] == brief["selling_points"]
         assert all(claim["confirmation_origin"] == "legacy_unrecorded" for claim in details)
+    assert converted["task"].pop("generation_language") is None
+    for direction in converted["directions"]:
+        assert direction.pop("auxiliary_status") == "current"
+    for output in [*converted["production_briefs"], *converted["storyboards"]]:
+        assert output.pop("bundle_id") is None
     for video in converted["videos"]:
+        assert video.pop("deleted_at") is None
         assert video.pop("playback") is None
     for analysis in converted["analyses"]:
         for event in analysis["events"]:
@@ -55,7 +61,7 @@ def test_storage_archives_unchanged_payload_once_and_rejects_old_task_version(tm
     assert TaskStore(tmp_path).get(state.task.task_id) == state
     with sqlite3.connect(store.path) as db:
         rows = db.execute("SELECT source_schema_version, target_schema_version, original_payload, original_sha256 FROM task_migration_archive").fetchall()
-    assert rows == [("0.3.0", "0.5.0", raw, hashlib.sha256(raw.encode()).hexdigest())]
+    assert rows == [("0.3.0", "0.6.0", raw, hashlib.sha256(raw.encode()).hexdigest())]
     with pytest.raises(WorkflowError, match="changed"):
         store.update(state.task.task_id, legacy["task"]["version"], lambda state: None)
 

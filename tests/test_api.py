@@ -15,6 +15,7 @@ def post(client, task, suffix, **body):
 
 def loaded(client):
     task = client.post("/api/tasks", json={"title": "Persistent API sample"}).json()
+    task = post(client, task, "language", generation_language="English")
     task = post(client, task, "sample")
     return post(client, task, "recognize")
 
@@ -34,7 +35,7 @@ def test_api_restart_range_export_and_invalid_mutation(tmp_path):
     task = produced(client)
     task_id = task["task"]["task_id"]
     video = task["videos"][0]
-    assert client.get("/api/health").json()["schema_version"] == "0.5.0"
+    assert client.get("/api/health").json()["schema_version"] == "0.6.0"
     assert video["frame_timing"]["fps_numerator"] == 20
     assert video["frame_timing"]["frame_count"] == 200
     assert task["analyses"][0]["events"][0]["start_frame"] == 0

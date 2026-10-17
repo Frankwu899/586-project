@@ -1,4 +1,4 @@
-"""Authoritative v0.5 records and semantic validation for Video Anatomy.
+"""Authoritative v0.6 records and semantic validation for Video Anatomy.
 
 Frame intervals in events/segments belong to the reference video; storyboard
 row times remain seconds in the planned new video. JSON Schema is generated from these models.
@@ -44,7 +44,7 @@ class ContractModel(BaseModel):
 
 
 class Record(ContractModel):
-    schema_version: Literal["0.5.0"] = "0.5.0"
+    schema_version: Literal["0.6.0"] = "0.6.0"
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
@@ -233,6 +233,7 @@ class CreativeTask(Record):
     task_id: ID
     title: Nonempty
     mode: Literal["real", "sample"] = "real"
+    generation_language: Literal["English", "Chinese"] | None = None
     progress: Literal["setup", "analysis", "review", "directions", "production"] = "setup"
     version: Revision = 1
     current_brief: VersionRef | None = None
@@ -419,6 +420,7 @@ class PlaybackRepresentation(ContractModel):
 class VideoAsset(Record):
     video_id: ID
     task_id: ID
+    deleted_at: datetime | None = None
     purpose: Literal["reference", "draft"] = "reference"
     input_method: Literal["file", "sample", "legacy"]
     storage_id: StorageID | None = None
@@ -438,6 +440,11 @@ class VideoAsset(Record):
     origin: Origin
     public_metrics: PublicMetrics | None = None
     error: ErrorInfo | None = None
+
+    @field_validator("deleted_at")
+    @classmethod
+    def utc_deleted(cls, value):
+        return aware_utc(value) if value else None
 
     @model_validator(mode="after")
     def valid_intake(self):
@@ -677,6 +684,7 @@ class CreativeDirection(Record):
     production_requirements: list[str] = Field(default_factory=list)
     evidence: list[EvidenceReference] = Field(default_factory=list)
     rationale: Nonempty
+    auxiliary_status: Literal["current", "needs_review"] = "current"
     hypotheses: list[str] = Field(default_factory=list)
     production_notes: list[str] = Field(default_factory=list)
     origin: Origin
@@ -720,6 +728,7 @@ class CreativeFeedback(Record):
 
 
 class ProductionOutput(Record):
+    bundle_id: ID | None = None
     output_id: ID
     revision: Revision = 1
     task_id: ID
@@ -961,7 +970,8 @@ def _validate_references(state: TaskState) -> None:
             if field == "chosen_direction" and record.currentness != "current":
                 raise ValueError("chosen direction must be a current draft or approved direction")
     if task.current_video_id is not None:
-        resolve("videos", VersionRef(id=task.current_video_id, revision=1))
+        if resolve("videos", VersionRef(id=task.current_video_id, revision=1)).deleted_at is not None:
+            raise ValueError("current reference cannot be deleted media")
     for job in state.jobs:
         if job.video_id is not None:
             resolve("videos", VersionRef(id=job.video_id, revision=1))
@@ -980,3 +990,32 @@ def _validate_references(state: TaskState) -> None:
 def validate_state(state: TaskState | dict) -> TaskState:
     """Validate even after model_copy, which intentionally bypasses Pydantic checks."""
     return TaskState.model_validate(state.model_dump(mode="python") if isinstance(state, TaskState) else state)
+
+
+EditorScope = Annotated[str, StringConstraints(pattern=r"^(analysis|production|direction-[A-Za-z][A-Za-z0-9_-]{1,63})$")]
+
+
+class EditorDraft(ContractModel):
+    task_id: ID
+    scope: EditorScope
+    draft_version: Revision = 1
+    base_refs: dict[str, VersionRef] = Field(default_factory=dict)
+    content: dict[str, JsonValue] = Field(default_factory=dict)
+    has_pending_changes: bool = False
+    conflict: bool = False
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    @field_validator("updated_at")
+    @classmethod
+    def utc_updated(cls, value):
+        return aware_utc(value)
+
+
+class EditorDraftUpdate(ContractModel):
+    expected_draft_version: Revision
+    base_refs: dict[str, VersionRef]
+    content: dict[str, JsonValue]
+
+
+class EditorDiscardRequest(ContractModel):
+    expected_draft_version: Revision

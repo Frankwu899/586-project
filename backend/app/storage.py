@@ -12,10 +12,12 @@ from .contract_migration import migrate_v03_task
 from .models import TaskState, validate_state
 from .m2_migration import migrate_v04_task
 from .m2_storage import M2StoreMixin
+from .editor_storage import EditorStoreMixin
+from .workspace_migration import migrate_v05_task
 from .workflow_errors import WorkflowError
 
 
-class TaskStore(M2StoreMixin):
+class TaskStore(M2StoreMixin, EditorStoreMixin):
     def __init__(self, root: Path):
         root = Path(root)
         root.mkdir(parents=True, exist_ok=True)
@@ -32,6 +34,8 @@ class TaskStore(M2StoreMixin):
         with self._connect() as db:
             db.execute("CREATE TABLE IF NOT EXISTS m2_drafts (task_id TEXT PRIMARY KEY REFERENCES tasks(id), version INTEGER NOT NULL, payload TEXT NOT NULL, last_apply_request TEXT)")
         with self._connect() as db:
+            db.execute("CREATE TABLE IF NOT EXISTS editor_drafts (task_id TEXT NOT NULL REFERENCES tasks(id), scope TEXT NOT NULL, version INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(task_id,scope))")
+        with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             for task_id, payload in db.execute("SELECT id, payload FROM tasks").fetchall():
                 self._read_state(db, task_id, payload)
@@ -44,10 +48,11 @@ class TaskStore(M2StoreMixin):
     def _read_state(self, db: sqlite3.Connection, task_id: str, payload: str) -> TaskState:
         data = json.loads(payload)
         source_version = data.get("task", {}).get("schema_version")
-        if source_version not in ("0.2.0", "0.3.0", "0.4.0"):
+        if source_version not in ("0.2.0", "0.3.0", "0.4.0", "0.5.0"):
             return validate_state(TaskState.model_validate(data))
         state = (migrate_v02_task(data, self.media_root) if source_version == "0.2.0"
-                 else migrate_v03_task(data) if source_version == "0.3.0" else migrate_v04_task(data))
+                 else migrate_v03_task(data) if source_version == "0.3.0"
+                 else migrate_v04_task(data) if source_version == "0.4.0" else migrate_v05_task(data))
         if state.task.task_id != task_id:
             raise ValueError("stored task identity does not match its payload")
         db.execute("""INSERT INTO task_migration_archive
@@ -81,7 +86,7 @@ class TaskStore(M2StoreMixin):
             rows = db.execute("SELECT id, payload FROM tasks ORDER BY rowid DESC").fetchall()
             return [self._read_state(db, task_id, payload) for task_id, payload in rows]
 
-    def update(self, task_id: str, expected_version: int | None, change: Callable[[TaskState], None], *, require_m2_ready: bool = False, preserve_m2_inputs: bool = False) -> TaskState:
+    def update(self, task_id: str, expected_version: int | None, change: Callable[[TaskState], None], *, require_m2_ready: bool = False, preserve_m2_inputs: bool = False, require_editors_clear=(), editor_checkpoint=None, capture_editor_versions=None, expected_editor_versions=None) -> TaskState:
         """Lock, compare, validate and commit together; callers never mutate stored objects."""
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -93,15 +98,24 @@ class TaskStore(M2StoreMixin):
                 raise WorkflowError("version_conflict", "This task changed. Reopen it and retry your edit.")
             if require_m2_ready:
                 self._require_m2_ready(db, state)
+            self._require_editors_clear(db, state, require_editors_clear, capture_editor_versions)
+            if expected_editor_versions is not None:
+                for scope, expected in expected_editor_versions.items():
+                    if self._editor_draft(db, state, scope).draft_version != expected:
+                        raise WorkflowError("editor_input_changed", "An editor draft changed while this operation ran. Its result was discarded; saved edits are intact.")
+            checkpoint = self._editor_commit_before(db, state, *editor_checkpoint) if editor_checkpoint else None
             preserve_partial = preserve_m2_inputs and state.task.current_brief is None and self._m2_draft(db, state).has_pending_inputs
             existing_briefs = len(state.briefs)
-            change(state)
+            changed = change(state) is not False
             if preserve_partial and state.task.mode == "sample":
                 # Sample media remains available, but a sample brief must not
                 # become formal input over a concurrently edited partial draft.
                 del state.briefs[existing_briefs:]
                 state.task.current_brief = None
-            state.task.version += 1
+            if checkpoint is not None:
+                self._editor_commit_after(db, state, checkpoint)
+            if changed:
+                state.task.version += 1
             state = validate_state(state)
             db.execute("UPDATE tasks SET version = ?, payload = ? WHERE id = ?", (state.task.version, state.model_dump_json(), task_id))
         return state

@@ -42,7 +42,7 @@ def test_legacy_bytes_preserved_and_both_supplied_examples_validate():
 def test_migration_keeps_synthetic_origin_unknown_metrics_and_missing_media():
     original, revised = legacy()
     state = migrate_legacy_examples(original, revised)
-    assert state == TaskState.model_validate_json((ROOT / "examples/v0.5.legacy-migrated.json").read_text())
+    assert state == TaskState.model_validate_json((ROOT / "examples/v0.6.legacy-migrated.json").read_text())
     assert state.task.task_id == original["project_id"]
     assert state.task.mode == "sample"
     video = state.videos[0]

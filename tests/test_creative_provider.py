@@ -1,6 +1,8 @@
 """Offline provider-boundary checks; fixtures are not recognition-quality evidence."""
 from copy import deepcopy
 from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor
+import json
 
 import pytest
 
@@ -210,3 +212,83 @@ def test_post_transport_validation_failure_is_recorded(inputs):
         adapter.generate_production(*inputs, target)
     assert fake.records[-1]["failure_code"] == "invalid_creative_output"
     assert "proposed_output_refs" not in fake.records[-1]
+
+
+def test_original_production_shot_has_no_fabricated_citation(inputs):
+    adapter, fake, target = generated(inputs)
+    target.approval_status, target.approved_at = "approved", utc_now()
+    result = production_content()
+    result["production_brief"]["evidence"] = []
+    result["rows"][0].update(evidence=[], visual="A product illustration enters a new colored background.")
+    fake.results.append(result)
+    production, story = adapter.for_language("Chinese").generate_production(*inputs, target)
+    assert production.evidence == story.rows[0].evidence == []
+    assert story.rows[0].visual.startswith("原创制作建议：")
+    assert "Original proposed shots may have evidence=[]" in fake.calls[-1]["prompt"]
+
+
+def test_only_resource_changes_do_not_count_as_a_different_direction(inputs):
+    other = content()
+    other["production_requirements"] = ["A new background and a second presenter"]
+    fake = FakeContentProvider({"directions": [content(), other]})
+    with pytest.raises(ProviderError, match="distinct creative"):
+        OpenAICreativeAdapter(ProviderSettings(), fake).generate_directions(*inputs)
+
+
+def test_manual_direction_explanations_cannot_constrain_production_or_refine(inputs):
+    adapter, fake, target = generated(inputs)
+    stale_marker = "OBSOLETE presenter requirement must disappear"
+    target.auxiliary_status = "needs_review"
+    target.production_requirements = [stale_marker]
+    target.production_notes = [stale_marker]
+    target.rationale = stale_marker
+    target.hypotheses = [stale_marker]
+    target.evidence[0].reason = stale_marker
+    target.hook = "The manually approved new hook"
+    target.approval_status, target.approved_at = "approved", utc_now()
+    fake.results.append(production_content())
+    production, _ = adapter.generate_production(*inputs, target)
+    context = json.loads(fake.calls[-1]["prompt"].split("INPUT_JSON:\n")[1])
+    assert context["direction"]["hook"] == target.hook
+    assert context["direction"]["auxiliary_status"] == "needs_review"
+    assert stale_marker not in fake.calls[-1]["prompt"]
+    assert stale_marker not in " ".join(production.production_notes)
+    assert context["reviewed_analysis"]["events"]  # Valid source is independently available.
+    fake.results.append(content("Refreshed hook"))
+    revised = adapter.refine_direction(*inputs, target, feedback(target))
+    assert stale_marker not in fake.calls[-1]["prompt"]
+    assert revised.auxiliary_status == "current"
+    assert revised.rationale == content()["rationale"]
+    assert stale_marker not in " ".join(revised.production_notes)
+    assert target.auxiliary_status == "needs_review"  # Prior revision is preserved.
+
+
+def test_refinement_does_not_union_even_current_obsolete_notes(inputs):
+    adapter, fake, target = generated(inputs)
+    target.production_notes.append("Use a presenter throughout")
+    replacement = content("No presenter opening")
+    replacement["production_notes"] = ["Presenter-free product-only sequence"]
+    fake.results.append(replacement)
+    revised = adapter.refine_direction(*inputs, target, feedback(target, "Remove all presenters"))
+    assert "Use a presenter throughout" not in revised.production_notes
+    assert "Presenter-free product-only sequence" in revised.production_notes
+
+
+def test_language_scopes_share_transport_and_diagnostics_without_global_mutation(inputs):
+    fake = FakeContentProvider(*[{"directions": [content(), content("Second opening")]} for _ in range(2)])
+    adapter = OpenAICreativeAdapter(ProviderSettings(), fake)
+    def generate(language):
+        scoped = adapter.for_language(language)
+        scoped.diagnostics_context = {"task_id": language}
+        return scoped.generate_directions(*inputs)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        list(executor.map(generate, ["Chinese", "English"]))
+    assert adapter.settings.creative_language == "English"
+    assert adapter.diagnostics_context == {}
+    assert len(adapter.records) == 2
+    for call in fake.calls:
+        language = call["metadata"]["task_id"]
+        assert f"Write creative narrative in {language}" in call["prompt"]
+        assert "旋开杯盖 / Twist open" in call["prompt"]
+    with pytest.raises(ValueError, match="English or Chinese"):
+        adapter.for_language("French")

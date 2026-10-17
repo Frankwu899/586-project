@@ -17,6 +17,7 @@ def service(tmp_path):
 
 def sample(service):
     state = service.create("Workflow test")
+    state = service.set_language(state.task.task_id, state.task.version, "English")
     state = service.load_sample(state.task.task_id, state.task.version)
     return service.recognize(state.task.task_id, state.task.version)
 
@@ -186,6 +187,7 @@ def test_current_guards_and_persistence_reopen(service):
 
 def test_adapters_cannot_grant_review_or_approval(service):
     state = service.create("Untrusted adapter test")
+    state = service.set_language(state.task.task_id, state.task.version, "English")
     state = service.load_sample(state.task.task_id, state.task.version)
     delegate = service.sample_recognition
     class SelfReviewing:

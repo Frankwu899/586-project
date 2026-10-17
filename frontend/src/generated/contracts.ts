@@ -5,18 +5,19 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export type SchemaVersion = "0.5.0";
+export type SchemaVersion = "0.6.0";
 export type CreatedAt = string;
 export type UpdatedAt = string;
 export type TaskId = string;
 export type Title = string;
 export type Mode = "real" | "sample";
+export type GenerationLanguage = ("English" | "Chinese") | null;
 export type Progress = "setup" | "analysis" | "review" | "directions" | "production";
 export type Version = number;
 export type Id = string;
 export type Revision = number;
 export type CurrentVideoId = string | null;
-export type SchemaVersion1 = "0.5.0";
+export type SchemaVersion1 = "0.6.0";
 export type CreatedAt1 = string;
 export type UpdatedAt1 = string;
 export type BriefId = string;
@@ -64,11 +65,12 @@ export type Tone = string | null;
 export type ProductionLimits = string | null;
 export type ProhibitedClaims = string[];
 export type Briefs = BrandTaskBrief[];
-export type SchemaVersion2 = "0.5.0";
+export type SchemaVersion2 = "0.6.0";
 export type CreatedAt2 = string;
 export type UpdatedAt2 = string;
 export type VideoId = string;
 export type TaskId2 = string;
+export type DeletedAt = string | null;
 export type Purpose = "reference" | "draft";
 export type InputMethod = "file" | "sample" | "legacy";
 export type StorageId = string | null;
@@ -111,7 +113,7 @@ export type Code = string;
 export type Message = string;
 export type Retryable = boolean;
 export type Videos = VideoAsset[];
-export type SchemaVersion3 = "0.5.0";
+export type SchemaVersion3 = "0.6.0";
 export type CreatedAt3 = string;
 export type UpdatedAt3 = string;
 export type AnalysisId = string;
@@ -212,7 +214,7 @@ export type JsonValue = unknown;
 export type Corrections = Correction[];
 export type EmptyResultReason = string | null;
 export type Analyses = AnalysisResult[];
-export type SchemaVersion4 = "0.5.0";
+export type SchemaVersion4 = "0.6.0";
 export type CreatedAt4 = string;
 export type UpdatedAt4 = string;
 export type DirectionId = string;
@@ -231,13 +233,14 @@ export type EventId1 = string;
 export type Reason = string;
 export type Evidence = EvidenceReference[];
 export type Rationale = string;
+export type AuxiliaryStatus = "current" | "needs_review";
 export type Hypotheses = string[];
 export type ProductionNotes = string[];
 export type ApprovalStatus = "draft" | "approved";
 export type ApprovedAt = string | null;
 export type Currentness = "current" | "outdated";
 export type Directions = CreativeDirection[];
-export type SchemaVersion5 = "0.5.0";
+export type SchemaVersion5 = "0.6.0";
 export type CreatedAt5 = string;
 export type UpdatedAt5 = string;
 export type FeedbackId = string;
@@ -247,9 +250,10 @@ export type Instruction = string;
 export type Status4 = "pending" | "applied" | "not_interpreted";
 export type Explanation = string | null;
 export type Feedback = CreativeFeedback[];
-export type SchemaVersion6 = "0.5.0";
+export type SchemaVersion6 = "0.6.0";
 export type CreatedAt6 = string;
 export type UpdatedAt6 = string;
+export type BundleId = string | null;
 export type OutputId = string;
 export type Revision5 = number;
 export type TaskId6 = string;
@@ -264,9 +268,10 @@ export type Cta1 = string;
 export type ProductionNotes1 = string[];
 export type Evidence1 = EvidenceReference[];
 export type ProductionBriefs = ProductionCreativeBrief[];
-export type SchemaVersion7 = "0.5.0";
+export type SchemaVersion7 = "0.6.0";
 export type CreatedAt7 = string;
 export type UpdatedAt7 = string;
+export type BundleId1 = string | null;
 export type OutputId1 = string;
 export type Revision6 = number;
 export type TaskId7 = string;
@@ -288,7 +293,7 @@ export type Sound = string | null;
 export type Cta2 = string | null;
 export type Evidence2 = EvidenceReference[];
 export type Storyboards = TextStoryboard[];
-export type SchemaVersion8 = "0.5.0";
+export type SchemaVersion8 = "0.6.0";
 export type CreatedAt8 = string;
 export type UpdatedAt8 = string;
 export type JobId = string;
@@ -419,6 +424,14 @@ export type RequestId2 = string;
  * @maxItems 30
  */
 export type Candidates1 = [M2Candidate, ...M2Candidate[]];
+export type TaskId10 = string;
+export type Scope = string;
+export type DraftVersion2 = number;
+export type HasPendingChanges = boolean;
+export type Conflict = boolean;
+export type UpdatedAt10 = string;
+export type ExpectedDraftVersion3 = number;
+export type ExpectedDraftVersion4 = number;
 
 /**
  * Generation bundle; endpoints consume the individual referenced records.
@@ -433,6 +446,9 @@ export interface M2ContractBundle {
   assistance_request: M2AssistanceRequest;
   assistance_response: M2AssistanceResponse;
   adopt_request: M2AdoptRequest;
+  editor_draft: EditorDraft;
+  editor_update: EditorDraftUpdate;
+  editor_discard: EditorDiscardRequest;
 }
 export interface TaskState {
   task: CreativeTask;
@@ -452,6 +468,7 @@ export interface CreativeTask {
   task_id: TaskId;
   title: Title;
   mode: Mode;
+  generation_language: GenerationLanguage;
   progress: Progress;
   version: Version;
   current_brief: VersionRef | null;
@@ -506,6 +523,7 @@ export interface VideoAsset {
   updated_at: UpdatedAt2;
   video_id: VideoId;
   task_id: TaskId2;
+  deleted_at: DeletedAt;
   purpose: Purpose;
   input_method: InputMethod;
   storage_id: StorageId;
@@ -699,6 +717,7 @@ export interface CreativeDirection {
   production_requirements: ProductionRequirements;
   evidence: Evidence;
   rationale: Rationale;
+  auxiliary_status: AuxiliaryStatus;
   hypotheses: Hypotheses;
   production_notes: ProductionNotes;
   origin: Origin;
@@ -732,6 +751,7 @@ export interface ProductionCreativeBrief {
   schema_version: SchemaVersion6;
   created_at: CreatedAt6;
   updated_at: UpdatedAt6;
+  bundle_id: BundleId;
   output_id: OutputId;
   revision: Revision5;
   task_id: TaskId6;
@@ -754,6 +774,7 @@ export interface TextStoryboard {
   schema_version: SchemaVersion7;
   created_at: CreatedAt7;
   updated_at: UpdatedAt7;
+  bundle_id: BundleId1;
   output_id: OutputId1;
   revision: Revision6;
   task_id: TaskId7;
@@ -885,4 +906,34 @@ export interface M2AdoptRequest {
   source_draft_version: SourceDraftVersion1;
   request_id: RequestId2;
   candidates: Candidates1;
+}
+export interface EditorDraft {
+  task_id: TaskId10;
+  scope: Scope;
+  draft_version: DraftVersion2;
+  base_refs: BaseRefs;
+  content: Content;
+  has_pending_changes: HasPendingChanges;
+  conflict: Conflict;
+  updated_at: UpdatedAt10;
+}
+export interface BaseRefs {
+  [k: string]: VersionRef;
+}
+export interface Content {
+  [k: string]: JsonValue;
+}
+export interface EditorDraftUpdate {
+  expected_draft_version: ExpectedDraftVersion3;
+  base_refs: BaseRefs1;
+  content: Content1;
+}
+export interface BaseRefs1 {
+  [k: string]: VersionRef;
+}
+export interface Content1 {
+  [k: string]: JsonValue;
+}
+export interface EditorDiscardRequest {
+  expected_draft_version: ExpectedDraftVersion4;
 }

@@ -25,5 +25,7 @@ def migrate_v04_task(payload: dict) -> TaskState:
     _V04_VALIDATOR.validate(payload)
     state = deepcopy(payload)
     add_v05_fields(state)
+    from .workspace_migration import add_v06_fields
+    add_v06_fields(state)
     state["task"]["version"] += 1
     return validate_state(state)
