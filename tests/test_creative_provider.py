@@ -4,12 +4,15 @@ from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
 import json
 
+import httpx
+from jsonschema import Draft202012Validator
 import pytest
 
 from backend.app.models import AnalysisResult, CreativeFeedback, ReviewState, VersionRef, utc_now
 from backend.app.providers.base import ProviderError
 from backend.app.providers.config import ProviderSettings
 from backend.app.providers.creative import OpenAICreativeAdapter
+from backend.app.providers.transport import OpenAITransport
 from backend.app.sample import sample_brief
 
 
@@ -292,3 +295,70 @@ def test_language_scopes_share_transport_and_diagnostics_without_global_mutation
         assert "旋开杯盖 / Twist open" in call["prompt"]
     with pytest.raises(ValueError, match="English or Chinese"):
         adapter.for_language("French")
+
+
+def test_wire_schema_constrains_citations_in_generation_refinement_and_production(inputs):
+    brief, original = inputs
+    analysis = original.model_copy(deep=True)
+    event_id = "event_4c653e1a09ea477fbc3f997031f2d875"
+    analysis.events[0].event_id = event_id
+    analysis.revision = 3
+    calls = []
+    direction = content()
+    direction["evidence"][0]["event_id"] = event_id
+    alternative = deepcopy(direction)
+    alternative["hook"] = "A different opening"
+    production = production_content()
+    production["production_brief"]["evidence"][0]["event_id"] = event_id
+    production["rows"][0]["evidence"][0]["event_id"] = event_id
+    # Original shots remain citation-free; do not force fake evidence into them.
+    production["rows"][0]["evidence"] = []
+    results = [{"directions": [direction, alternative]}, direction, production]
+
+    def handler(request):
+        payload = json.loads(request.content)
+        schema = payload["text"]["format"]["schema"]
+        calls.append(payload)
+        assert payload["text"]["format"]["strict"] is True
+        assert schema["$defs"]["Citation"]["properties"]["event_id"]["enum"] == [event_id]
+        result = results.pop(0)
+        validator = Draft202012Validator(schema)
+        validator.validate(result)
+        invalid = deepcopy(result)
+        citation_owner = (invalid["directions"][0] if "directions" in invalid else
+                          invalid.get("production_brief", invalid))
+        citation_owner["evidence"][0]["event_id"] = "event_from_another_analysis"
+        assert not validator.is_valid(invalid)
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"content": [{"type": "output_text", "text": json.dumps(result)}]}]})
+
+    settings = ProviderSettings(api_key="fake-test-key", max_retries=0)
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        adapter = OpenAICreativeAdapter(settings, OpenAITransport(settings, client=client))
+        target = adapter.generate_directions(brief, analysis)[0]
+        refined = adapter.refine_direction(brief, analysis, target, feedback(target))
+        refined.approval_status, refined.approved_at = "approved", utc_now()
+        output, storyboard = adapter.generate_production(brief, analysis, refined)
+    assert len(calls) == 3
+    assert all(item.evidence[0].analysis_revision == 3 for item in (target, refined, output))
+    assert storyboard.rows[0].evidence == []
+    assert not results
+
+
+def test_citation_choices_are_request_local_and_do_not_mutate_shared_schema(inputs):
+    from backend.app.providers.creative import DirectionsContent
+    schema_before = DirectionsContent.model_json_schema()
+    adapter, fake, _ = generated(inputs)
+    first = fake.calls[0]["schema"]
+    other_analysis = inputs[1].model_copy(deep=True)
+    other_analysis.events[0].event_id = "event_other_task"
+    other_content = content()
+    other_content["evidence"][0]["event_id"] = "event_other_task"
+    second_content = deepcopy(other_content)
+    second_content["hook"] = "Different second direction"
+    fake.results.append({"directions": [other_content, second_content]})
+    adapter.generate_directions(inputs[0], other_analysis)
+    second = fake.calls[-1]["schema"]
+    assert first["$defs"]["Citation"]["properties"]["event_id"]["enum"] == ["event_product"]
+    assert second["$defs"]["Citation"]["properties"]["event_id"]["enum"] == ["event_other_task"]
+    assert DirectionsContent.model_json_schema() == schema_before
