@@ -18,6 +18,8 @@ interface Config {
   supported_video_codecs: string[];
   supported_audio_codecs: string[];
   language_assumption: string;
+  analysis_output_language?: string;
+  creative_output_language?: string;
 }
 
 function History({ state }: { state: TaskState }) {
@@ -40,23 +42,24 @@ function Workspace({ state, config, mutate, busy }: { state: TaskState; config: 
   const video = state.videos.find((item) => item.video_id === state.task.current_video_id);
   const analysis = state.analyses.find((item) => item.analysis_id === state.task.current_analysis?.id && item.revision === state.task.current_analysis.revision);
   const frameTiming = video?.frame_timing;
-  const currentFrame = frameTiming ? frameAtTime(playback?.videoId === video.video_id ? playback.time : 0, frameTiming) : null;
-  const canSeek = video?.intake_status === 'ready' && Boolean(frameTiming) && !mediaError;
+  const playbackTiming = video?.playback?.frame_timing ?? frameTiming;
+  const currentFrame = playbackTiming ? frameAtTime(playback && playback.videoId === video?.video_id ? playback.time : 0, playbackTiming) : null;
+  const canSeek = video?.intake_status === 'ready' && Boolean(playbackTiming) && !mediaError;
   const nextAction = analysis?.status === 'failed'
-    ? state.task.mode === 'real' ? 'Real analysis is not configured. Create a new task and load the dedicated synthetic sample to try the complete workflow.' : 'Analysis failed. Read the processing error and retry sample analysis after resolving it.'
+    ? 'Analysis failed. Read the processing error, resolve the reported issue, and request analysis again. The dedicated synthetic sample is available in a new task.'
     : analysis?.status === 'pending' || analysis?.status === 'running' ? 'Analysis is still processing. Reopen this saved task to refresh its status.'
       : analysis?.status === 'partial' ? 'Partial analysis is not eligible for creative generation in this skeleton. Resolve failed categories and run analysis again.'
         : !brief ? 'Save your brand/task brief or load the dedicated sample.' : !video ? 'Load the dedicated sample or upload a reference.' : !analysis ? 'Run analysis for the saved reference.' : !frameTiming || analysis.frame_count === null ? 'Reference frame timing is unavailable. Upload the source video and analyze it again before confirming this legacy analysis.' : !analysis.review.user_confirmed ? 'Review observations, save any corrections, and confirm the analysis.' : !state.task.selected_direction ? 'Compare directions and explicitly approve one.' : 'Generate or edit your production materials.';
   const seek = (frame: number) => {
-    if (player.current && frameTiming && video) {
-      const time = frameSeekTime(frame, frameTiming);
+    if (player.current && playbackTiming && video) {
+      const time = frameSeekTime(frame, playbackTiming);
       player.current.pause();
       player.current.currentTime = time;
       setPlayback({ videoId: video.video_id, time });
     }
   };
   const stepFrame = (offset: number) => {
-    if (player.current && frameTiming) seek(frameAtTime(player.current.currentTime, frameTiming) + offset);
+    if (player.current && playbackTiming) seek(frameAtTime(player.current.currentTime, playbackTiming) + offset);
   };
   const upload = async (event: FormEvent) => {
     event.preventDefault();
@@ -70,7 +73,8 @@ function Workspace({ state, config, mutate, busy }: { state: TaskState; config: 
     <section className="panel"><h1>{state.task.title}</h1><p><Badge warning={state.task.mode === 'sample'}>{state.task.mode === 'sample' ? 'Fictional sample task' : 'Uploaded reference task'}</Badge><span className="muted">Saved task version {state.task.version}</span></p><p className="notice"><strong>Next:</strong> {nextAction}</p></section>
     <BriefEditor key={`${brief?.brief_id ?? 'new'}:${brief?.revision ?? 0}`} brief={brief} mutate={mutate} busy={busy} />
     <section className="panel" aria-labelledby="reference-heading"><h2 id="reference-heading">2. Reference video</h2>
-      <p className="muted">The dedicated synthetic clip has matched sample observations. Uploaded videos use a separate real-analysis route, which is currently unconfigured.</p>
+      <p className="muted">The dedicated synthetic clip has matched sample observations. Uploaded videos use the configured recognition provider; missing configuration and extraction failures are reported explicitly.</p>
+      {config?.analysis_output_language && <p className="muted">Analysis descriptions: {config.analysis_output_language}. Creative drafts: {config.creative_output_language ?? 'server configuration'}. Recognized on-screen text and speech retain their source wording.</p>}
       {!state.videos.length && <div className="actions"><button disabled={busy} type="button" onClick={() => mutate('/sample')}>Load synthetic sample</button><small>Uses your saved brief, or fills a fictional example when no brief is saved.</small></div>}
       <details open={!video}><summary>Upload a reference file</summary>
         {config && <p className="muted">Supported: {config.supported_extensions.join(', ')} / {config.supported_video_codecs.join(', ')} video{config.supported_audio_codecs.length ? `; optional ${config.supported_audio_codecs.join(', ')} audio` : ''}. Limit {(config.max_upload_bytes / 1024 / 1024).toFixed(0)} MiB, {config.max_duration_seconds}s, {config.max_width}×{config.max_height}. {config.language_assumption}.</p>}
@@ -84,6 +88,7 @@ function Workspace({ state, config, mutate, busy }: { state: TaskState; config: 
         <p><strong>{video.original_file_name ?? 'Reference media'}</strong> · {video.duration_seconds ? seconds(video.duration_seconds) : 'Duration unknown'} · {video.video_codec ?? 'Unknown codec'} · {video.has_audio === null ? 'Audio unknown' : video.has_audio ? 'Audio track present' : 'No audio track'}</p>
         {frameTiming ? <><p className="muted" data-testid="source-frame-rate">Reference: {frameRateLabel(frameTiming)} · {frameTiming.frame_count} frames · {frameTiming.rate_mode === 'variable' ? 'Variable frame rate' : 'Constant frame rate'}</p><p className="muted">Timecode is HH:MM:SS:FF, using {Math.max(1, Math.round(frameTiming.fps_numerator / frameTiming.fps_denominator))} frame labels per second (non-drop-frame). {frameTiming.rate_mode === 'variable' || frameTiming.fps_numerator % frameTiming.fps_denominator !== 0 ? 'Timecode is approximate; seeking uses the video’s measured frame timestamps.' : 'Seeking uses the video’s measured frame timestamps.'}</p></> : <p className="notice">Frame timing unavailable. Legacy seconds are preserved; upload the source video and analyze it again to use frames.</p>}
         <p className="muted">{video.origin.description}</p>
+        {video.playback && <p className="muted">Playing an H.264 browser copy of the {video.video_codec} source. Evidence keeps the original source frame numbers; playback uses the copy’s measured timestamps.</p>}
         {video.intake_status === 'ready' ? <video key={video.video_id} ref={player} controls preload="metadata" playsInline src={`/api/tasks/${state.task.task_id}/media/${video.video_id}`} onLoadedData={() => setMediaError('')} onTimeUpdate={(event) => setPlayback({ videoId: video.video_id, time: event.currentTarget.currentTime })} onSeeked={(event) => setPlayback({ videoId: video.video_id, time: event.currentTarget.currentTime })} onError={() => setMediaError('Reference playback is unavailable. Check that the saved media still exists and this browser supports H.264/AAC.')} aria-label="Reference video player" /> : <p className="error">{video.error?.message ?? 'Saved media is missing.'}</p>}
         {mediaError && <p role="alert" className="error">{mediaError}</p>}
         {frameTiming && currentFrame !== null && <div className="actions" aria-label="Reference frame controls"><button type="button" className="secondary" disabled={!canSeek || currentFrame === 0} onClick={() => stepFrame(-1)}>Previous frame</button><button type="button" className="secondary" disabled={!canSeek || currentFrame >= frameTiming.frame_count - 1} onClick={() => stepFrame(1)}>Next frame</button><output data-testid="reference-frame-position">{frameTimecode(currentFrame, frameTiming)} · frame {currentFrame} / {frameTiming.frame_count - 1}</output></div>}
@@ -161,7 +166,7 @@ export default function App() {
       {error && <p role="alert" className="error">{error}</p>}
       {busy && <p role="status" className="notice">Saving or processing…</p>}
       {notice && !busy && <p role="status" className="success">{notice}</p>}
-      {active ? <Workspace key={active.task.task_id} state={active} config={config} mutate={mutate} busy={busy} /> : <section className="panel"><h2>Start a video planning task</h2><p>Create a task, enter a brand brief, and load the dedicated synthetic sample to try the complete workflow.</p><p className="notice">This team demonstration uses labeled sample recognition and creative generation. Real recognition is unconfigured. It does not measure creative effectiveness.</p></section>}
+      {active ? <Workspace key={active.task.task_id} state={active} config={config} mutate={mutate} busy={busy} /> : <section className="panel"><h2>Start a video planning task</h2><p>Create a task, enter a brand brief, and upload a reference or load the dedicated synthetic sample.</p><p className="notice">Uploaded references use configured providers. The separate sample workflow uses fictional results. This team demonstration does not measure creative effectiveness.</p></section>}
     </div>
-  </main><footer>Video Anatomy · single-user team demonstration · contract v0.3 · sample results are fictional</footer></>;
+  </main><footer>Video Anatomy · single-user team demonstration · contract v0.4 · sample results are fictional</footer></>;
 }

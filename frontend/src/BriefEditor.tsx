@@ -34,7 +34,7 @@ export default function BriefEditor({ brief, mutate, busy }: Props) {
           <Field label="Brand/company"><input required value={values.brand_company} onChange={(event) => update('brand_company', event.target.value)} /></Field>
           <Field label="Product"><input required value={values.product} onChange={(event) => update('product', event.target.value)} /></Field>
           <Field label="Selling points" hint="One point per line."><textarea required value={values.selling_points} onChange={(event) => update('selling_points', event.target.value)} /></Field>
-          <Field label="Approved messages" hint="One approved message per line. If empty, sample copy introduces the product without benefit claims."><textarea value={values.approved_messages} onChange={(event) => update('approved_messages', event.target.value)} /></Field>
+          <Field label="Approved messages" hint="One approved message per line. Include only claims approved for your new video."><textarea value={values.approved_messages} onChange={(event) => update('approved_messages', event.target.value)} /></Field>
           <Field label="Target audience"><input required value={values.target_audience} onChange={(event) => update('target_audience', event.target.value)} /></Field>
           <Field label="Publishing platform"><input required value={values.platform} onChange={(event) => update('platform', event.target.value)} /></Field>
           <Field label="Communication goal"><textarea required value={values.communication_goal} onChange={(event) => update('communication_goal', event.target.value)} /></Field>

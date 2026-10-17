@@ -78,7 +78,7 @@ class EditOutputs(Mutation):
 
 
 def create_app(data_dir: Path | None = None, *, service: WorkflowService | None = None) -> FastAPI:
-    app = FastAPI(title="Video Anatomy", version="0.3.0")
+    app = FastAPI(title="Video Anatomy", version="0.4.0")
     svc = service or WorkflowService(Path(data_dir or os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data")))
     app.state.service = svc
 
@@ -99,12 +99,18 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "schema_version": "0.3.0", "real_analysis": "unconfigured", "creative_generation": "sample"}
+        return {"status": "ok", "schema_version": "0.4.0",
+                "real_analysis": "configured" if svc.provider_settings.api_key else "unconfigured",
+                "creative_generation": "provider_for_real_tasks" if svc.provider_settings.api_key else "unconfigured_for_real_tasks",
+                "sample_workflow": "available_offline"}
 
     @app.get("/api/config")
     def config():
         settings = svc.media.settings
-        return {"max_upload_bytes": settings.max_bytes, "max_duration_seconds": settings.max_duration_seconds, "max_width": settings.max_width, "max_height": settings.max_height, "supported_extensions": [".mp4"], "supported_video_codecs": ["h264"], "supported_audio_codecs": ["aac"], "sample_refinement": "make it presenter-free", "language_assumption": "Sample English; real recognition is unconfigured"}
+        return {"max_upload_bytes": settings.max_bytes, "max_duration_seconds": settings.max_duration_seconds, "max_width": settings.max_width, "max_height": settings.max_height, "supported_extensions": [".mp4"], "supported_video_codecs": ["h264", "hevc"], "supported_audio_codecs": ["aac"], "sample_refinement": "make it presenter-free",
+                "language_assumption": "Source English/Chinese/mixed OCR and speech are preserved; live accuracy requires evaluation.",
+                "analysis_output_language": svc.provider_settings.analysis_language,
+                "creative_output_language": svc.provider_settings.creative_language}
 
     @app.get("/api/tasks", response_model=list[TaskState])
     def list_tasks():
@@ -138,7 +144,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
         video = next((v for v in state.videos if v.video_id == video_id), None)
         if video is None:
             raise WorkflowError("video_not_found", "This video does not belong to the task.", 404)
-        return FileResponse(svc.media.path_for(video), media_type="video/mp4", headers={"Cache-Control": "private, max-age=0"})
+        return FileResponse(svc.media.playback_path_for(video), media_type="video/mp4", headers={"Cache-Control": "private, max-age=0"})
 
     @app.post("/api/tasks/{task_id}/recognize", response_model=TaskState)
     def recognize(task_id: str, body: Recognize):

@@ -32,7 +32,7 @@ function DirectionCard({ direction, selected, onSelect, state, mutate, busy }: {
     </details>
     <form onSubmit={async (event) => { event.preventDefault(); if (await mutate(`/directions/${direction.direction_id}/refine`, { ...inputs, instruction })) setInstruction(''); }}>
       <fieldset disabled={busy || !current || dirty}>
-        <Field label="Refinement instruction" hint="Sample demonstration: “make it presenter-free”. Other instructions are saved as production notes and marked not interpreted."><textarea value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="Make it presenter-free" required /></Field>
+        <Field label="Refinement instruction" hint={state.task.mode === 'sample' ? 'Sample demonstration: “make it presenter-free”. Other instructions are saved as production notes and marked not interpreted.' : 'Describe the changes you want. A refined draft requires your approval again.'}><textarea value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="Make it presenter-free" required /></Field>
         <button type="submit" disabled={!instruction.trim()}>Apply instruction</button>
       </fieldset>
     </form>
@@ -51,8 +51,8 @@ export default function Directions({ state, mutate, busy }: { state: TaskState; 
   const ready = Boolean(state.task.current_brief && analysis?.review.user_confirmed && analysis.status === 'succeeded' && analysis.frame_count !== null && video?.frame_timing);
   return <section className="panel" aria-labelledby="directions-heading">
     <h2 id="directions-heading">4. Compare and approve a direction</h2>
-    <p className="muted">Two sample drafts use your brief and reviewed evidence. Edits and applied refinements require approval again. Intended benefits are hypotheses.</p>
-    <button type="button" disabled={busy || !ready} onClick={() => mutate('/directions/generate', { brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis })}>{state.directions.length ? 'Generate two new sample directions' : 'Generate two sample directions'}</button>
+    <p className="muted">Two {state.task.mode === 'sample' ? 'sample ' : ''}drafts use your brief and reviewed evidence. Edits and applied refinements require approval again. Intended benefits are hypotheses.</p>
+    <button type="button" disabled={busy || !ready} onClick={() => mutate('/directions/generate', { brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis })}>Generate two {state.directions.length ? 'new ' : ''}{state.task.mode === 'sample' ? 'sample ' : ''}directions</button>
     {!ready && <p className="muted">Save a brief and confirm a successful current analysis first.</p>}
     {choices.length > 0 && <div className="grid" style={{ marginTop: '1rem' }}>{choices.map((direction) => <DirectionCard key={`${direction.direction_id}:${direction.revision}`} direction={direction} selected={selected === direction.direction_id} onSelect={() => { void mutate(`/directions/${direction.direction_id}/select`, { direction_revision: direction.revision }); }} state={state} mutate={mutate} busy={busy} />)}</div>}
     {state.feedback.length > 0 && <details open><summary>Saved refinement instructions ({state.feedback.length})</summary>{state.feedback.map((feedback) => <div key={feedback.feedback_id}>

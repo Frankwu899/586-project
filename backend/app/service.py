@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import csv
 import io
+import json
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -63,15 +65,64 @@ def _fail_job(state, job, error):
 
 
 class WorkflowService:
-    def __init__(self, root: Path, recognition=None, creative=None, media=None):
+    def __init__(self, root: Path, recognition=None, creative=None, media=None, *,
+                 real_recognition=None, real_creative=None, provider_settings=None):
         from .adapters import SampleCreativeAdapter, SampleRecognitionAdapter, UnconfiguredRecognitionAdapter
         from .media import MediaStore
+        from .providers.config import ProviderSettings
+        from .providers.creative import OpenAICreativeAdapter
+        from .providers.recognition import ProviderRecognitionAdapter
         self.store = TaskStore(root)
         self.media = media or MediaStore(root / "media")
+        self.provider_settings = provider_settings or replace(ProviderSettings.from_env(), cache_dir=root / "provider-cache")
         self.sample_recognition = recognition or SampleRecognitionAdapter()
-        self.real_recognition = UnconfiguredRecognitionAdapter()
+        self.real_recognition = real_recognition or (
+            ProviderRecognitionAdapter(settings=self.provider_settings, media_store=self.media)
+            if self.provider_settings.api_key else UnconfiguredRecognitionAdapter())
         self.creative = creative or SampleCreativeAdapter()
+        self.real_creative = real_creative or OpenAICreativeAdapter(self.provider_settings)
         self._recover_interrupted_jobs()
+
+    def _creative_execute(self, context, job_id, operation):
+        adapter = self.creative if context["task_mode"] == "sample" else self.real_creative
+        if hasattr(adapter, "diagnostics_context"):
+            adapter.diagnostics_context = {"job_id": job_id, "source_sha256": context["source_sha256"],
+                                           "analysis_id": context["analysis"].analysis_id,
+                                           "analysis_revision": context["analysis"].revision}
+        args = [context["brief"], context["analysis"]]
+        if operation != "generate_directions":
+            args.append(context["direction"])
+        if operation == "refine_direction":
+            args.append(context["feedback"])
+        return getattr(adapter, operation)(*args)
+
+    def _record_job_outcome(self, state, job_id):
+        """Associate attempts with authoritative committed references, including regeneration.
+
+        Adapter candidates can be rejected as stale or receive stable output IDs
+        during persistence. Only this record claims that results were committed.
+        """
+        folder = self.provider_settings.cache_dir
+        if state.task.mode == "sample" or folder is None:
+            return
+        job = next(item for item in state.jobs if item.job_id == job_id)
+        outputs = []
+        if job.result_ref:
+            outputs.append({"type": job.result_type, **job.result_ref.model_dump()})
+            if job.operation == "production" and state.task.current_storyboard:
+                outputs.append({"type": "storyboard", **state.task.current_storyboard.model_dump()})
+        record = {"record_type": "persisted_job_result", "job_id": job_id,
+                  "task_id": state.task.task_id, "task_version": state.task.version,
+                  "status": job.status, "output_refs": outputs,
+                  "failure_code": job.error.code if job.error else None,
+                  "recorded_at": now().isoformat()}
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            with (folder / "runs.jsonl").open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(record) + "\n")
+        except OSError:
+            # Diagnostics cannot undo an already committed workflow result.
+            self.diagnostics_write_failed = True
 
     def _recover_interrupted_jobs(self):
         # The documented demo runs one backend worker. Restart ends any old jobs.
@@ -164,6 +215,9 @@ class WorkflowService:
         job_id = uid("job")
         def pending(state):
             context.update(prepare(state))
+            context["task_mode"] = state.task.mode
+            video = next((v for v in state.videos if v.video_id == state.task.current_video_id), None)
+            context["source_sha256"] = video.content_sha256 if video else None
             state.jobs.append(m.ProcessingJob(job_id=job_id, task_id=task_id, operation=operation, status="pending", input_refs=context.get("input_refs", {}), video_id=state.task.current_video_id, attempt=1 + sum(j.operation == operation for j in state.jobs)))
         queued = self._update(task_id, version, pending)
         def running(state):
@@ -196,13 +250,15 @@ class WorkflowService:
             if job.status != "failed":
                 job.status = "succeeded"
         try:
-            return self._update(task_id, None, complete)
+            saved = self._update(task_id, None, complete)
         except (ValueError, WorkflowError, TypeError, AttributeError, IndexError):
             # An invalid adapter result must not leave a running job or persist invalid records.
             def invalid(state):
                 job = next(j for j in state.jobs if j.job_id == job_id)
                 _fail_job(state, job, m.ErrorInfo(code="invalid_adapter_result", message="The adapter returned data that failed the shared contract. No generated content was saved."))
-            return self._update(task_id, None, invalid)
+            saved = self._update(task_id, None, invalid)
+        self._record_job_outcome(saved, job_id)
+        return saved
 
     def recognize(self, task_id, version, video_id=None):
         from .adapters import RecognitionRequest
@@ -249,7 +305,7 @@ class WorkflowService:
             edited.review = m.ReviewState()
             changes = []
             seen = set()
-            for kind, edits, records, key, allowed in (("event", event_edits, edited.events, "event_id", {"text", "description"}), ("segment", segment_edits, edited.segments, "segment_id", {"roles"})):
+            for kind, edits, records, key, allowed in (("event", event_edits, edited.events, "event_id", {"text", "description", "visual_details"}), ("segment", segment_edits, edited.segments, "segment_id", {"roles"})):
                 for edit in edits:
                     if set(edit) - (allowed | {key}):
                         raise WorkflowError("immutable_analysis_field", "Observation IDs, timing, kind, lane, evidence links, and interpretations cannot be edited.", 422)
@@ -261,14 +317,20 @@ class WorkflowService:
                     if target is None:
                         raise WorkflowError("unknown_analysis_target", "The edit target does not exist in this analysis revision.", 422)
                     for field in allowed & edit.keys():
-                        if kind == "event" and ((field == "text" and target.kind not in ("speech", "on_screen_text")) or (field == "description" and target.kind != "visual_action")):
-                            raise WorkflowError("unsupported_content_correction", "Only recognized speech/on-screen text and visual-action descriptions can be corrected.", 422)
+                        if kind == "event" and ((field == "text" and target.kind not in ("speech", "on_screen_text")) or (field in {"description", "visual_details"} and target.kind != "visual_action")):
+                            raise WorkflowError("unsupported_content_correction", "Only recognized speech/on-screen text and visual-action descriptions or structured labels can be corrected.", 422)
                         before, after = getattr(target, field), edit[field]
+                        if field == "visual_details":
+                            try:
+                                after = m.validate_visual_details_correction(before, after).model_dump(mode="json")
+                            except ValueError as exc:
+                                raise WorkflowError("invalid_visual_correction", str(exc), 422) from exc
+                            before = before.model_dump(mode="json")
                         if before != after:
-                            setattr(target, field, after)
+                            setattr(target, field, m.VisualDetails.model_validate(after) if field == "visual_details" else after)
                             changes.append(m.Correction(target_type=kind, target_id=target_id, field=field, before=before, after=after))
             if not changes:
-                raise WorkflowError("empty_correction", "Change recognized text, an observation description, or section roles before saving.", 422)
+                raise WorkflowError("empty_correction", "Change recognized text, an observation description, structured labels, or section roles before saving.", 422)
             # Role interpretations can be invalid after content changes; they are not editable facts.
             for segment in edited.segments:
                 segment.interpretation = None
@@ -286,7 +348,7 @@ class WorkflowService:
                 raise WorkflowError("outdated_analysis", "Confirm the current analysis revision.")
             analysis = find(state.analyses, analysis_ref)
             if analysis.status != "succeeded":
-                raise WorkflowError("analysis_not_succeeded", "Only successful analysis can be confirmed. Explicit partial runs are not supported by this skeleton.")
+                raise WorkflowError("analysis_not_succeeded", "Only successful analysis can be confirmed. Resolve failed extraction before using partial observations for creative work.")
             if analysis.video_id != state.task.current_video_id:
                 raise WorkflowError("mismatched_analysis", "The analysis must match the current video.")
             if analysis.frame_count is None:
@@ -310,7 +372,7 @@ class WorkflowService:
             state.directions.extend(directions)
             state.task.progress = "directions"
             job.result_ref, job.result_type = ref(directions[0]), "direction"
-        return self._run(task_id, version, "directions", prepare, lambda c, _: self.creative.generate_directions(c["brief"], c["analysis"]), finish)
+        return self._run(task_id, version, "directions", prepare, lambda c, job_id: self._creative_execute(c, job_id, "generate_directions"), finish)
 
     def edit_direction(self, task_id, version, direction_id, revision, fields):
         def change(state):
@@ -341,7 +403,7 @@ class WorkflowService:
             feedback = find(state.feedback, ref(context["feedback"]))
             if direction is None:
                 feedback.status = "not_interpreted"
-                feedback.explanation = "Sample refinement did not interpret this instruction. It is saved as a user production note; no new draft was generated. Supported example: make it presenter-free."
+                feedback.explanation = "The adapter did not interpret this instruction. It remains saved in feedback history; no new draft was generated."
                 job.result_ref, job.result_type = ref(feedback), "feedback"
                 return
             if (direction.direction_id != direction_id or direction.task_id != task_id or direction.revision != revision + 1 or direction.approval_status != "draft" or direction.approved_at is not None or direction.currentness != "current" or direction.brief_ref != brief_ref or direction.analysis_ref != analysis_ref or direction.feedback_refs != [*context["direction"].feedback_refs, ref(feedback)]):
@@ -350,9 +412,9 @@ class WorkflowService:
             state.directions.append(direction)
             state.task.chosen_direction = ref(direction)
             feedback.status, feedback.resulting_direction = "applied", ref(direction)
-            feedback.explanation = "Deterministic sample refinement applied: presenter-free production. Review and explicitly approve this new draft."
+            feedback.explanation = "The saved instruction produced a new draft. Review and explicitly approve this revision."
             job.result_ref, job.result_type = ref(direction), "direction"
-        return self._run(task_id, version, "refine", prepare, lambda c, _: self.creative.refine_direction(c["brief"], c["analysis"], c["direction"], c["feedback"]), finish)
+        return self._run(task_id, version, "refine", prepare, lambda c, job_id: self._creative_execute(c, job_id, "refine_direction"), finish)
 
     def choose_direction(self, task_id, version, direction_id, revision):
         def change(state):
@@ -405,7 +467,7 @@ class WorkflowService:
                 history.append(output)
             state.task.current_production_brief, state.task.current_storyboard = ref(production), ref(storyboard)
             job.result_ref, job.result_type = ref(production), "production_brief"
-        return self._run(task_id, version, "production", prepare, lambda c, _: self.creative.generate_production(c["brief"], c["analysis"], c["direction"]), finish)
+        return self._run(task_id, version, "production", prepare, lambda c, job_id: self._creative_execute(c, job_id, "generate_production"), finish)
 
     def edit_outputs(self, task_id, version, production_brief_ref, storyboard_ref, brief_fields, rows):
         def change(state):

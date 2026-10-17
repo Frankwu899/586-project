@@ -160,7 +160,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   expect(state.analyses.at(-1)?.status).toBe('failed');
   expect(state.analyses.at(-1)?.events).toHaveLength(0);
   await expect(page.getByRole('alert').first()).toContainText(/real.*not configured/i);
-  await expect(page.getByText('Real analysis is not configured. Create a new task', { exact: false })).toBeVisible();
+  await expect(page.getByText('Analysis failed. Read the processing error', { exact: false })).toBeVisible();
   expect(clientErrors).toEqual([]);
 });
 

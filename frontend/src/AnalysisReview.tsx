@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AnalysisResult, ContentSegment, EvidenceEvent, FrameTiming } from './generated/contracts';
 import { Badge, Field, seconds, type Mutate } from './ui';
 import { frameRangeLabel, frameTimecode } from './timing';
+import VisualDetailsEditor from './VisualDetailsEditor';
 
 type Role = ContentSegment['roles'][number];
 const roleLabels: Record<Role, string> = { hook: 'Hook', product_demo: 'Product presentation/demo', proof: 'Demonstration/result', cta: 'CTA', other: 'Other / uncertain' };
@@ -13,9 +14,10 @@ export default function AnalysisReview({ analysis, frameTiming, mutate, busy, se
   const [segments, setSegments] = useState(analysis.segments);
   const changedEvents = events.flatMap((event, index) => {
     const previous = analysis.events[index];
-    const patch: { event_id: string; text?: string | null; description?: string | null } = { event_id: event.event_id };
+    const patch: { event_id: string; text?: string | null; description?: string | null; visual_details?: EvidenceEvent['visual_details'] } = { event_id: event.event_id };
     if (event.text !== previous.text) patch.text = event.text;
     if (event.description !== previous.description) patch.description = event.description;
+    if (JSON.stringify(event.visual_details) !== JSON.stringify(previous.visual_details)) patch.visual_details = event.visual_details;
     return Object.keys(patch).length > 1 ? [patch] : [];
   });
   const changedSegments = segments.filter((segment, index) => JSON.stringify(segment.roles) !== JSON.stringify(analysis.segments[index].roles)).map(({ segment_id, roles }) => ({ segment_id, roles }));
@@ -36,6 +38,7 @@ export default function AnalysisReview({ analysis, frameTiming, mutate, busy, se
     <div className="event-header"><button className="time" type="button" disabled={!canSeek || event.start_frame === null} onClick={() => event.start_frame !== null && seek(event.start_frame)}>{rangeLabel(event)}</button><strong>{event.lane} · {event.kind.replaceAll('_', ' ')}</strong><small>{event.event_id}</small></div>
     {(event.kind === 'speech' || event.kind === 'on_screen_text') && <Field label={`Recognized text · ${event.event_id}`}><textarea value={event.text ?? ''} onChange={(change) => updateEvent(event.event_id, 'text', change.target.value)} /></Field>}
     {event.kind === 'visual_action' ? <Field label={`Visual description · ${event.event_id}`}><textarea value={event.description ?? ''} onChange={(change) => updateEvent(event.event_id, 'description', change.target.value)} /></Field> : event.description && <p>{event.description}</p>}
+    {event.kind === 'visual_action' && <VisualDetailsEditor eventId={event.event_id} value={event.visual_details} onChange={(visual_details) => setEvents((items) => items.map((item) => item.event_id === event.event_id ? { ...item, visual_details } : item))} />}
     <small>{event.source} · {event.method}{event.uncertainty ? ` · Uncertainty: ${event.uncertainty}` : ''}</small>
   </div>;
   return <section className="panel" aria-labelledby="analysis-heading">
@@ -47,7 +50,7 @@ export default function AnalysisReview({ analysis, frameTiming, mutate, busy, se
     <p className="muted">“Not analyzed” does not mean absent. Public performance metrics are unknown unless supplied with source context.</p>
     {analysis.error && <p role="alert" className="error">{analysis.error.message}</p>}
     {analysis.empty_result_reason && <p>{analysis.empty_result_reason}</p>}
-    {analysis.status === 'succeeded' && <fieldset disabled={busy}>
+    {(analysis.status === 'succeeded' || analysis.status === 'partial') && <fieldset disabled={busy}>
       {segments.map((segment, index) => <details key={segment.segment_id}>
         <summary>Section {index + 1} · {rangeLabel(segment)} · {segment.roles.map((role) => roleLabels[role]).join(', ')} · Expand observations</summary>
         <button type="button" className="time" disabled={!canSeek || segment.start_frame === null} onClick={() => segment.start_frame !== null && seek(segment.start_frame)}>{frameTiming && segment.start_frame !== null ? `Seek to ${frameTimecode(segment.start_frame, frameTiming)} (frame ${segment.start_frame})` : 'Frame seeking unavailable'}</button>
@@ -58,9 +61,10 @@ export default function AnalysisReview({ analysis, frameTiming, mutate, busy, se
       {events.some((event) => !segments.some((segment) => segment.evidence_ids.includes(event.event_id))) && <details><summary>Other observations</summary>{events.filter((event) => !segments.some((segment) => segment.evidence_ids.includes(event.event_id))).map(eventView)}</details>}
       <div className="actions">
         <button type="button" disabled={!dirty} onClick={() => mutate('/analysis/correct', { analysis_ref: analysisRef, event_edits: changedEvents, segment_edits: changedSegments })}>Save analysis corrections</button>
-        <button type="button" disabled={dirty || analysis.review.user_confirmed || !hasFrameTiming} onClick={() => mutate('/analysis/confirm', { analysis_ref: analysisRef })}>Use this reviewed analysis</button>
+        <button type="button" disabled={dirty || analysis.review.user_confirmed || !hasFrameTiming || analysis.status !== 'succeeded'} onClick={() => mutate('/analysis/confirm', { analysis_ref: analysisRef })}>Use this reviewed analysis</button>
       </div>
       {dirty && <p className="muted">Save corrections before confirming this revision.</p>}
+      {analysis.status === 'partial' && <p className="notice">Successful observations can be corrected. Failed extraction groups require a new analysis; this partial revision cannot be confirmed for creative generation.</p>}
       <p className="muted">Confirmation allows creative planning; it does not certify every observation as accurate.</p>
     </fieldset>}
   </section>;

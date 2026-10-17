@@ -1,4 +1,4 @@
-"""Replaceable recognition and creative boundaries. No provider requests are made.
+"""Replaceable recognition and creative boundaries with separate sample adapters.
 
 The service owns saved revisions/currentness and gates; adapters validate their
 local inputs too. Sample recognition is restricted to hash-verified generated
@@ -88,7 +88,7 @@ def _inputs(brief: BrandTaskBrief, analysis: AnalysisResult) -> None:
     if analysis.frame_count is None:
         raise ValueError("Creative generation requires known reference frame timing; re-upload and analyze the source video")
     if not analysis.events:
-        raise ValueError("The sample creative adapter needs reviewed observations")
+        raise ValueError("Creative generation needs reviewed observations")
 
 
 def _evidence(analysis: AnalysisResult) -> list[EvidenceReference]:
