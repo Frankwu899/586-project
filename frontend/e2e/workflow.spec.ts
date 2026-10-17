@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TaskState } from '../src/generated/contracts';
+import { applyInputs, draftSaved, editBrand, fillInputs } from './m2-helpers';
 
 async function mutation(page: Page, name: string, route: string, within = page.locator('body'), allowAlert = false): Promise<TaskState> {
   const pending = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(route));
@@ -21,16 +22,18 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await page.getByLabel('New task title').fill('Morning sample review');
   await mutation(page, 'Create task', '/tasks');
 
-  await page.getByLabel('Brand/company', { exact: true }).fill('Luma team (fictional)');
-  await page.getByLabel('Product', { exact: true }).fill('LumaCup');
-  await page.getByLabel('Selling points', { exact: true }).fill('Removable lid\nThree illustrated colors');
-  await page.getByLabel('Approved messages', { exact: true }).fill('Removable lid\nExplore three colors');
-  await page.getByLabel('Target audience', { exact: true }).fill('People comparing colorful drinkware');
-  await page.getByLabel('Publishing platform', { exact: true }).fill('Short-form video');
-  await page.getByLabel('Communication goal', { exact: true }).fill('Introduce the cup and invite color exploration');
-  await page.getByLabel('Target duration (seconds)', { exact: true }).fill('18');
-  await mutation(page, 'Save brand/task brief', '/brief');
+  await fillInputs(page, {
+    'Brand/company': 'Luma team (fictional)', Product: 'LumaCup',
+    'Selling points': 'Removable lid\nThree illustrated colors',
+    'Approved messages': 'Removable lid\nExplore three colors',
+    'Target audience': 'People comparing colorful drinkware',
+    'Publishing platform': 'Short-form video',
+    'Communication goal': 'Introduce the cup and invite color exploration',
+    'Target duration (seconds)': '18',
+  });
+  await applyInputs(page);
   await mutation(page, 'Load synthetic sample', '/sample');
+  await editBrand(page);
   await expect(page.getByLabel('Product', { exact: true })).toHaveValue('LumaCup');
   await expect(page.getByTestId('source-frame-rate')).toHaveText('Reference: 20 fps · 200 frames · Constant frame rate');
   await expect(page.getByRole('button', { name: 'Previous frame', exact: true })).toBeDisabled();
@@ -136,17 +139,36 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await expect(page.getByLabel('Shot 1 visuals', { exact: true })).toHaveValue('Presenter-free close-up of the illustrated blue cup on a dark card.');
   await page.getByLabel('New task title').fill('Separate upload task');
   await mutation(page, 'Create task', '/tasks');
+  await editBrand(page);
   await expect(page.getByLabel('Product', { exact: true })).toHaveValue('');
   await page.getByRole('button', { name: 'Morning sample review sample', exact: false }).click();
   await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('Morning production plan — reviewed');
+  await editBrand(page);
   await page.getByLabel('Product', { exact: true }).fill('LumaCup campaign revision');
-  await mutation(page, 'Save brand/task brief', '/brief');
+  await draftSaved(page);
+  await expect(page.getByTestId('m2-editor')).toContainText('changes not applied');
+  await expect(page.getByRole('button', { name: 'Regenerate production materials', exact: true })).toBeDisabled();
+  const pendingState: TaskState = await (await page.request.get(`/api/tasks/${taskId}`)).json();
+  expect(pendingState.production_briefs.at(-1)?.currentness).toBe('current');
+  expect(pendingState.task.selected_direction).not.toBeNull();
+  await applyInputs(page);
   await expect(page.getByText('These outputs are outdated because an upstream input changed.', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Regenerate production materials', exact: true })).toBeDisabled();
   await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('Morning production plan — reviewed');
   await page.getByText('Analysis originals and revisions (2)', { exact: true }).click();
   await page.getByText('Original analysis · revision 1', { exact: false }).click();
   await expect(page.locator('pre').filter({ hasText: 'LUMACUP\\nFICTIONAL SAMPLE' }).first()).toBeVisible();
+
+  await expect(page.getByRole('link', { name: 'Export historical brief (Markdown)', exact: true })).toBeVisible();
+  state = await mutation(page, 'Generate two new sample directions', '/directions/generate');
+  const newSelection = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/select'));
+  await cards.first().getByRole('radio').click();
+  expect((await newSelection).ok()).toBeTruthy();
+  await mutation(page, 'Approve this direction', '/approve', cards.first());
+  state = await mutation(page, 'Regenerate production materials', '/outputs/generate');
+  expect(state.production_briefs).toHaveLength(3);
+  expect(state.production_briefs.at(-1)?.brief_ref).toEqual(state.task.current_brief);
+  await expect(page.getByRole('link', { name: 'Export brief (Markdown)', exact: true })).toBeVisible();
 
   // Re-upload the same bytes through ordinary intake. It must remain a real upload,
   // never a shortcut into the matching sample's prepared findings.

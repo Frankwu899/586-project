@@ -5,7 +5,7 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export type SchemaVersion = "0.4.0";
+export type SchemaVersion = "0.5.0";
 export type CreatedAt = string;
 export type UpdatedAt = string;
 export type TaskId = string;
@@ -16,7 +16,7 @@ export type Version = number;
 export type Id = string;
 export type Revision = number;
 export type CurrentVideoId = string | null;
-export type SchemaVersion1 = "0.4.0";
+export type SchemaVersion1 = "0.5.0";
 export type CreatedAt1 = string;
 export type UpdatedAt1 = string;
 export type BriefId = string;
@@ -28,6 +28,30 @@ export type Product = string;
  * @minItems 1
  */
 export type SellingPoints = [string, ...string[]];
+/**
+ * @minItems 1
+ */
+export type ClaimDetails = [ClaimDetail, ...ClaimDetail[]];
+export type ClaimId = string;
+export type Statement = string;
+export type SupportingNotes = string | null;
+/**
+ * @maxItems 10
+ */
+export type SourceUrls =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type Qualification = string | null;
+export type ConfirmationOrigin = "user_confirmed" | "legacy_unrecorded";
 export type ApprovedMessages = string[];
 export type TargetAudience = string;
 export type Platform = string;
@@ -40,7 +64,7 @@ export type Tone = string | null;
 export type ProductionLimits = string | null;
 export type ProhibitedClaims = string[];
 export type Briefs = BrandTaskBrief[];
-export type SchemaVersion2 = "0.4.0";
+export type SchemaVersion2 = "0.5.0";
 export type CreatedAt2 = string;
 export type UpdatedAt2 = string;
 export type VideoId = string;
@@ -87,7 +111,7 @@ export type Code = string;
 export type Message = string;
 export type Retryable = boolean;
 export type Videos = VideoAsset[];
-export type SchemaVersion3 = "0.4.0";
+export type SchemaVersion3 = "0.5.0";
 export type CreatedAt3 = string;
 export type UpdatedAt3 = string;
 export type AnalysisId = string;
@@ -188,7 +212,7 @@ export type JsonValue = unknown;
 export type Corrections = Correction[];
 export type EmptyResultReason = string | null;
 export type Analyses = AnalysisResult[];
-export type SchemaVersion4 = "0.4.0";
+export type SchemaVersion4 = "0.5.0";
 export type CreatedAt4 = string;
 export type UpdatedAt4 = string;
 export type DirectionId = string;
@@ -213,7 +237,7 @@ export type ApprovalStatus = "draft" | "approved";
 export type ApprovedAt = string | null;
 export type Currentness = "current" | "outdated";
 export type Directions = CreativeDirection[];
-export type SchemaVersion5 = "0.4.0";
+export type SchemaVersion5 = "0.5.0";
 export type CreatedAt5 = string;
 export type UpdatedAt5 = string;
 export type FeedbackId = string;
@@ -223,7 +247,7 @@ export type Instruction = string;
 export type Status4 = "pending" | "applied" | "not_interpreted";
 export type Explanation = string | null;
 export type Feedback = CreativeFeedback[];
-export type SchemaVersion6 = "0.4.0";
+export type SchemaVersion6 = "0.5.0";
 export type CreatedAt6 = string;
 export type UpdatedAt6 = string;
 export type OutputId = string;
@@ -240,7 +264,7 @@ export type Cta1 = string;
 export type ProductionNotes1 = string[];
 export type Evidence1 = EvidenceReference[];
 export type ProductionBriefs = ProductionCreativeBrief[];
-export type SchemaVersion7 = "0.4.0";
+export type SchemaVersion7 = "0.5.0";
 export type CreatedAt7 = string;
 export type UpdatedAt7 = string;
 export type OutputId1 = string;
@@ -264,7 +288,7 @@ export type Sound = string | null;
 export type Cta2 = string | null;
 export type Evidence2 = EvidenceReference[];
 export type Storyboards = TextStoryboard[];
-export type SchemaVersion8 = "0.4.0";
+export type SchemaVersion8 = "0.5.0";
 export type CreatedAt8 = string;
 export type UpdatedAt8 = string;
 export type JobId = string;
@@ -276,7 +300,140 @@ export type ResultType = string | null;
 export type Attempt = number;
 export type PartialCoverage = boolean;
 export type Jobs = ProcessingJob[];
+export type TaskId9 = string;
+export type DraftVersion = number;
+export type BrandCompany1 = string | null;
+export type Product1 = string | null;
+export type TargetAudience1 = string | null;
+export type Platform1 = string | null;
+export type CommunicationGoal1 = string | null;
+export type TargetDurationSeconds2 = number | null;
+export type AvailableFootage1 = string | null;
+export type Presenters1 = string | null;
+export type Locations1 = string | null;
+export type Tone1 = string | null;
+export type ProductionLimits1 = string | null;
+export type ApprovedMessages1 = string[];
+export type ProhibitedClaims1 = string[];
+export type ClaimId1 = string;
+export type Statement1 = string;
+export type SupportingNotes1 = string | null;
+/**
+ * @maxItems 10
+ */
+export type SourceUrls1 =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type Qualification1 = string | null;
+export type ConfirmedForUse = boolean;
+export type Claims = M2Claim[];
+export type SourceNotes = string;
+export type ReviewedInputCheckpoint = string;
+export type HasPendingInputs = boolean;
+export type LegacyReviewRequired = boolean;
+export type MissingFields = string[];
+export type UpdatedAt9 = string;
+export type ExpectedDraftVersion = number;
+export type Claims1 = M2Claim[];
+export type SourceNotes1 = string;
+export type ExpectedDraftVersion1 = number;
+export type ExpectedVersion = number;
+export type Changed = boolean;
+export type ExpectedDraftVersion2 = number;
+export type DraftVersion1 = number;
+export type RequestId = string;
+export type Mode1 = "extract" | "suggest_task_field";
+export type RequestedField = ("target_audience" | "communication_goal") | null;
+export type RequestId1 = string;
+export type SourceDraftVersion = number;
+export type ProviderMode = "real" | "fake";
+export type Target =
+  | "brand_company"
+  | "product"
+  | "target_audience"
+  | "platform"
+  | "communication_goal"
+  | "target_duration_seconds"
+  | "available_footage"
+  | "presenters"
+  | "locations"
+  | "tone"
+  | "production_limits"
+  | "approved_messages"
+  | "prohibited_claims"
+  | "claim";
+export type Value = string | number | string[] | M2ProposedClaim;
+export type Statement2 = string;
+export type SupportingNotes2 = string | null;
+/**
+ * @maxItems 10
+ */
+export type SourceUrls2 =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type Qualification2 = string | null;
+export type Origin1 = "extracted" | "suggested";
+export type SourceExcerpt = string | null;
+export type CandidateId = string;
+/**
+ * @maxItems 30
+ */
+export type Candidates = M2Candidate[];
+/**
+ * @maxItems 10
+ */
+export type UnresolvedNotes =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type SourceDraftVersion1 = number;
+export type RequestId2 = string;
+/**
+ * @minItems 1
+ * @maxItems 30
+ */
+export type Candidates1 = [M2Candidate, ...M2Candidate[]];
 
+/**
+ * Generation bundle; endpoints consume the individual referenced records.
+ */
+export interface M2ContractBundle {
+  task_state: TaskState;
+  draft: M2Draft;
+  draft_update: M2DraftUpdate;
+  apply_request: M2ApplyRequest;
+  apply_result: M2ApplyResult;
+  discard_request: M2DiscardRequest;
+  assistance_request: M2AssistanceRequest;
+  assistance_response: M2AssistanceResponse;
+  adopt_request: M2AdoptRequest;
+}
 export interface TaskState {
   task: CreativeTask;
   briefs: Briefs;
@@ -319,6 +476,7 @@ export interface BrandTaskBrief {
   brand_company: BrandCompany;
   product: Product;
   selling_points: SellingPoints;
+  claim_details: ClaimDetails;
   approved_messages: ApprovedMessages;
   target_audience: TargetAudience;
   platform: Platform;
@@ -330,6 +488,17 @@ export interface BrandTaskBrief {
   tone: Tone;
   production_limits: ProductionLimits;
   prohibited_claims: ProhibitedClaims;
+}
+/**
+ * Permission to use exact supplied wording; never a factual verification.
+ */
+export interface ClaimDetail {
+  claim_id: ClaimId;
+  statement: Statement;
+  supporting_notes: SupportingNotes;
+  source_urls: SourceUrls;
+  qualification: Qualification;
+  confirmation_origin: ConfirmationOrigin;
 }
 export interface VideoAsset {
   schema_version: SchemaVersion2;
@@ -627,4 +796,93 @@ export interface ProcessingJob {
 }
 export interface InputRefs {
   [k: string]: VersionRef;
+}
+export interface M2Draft {
+  task_id: TaskId9;
+  draft_version: DraftVersion;
+  based_on_brief: VersionRef | null;
+  fields: M2Fields;
+  claims: Claims;
+  source_notes: SourceNotes;
+  reviewed_input_checkpoint: ReviewedInputCheckpoint;
+  has_pending_inputs: HasPendingInputs;
+  legacy_review_required: LegacyReviewRequired;
+  missing_fields: MissingFields;
+  updated_at: UpdatedAt9;
+}
+/**
+ * Partial task-local input; null is unknown, explicit 'none' remains text.
+ */
+export interface M2Fields {
+  brand_company: BrandCompany1;
+  product: Product1;
+  target_audience: TargetAudience1;
+  platform: Platform1;
+  communication_goal: CommunicationGoal1;
+  target_duration_seconds: TargetDurationSeconds2;
+  available_footage: AvailableFootage1;
+  presenters: Presenters1;
+  locations: Locations1;
+  tone: Tone1;
+  production_limits: ProductionLimits1;
+  approved_messages: ApprovedMessages1;
+  prohibited_claims: ProhibitedClaims1;
+}
+export interface M2Claim {
+  claim_id: ClaimId1;
+  statement: Statement1;
+  supporting_notes: SupportingNotes1;
+  source_urls: SourceUrls1;
+  qualification: Qualification1;
+  confirmed_for_use: ConfirmedForUse;
+}
+export interface M2DraftUpdate {
+  expected_draft_version: ExpectedDraftVersion;
+  fields: M2Fields;
+  claims: Claims1;
+  source_notes: SourceNotes1;
+}
+export interface M2ApplyRequest {
+  expected_draft_version: ExpectedDraftVersion1;
+  expected_version: ExpectedVersion;
+  based_on_brief: VersionRef | null;
+}
+export interface M2ApplyResult {
+  changed: Changed;
+  draft: M2Draft;
+  task: TaskState;
+}
+export interface M2DiscardRequest {
+  expected_draft_version: ExpectedDraftVersion2;
+}
+export interface M2AssistanceRequest {
+  draft_version: DraftVersion1;
+  request_id: RequestId;
+  mode: Mode1;
+  requested_field: RequestedField;
+}
+export interface M2AssistanceResponse {
+  request_id: RequestId1;
+  source_draft_version: SourceDraftVersion;
+  provider_mode: ProviderMode;
+  candidates: Candidates;
+  unresolved_notes: UnresolvedNotes;
+}
+export interface M2Candidate {
+  target: Target;
+  value: Value;
+  origin: Origin1;
+  source_excerpt: SourceExcerpt;
+  candidate_id: CandidateId;
+}
+export interface M2ProposedClaim {
+  statement: Statement2;
+  supporting_notes: SupportingNotes2;
+  source_urls: SourceUrls2;
+  qualification: Qualification2;
+}
+export interface M2AdoptRequest {
+  source_draft_version: SourceDraftVersion1;
+  request_id: RequestId2;
+  candidates: Candidates1;
 }

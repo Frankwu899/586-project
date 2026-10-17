@@ -81,6 +81,8 @@ class SampleRecognitionAdapter:
 
 
 def _inputs(brief: BrandTaskBrief, analysis: AnalysisResult) -> None:
+    if any(claim.confirmation_origin != "user_confirmed" for claim in brief.claim_details):
+        raise ValueError("Review and confirm the input claims before creative generation")
     if brief.task_id != analysis.task_id:
         raise ValueError("Brief and analysis must belong to the same task")
     if analysis.status != "succeeded" or not analysis.review.user_confirmed:
@@ -101,6 +103,20 @@ def _evidence(analysis: AnalysisResult) -> list[EvidenceReference]:
 
 def _message(brief: BrandTaskBrief) -> str:
     return " / ".join(brief.approved_messages) if brief.approved_messages else f"Introducing {brief.product}"
+
+
+def claim_context(brief: BrandTaskBrief) -> list[str]:
+    """Keep exact usable wording and its conditions visible in generated plans."""
+    result = []
+    for claim in brief.claim_details:
+        result.append(f"User-confirmed claim (permission, not verification): {claim.statement}")
+        if claim.qualification:
+            result.append(f"Required claim qualification: {claim.qualification}")
+        if claim.supporting_notes:
+            result.append(f"User-supplied support (not independently verified): {claim.supporting_notes}")
+        if claim.source_urls:
+            result.append("User-supplied references (not fetched): " + "; ".join(claim.source_urls))
+    return result
 
 
 def _base(brief: BrandTaskBrief, analysis: AnalysisResult) -> dict:
@@ -131,6 +147,7 @@ class SampleCreativeAdapter:
     def generate_directions(self, brief: BrandTaskBrief, analysis: AnalysisResult) -> list[CreativeDirection]:
         _inputs(brief, analysis)
         common = {**_base(brief, analysis), "core_message": _message(brief), "evidence": _evidence(analysis),
+                  "production_notes": claim_context(brief),
                   "origin": Origin(kind="sample", description="Deterministic sample creative templates; not model output or validated strategy."),
                   "hypotheses": [f"A clear product sequence may help {brief.target_audience} understand the approved message; test with reviewers before claiming effectiveness."]}
         return [
@@ -180,6 +197,7 @@ class SampleCreativeAdapter:
                  f"Audience: {brief.target_audience}. Platform: {brief.platform}. Target: {brief.target_duration_seconds:g} seconds.",
                  f"Goal: {brief.communication_goal}.", f"Approved messages: {_message(brief)}.",
                  *direction.production_requirements, *direction.production_notes]
+        notes.extend(item for item in claim_context(brief) if item not in notes)
         for label, value in [("Available footage", brief.available_footage), ("Available presenters", brief.presenters),
                              ("Locations", brief.locations), ("Tone", brief.tone), ("Production limits", brief.production_limits)]:
             if value:

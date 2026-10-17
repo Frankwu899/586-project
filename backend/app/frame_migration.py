@@ -14,6 +14,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
 
 from .contract_migration import add_v04_fields
+from .m2_migration import add_v05_fields
 from .media import MediaError, probe_frame_timing
 from .models import FrameTiming, TaskState, validate_state
 from .timing import seconds_to_frame_range
@@ -133,4 +134,5 @@ def migrate_v02_task(payload: dict, media_root: Path) -> TaskState:
                              for analysis in state["analyses"]]
     _archive_unavailable_creative(state)
     state["task"]["version"] += 1
+    add_v05_fields(state)
     return validate_state(TaskState.model_validate(state))

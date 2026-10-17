@@ -13,9 +13,11 @@ class ProviderSettings:
     vision_provider: str = "openai"
     transcription_provider: str = "openai"
     creative_provider: str = "openai"
+    m2_provider: str = "openai"
     vision_model: str = "gpt-4.1-mini"
     transcription_model: str = "whisper-1"
     creative_model: str = "gpt-4.1-mini"
+    m2_model: str = "gpt-4.1-mini"
     creative_language: str = "English"
     analysis_language: str = "English"
     timeout_seconds: float = 45
@@ -36,7 +38,7 @@ class ProviderSettings:
                 raise ValueError(f"{name} outside supported bounded range")
         if not math.isfinite(self.audio_chunk_seconds) or not 1 <= self.audio_chunk_seconds <= 120:
             raise ValueError("Audio chunks must be between 1 and 120 seconds")
-        for name in ("vision_model", "transcription_model", "creative_model", "analysis_language", "creative_language"):
+        for name in ("vision_model", "transcription_model", "creative_model", "m2_model", "analysis_language", "creative_language"):
             if not getattr(self, name).strip():
                 raise ValueError(f"{name} cannot be blank")
 
@@ -48,9 +50,11 @@ class ProviderSettings:
             vision_provider=os.getenv("VIDEO_VISION_PROVIDER", "openai"),
             transcription_provider=os.getenv("VIDEO_TRANSCRIPTION_PROVIDER", "openai"),
             creative_provider=os.getenv("VIDEO_CREATIVE_PROVIDER", "openai"),
+            m2_provider=os.getenv("VIDEO_M2_PROVIDER", "openai"),
             vision_model=os.getenv("OPENAI_VISION_MODEL", "gpt-4.1-mini"),
             transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "whisper-1"),
             creative_model=os.getenv("OPENAI_CREATIVE_MODEL", "gpt-4.1-mini"),
+            m2_model=os.getenv("OPENAI_M2_MODEL", "gpt-4.1-mini"),
             creative_language=os.getenv("CREATIVE_OUTPUT_LANGUAGE", "English"),
             analysis_language=os.getenv("ANALYSIS_OUTPUT_LANGUAGE", "English"),
             timeout_seconds=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "45")),

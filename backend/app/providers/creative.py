@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
-from ..adapters import _inputs, _matches
+from ..adapters import _inputs, _matches, claim_context
 from ..models import (AnalysisResult, BrandTaskBrief, CreativeDirection, CreativeFeedback,
                       EvidenceReference, Origin, ProductionCreativeBrief, TextStoryboard,
                       VersionRef)
@@ -24,7 +24,7 @@ from .base import ProviderError
 from .config import ProviderSettings
 from .transport import OpenAITransport
 
-PROMPT_VERSION = "creative-v1"
+PROMPT_VERSION = "creative-v2-m2-claims"
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
 
 
@@ -95,7 +95,7 @@ def _context(brief, analysis, **extra):
 
 
 def _constraints(brief):
-    notes = []
+    notes = claim_context(brief)
     for field, label in (("available_footage", "Available footage"), ("presenters", "Presenters"),
                          ("locations", "Locations"), ("tone", "Tone"),
                          ("production_limits", "Production limits")):
@@ -167,6 +167,9 @@ class OpenAICreativeAdapter:
             "revision references, approval state or fabricated citations. Cite only event_id values in "
             "reviewed_analysis.events, with a concrete reason describing the observed structural reference. "
             "Honor approved messages, production limits, presenters, available footage, tone, locations, "
+            "and every claim_details qualification, supporting note and source restriction. Use only "
+            "the supplied confirmed claims; preserve limiting words and conditions exactly. Confirmation "
+            "records user permission, never independent verification. Source URLs are unverified references. "
             "and prohibited claims. Source advertising statements are observed claims, not verified facts "
             "about this brand or product. Do not invent performance measurements or claim retention, "
             "click-through or conversion improvements from views/likes/comments. For each direction "

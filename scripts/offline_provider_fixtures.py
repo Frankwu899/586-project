@@ -13,6 +13,7 @@ from backend.app.providers.base import ProviderCapabilities
 from backend.app.providers.config import ProviderSettings
 from backend.app.providers.creative import OpenAICreativeAdapter
 from backend.app.providers.recognition import ProviderRecognitionAdapter
+from backend.app.providers.m2 import FakeM2AssistanceAdapter
 from backend.app.service import WorkflowService
 
 
@@ -130,4 +131,4 @@ def fixture_service(root: Path) -> WorkflowService:
                                              transcription_provider=FixtureSpeech())
     creative = FixtureCreativeAdapter(settings, transport=FixtureCreativeTransport())
     return WorkflowService(root, real_recognition=recognition, real_creative=creative,
-                           provider_settings=settings)
+                           provider_settings=settings, m2_assistance=FakeM2AssistanceAdapter())

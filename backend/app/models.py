@@ -1,4 +1,4 @@
-"""Authoritative v0.4 records and semantic validation for Video Anatomy.
+"""Authoritative v0.5 records and semantic validation for Video Anatomy.
 
 Frame intervals in events/segments belong to the reference video; storyboard
 row times remain seconds in the planned new video. JSON Schema is generated from these models.
@@ -44,7 +44,7 @@ class ContractModel(BaseModel):
 
 
 class Record(ContractModel):
-    schema_version: Literal["0.4.0"] = "0.4.0"
+    schema_version: Literal["0.5.0"] = "0.5.0"
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
@@ -244,6 +244,97 @@ class CreativeTask(Record):
     current_storyboard: VersionRef | None = None
 
 
+class ClaimDetail(ContractModel):
+    """Permission to use exact supplied wording; never a factual verification."""
+    claim_id: ID
+    statement: Nonempty
+    supporting_notes: str | None = None
+    source_urls: list[str] = Field(default_factory=list, max_length=10)
+    qualification: str | None = None
+    confirmation_origin: Literal["user_confirmed", "legacy_unrecorded"]
+
+    @field_validator("source_urls")
+    @classmethod
+    def safe_sources(cls, values):
+        from urllib.parse import urlsplit
+        for value in values:
+            url = urlsplit(value)
+            if url.scheme not in {"http", "https"} or not url.hostname or url.username or url.password or any(c.isspace() for c in value):
+                raise ValueError("claim source URLs must be safe http or https references")
+        return values
+
+
+class M2Claim(ContractModel):
+    claim_id: ID
+    statement: str = Field(default="")
+    supporting_notes: str | None = Field(default=None)
+    source_urls: list[str] = Field(default_factory=list, max_length=10)
+    qualification: str | None = Field(default=None)
+    confirmed_for_use: bool = False
+
+    _safe_sources = field_validator("source_urls")(ClaimDetail.safe_sources.__func__)
+
+
+class M2Fields(ContractModel):
+    """Partial task-local input; null is unknown, explicit 'none' remains text."""
+    brand_company: str | None = Field(default=None)
+    product: str | None = Field(default=None)
+    target_audience: str | None = Field(default=None)
+    platform: str | None = Field(default=None)
+    communication_goal: str | None = Field(default=None)
+    target_duration_seconds: Annotated[float, Field(gt=0, strict=True, allow_inf_nan=False)] | None = None
+    available_footage: str | None = Field(default=None)
+    presenters: str | None = Field(default=None)
+    locations: str | None = Field(default=None)
+    tone: str | None = Field(default=None)
+    production_limits: str | None = Field(default=None)
+    approved_messages: list[Nonempty] = Field(default_factory=list)
+    prohibited_claims: list[Nonempty] = Field(default_factory=list)
+
+
+class M2Draft(ContractModel):
+    task_id: ID
+    draft_version: Revision = 1
+    based_on_brief: VersionRef | None = None
+    fields: M2Fields = Field(default_factory=M2Fields)
+    claims: list[M2Claim] = Field(default_factory=list)
+    source_notes: str = Field(default="", max_length=30000)
+    reviewed_input_checkpoint: str
+    has_pending_inputs: bool = False
+    legacy_review_required: bool = False
+    missing_fields: list[str] = Field(default_factory=list)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    @field_validator("updated_at")
+    @classmethod
+    def utc_date(cls, value):
+        return aware_utc(value)
+
+
+class M2DraftUpdate(ContractModel):
+    expected_draft_version: Revision
+    fields: M2Fields
+    claims: list[M2Claim]
+    source_notes: str = Field(max_length=30000)
+
+    @field_validator("claims")
+    @classmethod
+    def unique_claim_ids(cls, values):
+        if len({claim.claim_id for claim in values}) != len(values):
+            raise ValueError("claim IDs must be unique")
+        return values
+
+
+class M2ApplyRequest(ContractModel):
+    expected_draft_version: Revision
+    expected_version: Revision
+    based_on_brief: VersionRef | None
+
+
+class M2DiscardRequest(ContractModel):
+    expected_draft_version: Revision
+
+
 class BrandTaskBrief(Record):
     brief_id: ID
     revision: Revision = 1
@@ -251,17 +342,27 @@ class BrandTaskBrief(Record):
     brand_company: Nonempty
     product: Nonempty
     selling_points: list[Nonempty] = Field(min_length=1)
+    claim_details: list[ClaimDetail] = Field(min_length=1)
     approved_messages: list[Nonempty] = Field(default_factory=list)
     target_audience: Nonempty
     platform: Nonempty
     communication_goal: Nonempty
-    target_duration_seconds: PositiveSeconds
+    target_duration_seconds: Annotated[float, Field(gt=0, strict=True, allow_inf_nan=False)]
     available_footage: str | None = None
     presenters: str | None = None
     locations: str | None = None
     tone: str | None = None
     production_limits: str | None = None
     prohibited_claims: list[Nonempty] = Field(default_factory=list)
+
+
+    @model_validator(mode="after")
+    def claim_projection(self):
+        if self.selling_points != [claim.statement for claim in self.claim_details]:
+            raise ValueError("selling_points must exactly match ordered claim_details statements")
+        if len({claim.claim_id for claim in self.claim_details}) != len(self.claim_details):
+            raise ValueError("applied claim IDs must be unique")
+        return self
 
 
 class FrameTiming(ContractModel):
@@ -716,6 +817,12 @@ class TaskState(ContractModel):
     def consistent_references(self):
         _validate_references(self)
         return self
+
+
+class M2ApplyResult(ContractModel):
+    changed: bool
+    draft: M2Draft
+    task: TaskState
 
 
 def _validate_references(state: TaskState) -> None:

@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number) {
+  constructor(message: string, public readonly status: number, public readonly code?: string) {
     super(message);
   }
 }
@@ -17,7 +17,7 @@ export async function request<T>(path: string, body?: unknown): Promise<T> {
     const message = typeof detail === 'string' ? detail : Array.isArray(detail)
       ? detail.map((item: { msg?: string }) => item.msg ?? 'Invalid input').join('; ')
       : detail.message ?? 'The operation could not be completed.';
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, typeof detail === 'object' && !Array.isArray(detail) ? detail.code : undefined);
   }
   return data as T;
 }

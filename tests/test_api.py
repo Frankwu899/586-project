@@ -34,7 +34,7 @@ def test_api_restart_range_export_and_invalid_mutation(tmp_path):
     task = produced(client)
     task_id = task["task"]["task_id"]
     video = task["videos"][0]
-    assert client.get("/api/health").json()["schema_version"] == "0.4.0"
+    assert client.get("/api/health").json()["schema_version"] == "0.5.0"
     assert video["frame_timing"]["fps_numerator"] == 20
     assert video["frame_timing"]["frame_count"] == 200
     assert task["analyses"][0]["events"][0]["start_frame"] == 0
@@ -91,5 +91,5 @@ def test_unreadable_upload_validation_and_task_isolation(tmp_path):
     assert client.get(path).json()["videos"] == []
     assert client.get(f"/api/tasks/{second['task']['task_id']}").json() == second
     response = client.post(path + "/brief", json={"expected_version": 1, "brief": {"brand_company": "Incomplete"}})
-    assert response.status_code == 422 and response.json()["error"]["code"] == "validation_error"
+    assert response.status_code == 422 and response.json()["error"]["code"] == "m2_unconfirmed_claims"
     assert client.post("/api/tasks", json={"title": ""}).status_code == 422
