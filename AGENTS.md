@@ -1,13 +1,13 @@
 # Video Anatomy — Agent Instructions
 
-Every coding agent must read this file and the relevant interface documents before starting a task. The repository now extends the preserved v0.1 documentation baseline with the v0.3 frame-based sample application. Read the current implementation and latest handoff before making readiness claims.
+Every coding agent must read this file and the relevant interface documents before starting a task. The repository now extends the preserved v0.1 documentation baseline with the v0.4 frame-based application and replaceable providers. Read the current implementation and latest handoff before making readiness claims.
 
 ## Read first
 
 1. `docs/project-brief.md`
 2. `docs/architecture.md`
-3. `docs/interfaces.md` and `contracts/v0.3.task-state.schema.json` when touching shared data (v0.1/v0.2 artifacts are historical snapshots)
-4. The current task and latest relevant handoff in `docs/handoff/`; start with `docs/handoff/skeleton-integration-and-branches.md` for baseline integration verification
+3. `docs/interfaces.md` and `contracts/v0.4.task-state.schema.json` when touching shared data (v0.1/v0.2/v0.3 artifacts are historical snapshots)
+4. The current task and latest relevant handoff in `docs/handoff/`; start with `docs/handoff/bilingual-provider-contracts.md` for the provider foundation and actual verification
 5. `docs/branch-workflow.md` and `docs/module-ownership.md` for task naming, actual file boundaries and shared-file coordination
 6. `README_SETUP.md` for current setup and Cloud-to-local use. `docs/cloud-workflow.md` preserves the earlier documentation-only starter workflow; its old setup assumptions and prompts are historical.
 

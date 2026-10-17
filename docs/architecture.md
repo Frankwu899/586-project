@@ -1,20 +1,22 @@
-# Architecture — frame timing v0.3
+# Architecture — structured evidence and providers v0.4
 
-React/Vite/TypeScript serves the browser workspace; FastAPI/Python owns the persistent task workflow. Pydantic v2 models define the shared contract. Deterministic sample adapters exercise the complete workflow, and the real recognition adapter returns an explicit unconfigured error. Stack choices and inspected runtime versions are recorded in `docs/decisions/skeleton-v0.2.md`; the frame-timing follow-up is recorded in `docs/decisions/frame-timing-v0.3.md` and `docs/handoff/frame-timing-review.md`.
+React/Vite/TypeScript serves the browser workspace; FastAPI/Python owns the persistent task workflow. Pydantic v2 models define the v0.4 shared contract. Deterministic sample adapters remain separate from configurable OpenAI recognition/creative adapters. Without credentials, real recognition returns an explicit unconfigured result. Historical stack and frame-timing decisions remain in `docs/decisions/skeleton-v0.2.md`, `docs/decisions/frame-timing-v0.3.md`, and `docs/handoff/frame-timing-review.md`; current boundaries are documented in `docs/interfaces.md` and actual checks in the latest handoff.
 
 ## Modules and boundaries
 
 | Module | Implementation | Responsibility |
 |---|---|---|
-| Web workspace | `frontend/src/` | Enter brief, play/seek associated media, review event content and section roles, compare/refine/approve directions, edit/export outputs. Reads/writes the backend; contains no provider credentials. |
+| Web workspace | `frontend/src/` | Enter brief, play/seek original or derivative media, review event content/structured labels/section roles, compare/refine/approve directions, edit/export outputs. Contains no provider credentials. |
 | HTTP API | `backend/app/api.py` | Validate request shapes and return task records or structured errors. Swagger documentation is available at local `/docs`. |
 | Workflow service | `backend/app/service.py` | Enforce exact input revisions, correction restrictions, confirmation, approval, currentness, and optimistic task versions. |
 | Persistent storage | `backend/app/storage.py` | Store each validated task aggregate as JSON in SQLite; transactional updates compare the expected task version. |
-| Media intake | `backend/app/media.py` | Validate configured limits, inspect codecs, duration, rational FPS and decoded frame timestamps with ffprobe, store files by generated identifiers, and locate playback media. |
-| Provider adapters | `backend/app/adapters.py` | Normalize recognition and creative requests/results. Sample implementations are deterministic; provider transports remain behind this boundary. |
-| Contracts | `backend/app/models.py`, `contracts/v0.3.*.schema.json` | Authoritative models, generated schemas, semantic and exact-reference validation. Generated frontend types share these schemas. |
+| Media intake | `backend/app/media.py` | Validate H.264/SDR HEVC MP4, retain originals/hash/source timing, and generate/validate an H.264 playback derivative for HEVC. |
+| Provider media preparation | `backend/app/media_preparation.py` | Bounded timestamped source-frame sampling and source-aligned audio chunks with hash verification; preparation uses originals. |
+| Adapter interfaces/sample | `backend/app/adapters.py` | Stable recognition and creative protocols plus explicitly labeled deterministic sample implementations. |
+| Provider capabilities | `backend/app/providers/` | Independent vision/transcription protocols, OpenAI transport, semantic normalization, creative content generation, capability settings, cache and internal diagnostics. |
+| Contracts | `backend/app/models.py`, `contracts/v0.4.*.schema.json` | Authoritative models, generated schemas, nested group and exact-reference validation. Frontend declarations are generated from the same schema. |
 | Timing | `backend/app/timing.py`, `frontend/src/timing.ts` | Map integer reference frames to actual media timestamps; format nominal non-drop timecode. |
-| Legacy migration | `backend/app/migration.py`, `backend/app/frame_migration.py` | Explicit v0.1 import and automatic archived v0.2 conversion; never invent source FPS. |
+| Legacy migration | `backend/app/migration.py`, `backend/app/frame_migration.py`, `backend/app/contract_migration.py` | Explicit v0.1 import, archived v0.2 frame conversion and v0.3 nullable-field upgrade; never invent FPS, observations, proxy media or review. |
 
 ```mermaid
 flowchart TD
@@ -24,7 +26,9 @@ flowchart TD
     SERVICE --> MEDIA[Local media and ffprobe]
     SERVICE --> ADAPTER[Recognition and creative adapters]
     ADAPTER --> SAMPLE[Deterministic sample implementation]
-    ADAPTER --> REAL[Real recognition: unconfigured]
+    ADAPTER --> REAL[OpenAI capability adapters]
+    REAL --> PREP[Bounded original frames and aligned audio]
+    REAL --> TRANSPORT[Timeouts, bounded retries and safe diagnostics]
     SERVICE --> VALIDATE[Pydantic and semantic validation]
     VALIDATE --> STORE
 ```
@@ -33,23 +37,31 @@ flowchart TD
 
 Each task contains append-only content revisions for the brief, analysis, directions, feedback, and production outputs, plus current-reference pointers. Confirmation, approval, and current/outdated metadata can change without inventing a content revision. Original recognized content and earlier human edits remain available. Task versions are separate from artifact content revisions: every successful mutation increments the task version, so another tab or a delayed operation cannot silently overwrite newer work.
 
-The default data directory is ignored `.local-data/`, configurable with `VIDEO_ANATOMY_DATA_DIR`. SQLite holds task state in `tasks.sqlite3`; media lives below `media/`. Runtime data is not tracked source. Storage checks task membership and exact revision references on load and save. Startup atomically archives and migrates saved v0.2 payloads using their matching media; missing or unrepresentable timing remains explicitly archived seconds with creative gates disabled. Old schema/example files remain unchanged. The team demonstration runs one backend worker; there is no queue, multi-user authentication, or hosted deployment in this skeleton.
+The default data directory is ignored `.local-data/`, configurable with `VIDEO_ANATOMY_DATA_DIR`. SQLite holds task state in `tasks.sqlite3`; originals and playback derivatives live below `media/`. Provider caches and safe run diagnostics use `provider-cache/`. Runtime data is not tracked source. Storage checks task membership and exact revision references on load and save. Startup atomically archives and migrates saved v0.2/v0.3 payloads. A v0.3 upgrade adds null structured details/playback while preserving all content, review, approval and exact citations. The v0.2 path uses matching media for frame conversion; missing or unrepresentable timing stays archived seconds with creative gates disabled. Both paths retain the exact original JSON and SHA-256 in `task_migration_archive`, increment the optimistic task version once and leave old data unchanged on failure. Historical schemas/examples remain unchanged. The demonstration uses one backend worker, without a queue, multi-user authentication or hosted deployment.
 
-Evidence events are the sole editable recognized content. Content sections contain time intervals, role interpretation, and event IDs. They do not independently duplicate transcripts. Visual/audio events can overlap; primary sections are ordered and nonoverlapping. Corrections preserve observation IDs/times/provenance and clear affected interpretation. Source intervals use zero-based integer frames with exclusive ends. The video stores decoded presentation boundaries and the browser playback origin, supporting constant, fractional and variable rates. Planned storyboard times remain seconds and do not depend on reference FPS.
+Evidence events are the sole editable recognized content. Content sections contain time intervals, role interpretation and event IDs without duplicate transcripts. Optional `visual_details` on visual-action events contains local subjects/actions/product presentations with separate status/items/error groups. Unknown labels remain null; missing structured extraction is distinct from a checked empty scene. Local relationship validation prevents dangling references and presentations of subjects lacking a product role. No speculative language/confidence fields or cross-shot identities are added.
+
+Visual/audio events can overlap; primary sections are ordered and nonoverlapping. Atomic label corrections permit only documented category/role and explanatory text leaves. IDs, order, relationships, extraction status/errors and timing remain fixed; cumulative before/after logs must replay from the preserved original. Corrections clear review and affected interpretations and invalidate downstream approvals without deleting outputs. `chosen_direction` records draft selection; `selected_direction` records explicit approval for production. The handoff baseline table swapped their descriptions; live semantics and historical pointer values are preserved.
+
+Source intervals remain zero-based integer frames with exclusive ends. Original presentation boundaries, rational FPS and signed media origin support constant, fractional and variable rates. HEVC playback derivatives have independent measured clocks with one-to-one presentation-frame correspondence. Recognition uses the original clock; browser seeks use the selected representation's clock with the same source-frame index. Storyboard plans remain independent seconds.
 
 ## Processing and dependency gates
 
-Operations execute synchronously for the small sample workflow and persist processing/job results. The contract reserves pending/running/succeeded/failed job states and partial analysis coverage; the operational creative gate accepts only a current, confirmed, successful analysis. Failed, incomplete, partial, stale, or wrong-task analyses cannot become creative input. The adapter owns extraction coverage; an unimplemented category means `not_analyzed`, never assumed absence.
+Operations execute synchronously and persist processing/job results. The contract reserves pending/running/succeeded/failed job states and partial analysis coverage; creative use accepts only a current, confirmed, successful analysis. Any failed attempted top-level category or nested structured group requires a partial result while successful observations remain inspectable. Failed, incomplete, partial, stale or wrong-task analyses cannot become creative input. The adapter owns extraction coverage; unimplemented categories mean `not_analyzed`, never assumed absence.
 
 The service checks the request's expected task version before committing results. Retrying is an explicit new operation using current inputs. Startup marks interrupted pending/running jobs failed with `interrupted_job`; it does not automatically resume them. Analysis reruns preserve the previous analysis under its original ID and create a new analysis identity. Corrected analysis creates a new revision of the same identity. Upstream changes retain downstream content, mark it outdated, and remove dependent approval. A refined direction is a new draft requiring explicit approval; selection alone is insufficient.
 
 Production generation consumes the exact selected approved direction and its brief, analysis, and feedback revisions. Editing outputs saves new revisions. Regeneration is explicit and preserves manual work in history. Export includes origin, currentness, and source/version context; it is not an approval bypass.
 
-## Sample media and provider replacement
+## Sample and real provider paths
 
 `scripts/generate_sample_media.py` creates a ten-second fictional illustrated clip using original bitmap labels, geometric shapes, and synthetic tones. The dedicated sample loader creates matching media and sample observations. There is no human speech, live footage, or demonstrated real product efficacy. Separate schema-only examples may contain fictional speech; they never prove playback evidence.
 
-An ordinary upload follows real mode and cannot receive prepared sample findings. Andrea can replace `UnconfiguredRecognitionAdapter` using the documented recognition request/result boundary without teaching the UI provider-specific formats. Frank can replace the sample creative implementation using the same exact brief/analysis/direction/feedback boundary. Paid requests and provider credentials are unnecessary for the baseline.
+An ordinary upload follows real mode and cannot receive prepared sample findings. `ProviderRecognitionAdapter` uses separately configurable vision and timestamped transcription capabilities. The OpenAI implementations send bounded source JPEGs and aligned audio, preserve English/Chinese/mixed source words, normalize timestamps against original frame boundaries and retain truthful failures. Sparse frame sampling does not establish exhaustive shot boundaries or exact action duration. Music/SFX extraction remains unimplemented. A fake alternate provider verifies the capability boundary offline; no second real provider is claimed.
+
+`OpenAICreativeAdapter` implements the existing two-direction, written refinement and production operations with exact saved evidence references. Source evidence remains separate from generated hypotheses and narrative language. The workflow service owns review, approval, currentness and persistence; provider content cannot approve itself. Models are independently configurable per capability, initially `gpt-4.1-mini` for visual/creative structured responses and `whisper-1` for timestamped transcription. Credentials stay in backend environment configuration. The transport bounds requests, output, timeouts, transient retries and concurrency and exposes safe errors without raw responses or keys.
+
+Recognition cache keys include content hash, provider/model, preparation/prompt/schema/normalization versions, source timing and relevant settings. Run records preserve timing, attempts, cache status, safe failures and reported usage units; unavailable usage/cost is null with an explanation. Explicit opt-in, credentials, permitted media and a positive budget are required for the separate live harness. Offline fakes and synthetic bilingual cases establish integration behavior, not live accuracy, latency or cost. Provider failure never invokes sample templates; the sample path remains available without credentials.
 
 ## Coding environment and local demonstration
 
