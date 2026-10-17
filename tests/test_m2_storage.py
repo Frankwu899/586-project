@@ -231,6 +231,13 @@ def test_legacy_migration_preserves_all_history_and_has_separate_review_gate(tmp
         details = brief.pop("claim_details")
         assert [detail["statement"] for detail in details] == brief["selling_points"]
         assert all(detail["confirmation_origin"] == "legacy_unrecorded" for detail in details)
+    assert converted["task"].pop("generation_language") is None
+    for video in converted["videos"]:
+        assert video.pop("deleted_at") is None
+    for direction in converted["directions"]:
+        assert direction.pop("auxiliary_status") == "current"
+    for output in [*converted["production_briefs"], *converted["storyboards"]]:
+        assert output.pop("bundle_id") is None
     assert converted == original
     raw = json.dumps(payload, ensure_ascii=False, indent=3)
     with sqlite3.connect(tmp_path / "tasks.sqlite3") as db:

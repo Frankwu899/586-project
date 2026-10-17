@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .media import MediaError
 from .models import (M2ApplyRequest, M2ApplyResult, M2DiscardRequest, M2Draft, M2DraftUpdate,
-                     Nonempty, TaskState, VersionRef)
+                     Nonempty, TaskState, VersionRef, EditorDraft, EditorDraftUpdate, EditorDiscardRequest)
 from .m2_assistance_models import M2AdoptRequest, M2AssistanceRequest, M2AssistanceResponse
 from .service import WorkflowService
 from .storage import WorkflowError
@@ -30,6 +30,10 @@ class Mutation(Request):
     expected_version: Annotated[int, Field(ge=1)]
 
 
+class LanguageMutation(Mutation):
+    generation_language: Literal["English", "Chinese"]
+
+
 class SaveBrief(Mutation):
     brief: dict[str, Any]
 
@@ -43,6 +47,7 @@ class AnalysisMutation(Mutation):
 
 
 class CorrectAnalysis(AnalysisMutation):
+    expected_editor_version: Annotated[int, Field(ge=1)] | None = None
     event_edits: list[dict[str, Any]] = Field(default_factory=list)
     segment_edits: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -65,6 +70,7 @@ class ChooseDirection(Mutation):
 
 
 class EditDirection(ChooseDirection):
+    expected_editor_version: Annotated[int, Field(ge=1)] | None = None
     fields: dict[str, Any]
 
 
@@ -73,6 +79,7 @@ class GenerateOutputs(Inputs):
 
 
 class EditOutputs(Mutation):
+    expected_editor_version: Annotated[int, Field(ge=1)] | None = None
     production_brief_ref: VersionRef
     storyboard_ref: VersionRef
     brief_fields: dict[str, Any] = Field(default_factory=dict)
@@ -80,7 +87,7 @@ class EditOutputs(Mutation):
 
 
 def create_app(data_dir: Path | None = None, *, service: WorkflowService | None = None) -> FastAPI:
-    app = FastAPI(title="Video Anatomy", version="0.5.0")
+    app = FastAPI(title="Video Anatomy", version="0.6.0")
     svc = service or WorkflowService(Path(data_dir or os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data")))
     app.state.service = svc
 
@@ -101,7 +108,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "schema_version": "0.5.0",
+        return {"status": "ok", "schema_version": "0.6.0",
                 "real_analysis": "configured" if svc.provider_settings.api_key else "unconfigured",
                 "creative_generation": "provider_for_real_tasks" if svc.provider_settings.api_key else "unconfigured_for_real_tasks",
                 "sample_workflow": "available_offline"}
@@ -125,6 +132,26 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
     @app.get("/api/tasks/{task_id}", response_model=TaskState)
     def open_task(task_id: str):
         return svc.store.get(task_id)
+
+    @app.post("/api/tasks/{task_id}/language", response_model=TaskState)
+    def language(task_id: str, body: LanguageMutation):
+        return svc.set_language(task_id, body.expected_version, body.generation_language)
+
+    @app.get("/api/tasks/{task_id}/editors/{scope}", response_model=EditorDraft)
+    def editor(task_id: str, scope: str):
+        return svc.store.get_editor_draft(task_id, scope)
+
+    @app.post("/api/tasks/{task_id}/editors/{scope}", response_model=EditorDraft)
+    def editor_save(task_id: str, scope: str, body: EditorDraftUpdate):
+        return svc.store.save_editor_draft(task_id, scope, body)
+
+    @app.post("/api/tasks/{task_id}/editors/{scope}/discard", response_model=EditorDraft)
+    def editor_discard(task_id: str, scope: str, body: EditorDiscardRequest):
+        return svc.store.discard_editor_draft(task_id, scope, body.expected_draft_version)
+
+    @app.post("/api/tasks/{task_id}/videos/{video_id}/delete", response_model=TaskState)
+    def delete_video(task_id: str, video_id: str, body: Mutation):
+        return svc.delete_video(task_id, body.expected_version, video_id)
 
     @app.post("/api/tasks/{task_id}/brief", response_model=TaskState)
     def brief(task_id: str, body: SaveBrief):
@@ -170,6 +197,8 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
         video = next((v for v in state.videos if v.video_id == video_id), None)
         if video is None:
             raise WorkflowError("video_not_found", "This video does not belong to the task.", 404)
+        if video.deleted_at is not None:
+            raise WorkflowError("video_deleted", "This reference media was deleted. Its historical observations are retained.", 410)
         return FileResponse(svc.media.playback_path_for(video), media_type="video/mp4", headers={"Cache-Control": "private, max-age=0"})
 
     @app.post("/api/tasks/{task_id}/recognize", response_model=TaskState)
@@ -178,7 +207,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
 
     @app.post("/api/tasks/{task_id}/analysis/correct", response_model=TaskState)
     def correct(task_id: str, body: CorrectAnalysis):
-        return svc.correct_analysis(task_id, body.expected_version, body.analysis_ref, body.event_edits, body.segment_edits)
+        return svc.correct_analysis(task_id, body.expected_version, body.analysis_ref, body.event_edits, body.segment_edits, body.expected_editor_version)
 
     @app.post("/api/tasks/{task_id}/analysis/confirm", response_model=TaskState)
     def confirm(task_id: str, body: AnalysisMutation):
@@ -190,7 +219,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
 
     @app.post("/api/tasks/{task_id}/directions/{direction_id}/edit", response_model=TaskState)
     def direction_edit(task_id: str, direction_id: str, body: EditDirection):
-        return svc.edit_direction(task_id, body.expected_version, direction_id, body.direction_revision, body.fields)
+        return svc.edit_direction(task_id, body.expected_version, direction_id, body.direction_revision, body.fields, body.expected_editor_version)
 
     @app.post("/api/tasks/{task_id}/directions/{direction_id}/refine", response_model=TaskState)
     def direction_refine(task_id: str, direction_id: str, body: RefineDirection):
@@ -210,13 +239,13 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
 
     @app.post("/api/tasks/{task_id}/outputs/edit", response_model=TaskState)
     def outputs_edit(task_id: str, body: EditOutputs):
-        return svc.edit_outputs(task_id, body.expected_version, body.production_brief_ref, body.storyboard_ref, body.brief_fields, body.rows)
+        return svc.edit_outputs(task_id, body.expected_version, body.production_brief_ref, body.storyboard_ref, body.brief_fields, body.rows, body.expected_editor_version)
 
     @app.get("/api/tasks/{task_id}/export/{kind}")
-    def export(task_id: str, kind: str):
-        text = svc.export(task_id, kind)
+    def export(task_id: str, kind: str, output_id: str | None = None, revision: Annotated[int | None, Query(ge=1)] = None):
+        text, filename = svc.export(task_id, kind, output_id, revision, with_filename=True)
         content_type = "text/csv" if kind == "storyboard.csv" else "text/markdown"
-        return Response(content=text, media_type=content_type, headers={"Content-Disposition": f'attachment; filename="{kind}"', "X-Content-Type-Options": "nosniff"})
+        return Response(content=text, media_type=content_type, headers={"Content-Disposition": f'attachment; filename="{filename}"', "X-Content-Type-Options": "nosniff"})
 
     return app
 

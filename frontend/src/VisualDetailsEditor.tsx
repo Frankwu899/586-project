@@ -13,8 +13,8 @@ const actionTypes: NonNullable<Action['action_type']>[] = ['hold', 'pick_up', 'p
 const presentationTypes: NonNullable<Presentation['presentation_type']>[] = ['appearance', 'feature_demo', 'use_case', 'result_display', 'comparison', 'packaging', 'unboxing', 'other'];
 const label = (value: string) => value.replaceAll('_', ' ');
 
-function Category<T extends string>({ name, value, options, onChange }: { name: string; value: T | null; options: T[]; onChange: (value: T | null) => void }) {
-  return <Field label={name}><select value={value ?? ''} onChange={(event) => onChange(event.target.value === '' ? null : event.target.value as T)}>
+function Category<T extends string>({ name, accessibleName, value, options, onChange }: { name: string; accessibleName: string; value: T | null; options: T[]; onChange: (value: T | null) => void }) {
+  return <Field label={name}><select aria-label={accessibleName} value={value ?? ''} onChange={(event) => onChange(event.target.value === '' ? null : event.target.value as T)}>
     <option value="">Unknown / uncertain</option>
     {options.map((option) => <option key={option} value={option}>{label(option)}</option>)}
   </select></Field>;
@@ -36,32 +36,33 @@ export default function VisualDetailsEditor({ value, eventId, onChange }: { valu
     const next: SubjectRole[] | null = role === 'other' ? (current.includes('other') ? null : ['other']) : current.includes(role) ? current.filter((item) => item !== role) : [...current.filter((item) => item !== 'other'), role];
     updateSubject(index, { roles: next?.length ? next as NonNullable<Subject['roles']> : null });
   };
+  const subjectNames = (ids: string[]) => ids.map((id) => value.subjects.items.find((subject) => subject.subject_id === id)?.label ?? 'Unknown subject').join(', ');
   return <div aria-label={`Structured visual details · ${eventId}`}>
-    <p className="muted">Correct observed categories and descriptions. Unknown means uncertain; other needs an explanation. IDs, relationships and extraction status remain read-only.</p>
-    <fieldset><legend>Subjects · {eventId}</legend><GroupStatus group={value.subjects} />
+    <p className="muted">Correct observed categories and descriptions. Unknown means uncertain; other needs an explanation. Linked subjects and extraction status stay unchanged.</p>
+    <fieldset><legend>Subjects</legend><GroupStatus group={value.subjects} />
       {value.subjects.items.map((subject, index) => <div key={subject.subject_id}>
-        <p><strong>Subject {index + 1}</strong> · {subject.subject_id}</p>
-        <Category name={`Subject kind · ${eventId} · ${subject.subject_id}`} value={subject.kind} options={subjectKinds} onChange={(kind) => updateSubject(index, { kind })} />
-        <Field label={`Subject label · ${eventId} · ${subject.subject_id}`}><input required value={subject.label} onChange={(event) => updateSubject(index, { label: event.target.value })} /></Field>
-        <Field label={`Subject description · ${eventId} · ${subject.subject_id}`} hint="Explain an other category or role; preserve uncertainty in your description."><textarea value={subject.description ?? ''} onChange={(event) => updateSubject(index, { description: event.target.value || null })} /></Field>
-        <fieldset><legend>Subject roles · {eventId} · {subject.subject_id}</legend><div className="roles">
+        <p><strong>Subject {index + 1}</strong></p>
+        <Category name="Subject kind" accessibleName={`Subject kind · ${eventId} · ${subject.subject_id}`} value={subject.kind} options={subjectKinds} onChange={(kind) => updateSubject(index, { kind })} />
+        <Field label="Subject label"><input aria-label={`Subject label · ${eventId} · ${subject.subject_id}`} required value={subject.label} onChange={(event) => updateSubject(index, { label: event.target.value })} /></Field>
+        <Field label="Subject description" hint="Explain an other category or role; preserve uncertainty in your description."><textarea aria-label={`Subject description · ${eventId} · ${subject.subject_id}`} value={subject.description ?? ''} onChange={(event) => updateSubject(index, { description: event.target.value || null })} /></Field>
+        <fieldset aria-label={`Subject roles · ${eventId} · ${subject.subject_id}`}><legend>Subject roles</legend><div className="roles">
           <label><input type="checkbox" checked={subject.roles === null} onChange={() => updateSubject(index, { roles: null })} />Unknown / uncertain</label>
           {subjectRoles.map((role) => <label key={role}><input type="checkbox" checked={subject.roles?.includes(role) ?? false} onChange={() => toggleRole(index, role)} />{label(role)}</label>)}
         </div></fieldset>
       </div>)}
     </fieldset>
-    <fieldset><legend>Visible actions · {eventId}</legend><GroupStatus group={value.actions} />
+    <fieldset><legend>Visible actions</legend><GroupStatus group={value.actions} />
       {value.actions.items.map((action, index) => <div key={index}>
-        <p className="muted">Action {index + 1} · Actors: {action.actor_subject_ids.join(', ') || 'unlinked'} · Targets: {action.target_subject_ids.join(', ') || 'unlinked'}</p>
-        <Category name={`Action type · ${eventId} · ${index + 1}`} value={action.action_type} options={actionTypes} onChange={(action_type) => updateAction(index, { action_type })} />
-        <Field label={`Action description · ${eventId} · ${index + 1}`}><textarea required value={action.description} onChange={(event) => updateAction(index, { description: event.target.value })} /></Field>
+        <p className="muted">Action {index + 1} · Actors: {subjectNames(action.actor_subject_ids) || 'unlinked'} · Targets: {subjectNames(action.target_subject_ids) || 'unlinked'}</p>
+        <Category name="Action type" accessibleName={`Action type · ${eventId} · ${index + 1}`} value={action.action_type} options={actionTypes} onChange={(action_type) => updateAction(index, { action_type })} />
+        <Field label="Action description"><textarea aria-label={`Action description · ${eventId} · ${index + 1}`} required value={action.description} onChange={(event) => updateAction(index, { description: event.target.value })} /></Field>
       </div>)}
     </fieldset>
-    <fieldset><legend>Product presentations · {eventId}</legend><GroupStatus group={value.product_presentations} />
+    <fieldset><legend>Product presentations</legend><GroupStatus group={value.product_presentations} />
       {value.product_presentations.items.map((presentation, index) => <div key={index}>
-        <p className="muted">Presentation {index + 1} · Products: {presentation.product_subject_ids.join(', ')}</p>
-        <Category name={`Presentation type · ${eventId} · ${index + 1}`} value={presentation.presentation_type} options={presentationTypes} onChange={(presentation_type) => updatePresentation(index, { presentation_type })} />
-        <Field label={`Presentation description · ${eventId} · ${index + 1}`}><textarea required value={presentation.description} onChange={(event) => updatePresentation(index, { description: event.target.value })} /></Field>
+        <p className="muted">Presentation {index + 1} · Products: {subjectNames(presentation.product_subject_ids)}</p>
+        <Category name="Presentation type" accessibleName={`Presentation type · ${eventId} · ${index + 1}`} value={presentation.presentation_type} options={presentationTypes} onChange={(presentation_type) => updatePresentation(index, { presentation_type })} />
+        <Field label="Presentation description"><textarea aria-label={`Presentation description · ${eventId} · ${index + 1}`} required value={presentation.description} onChange={(event) => updatePresentation(index, { description: event.target.value })} /></Field>
       </div>)}
     </fieldset>
   </div>;

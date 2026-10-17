@@ -40,6 +40,7 @@ def apply(service, task_id):
 
 def ready(service):
     state = service.create("M2 offline integration")
+    state = service.set_language(state.task.task_id, state.task.version, "English")
     state = service.load_sample(state.task.task_id, state.task.version)
     state = service.recognize(state.task.task_id, state.task.version)
     return service.confirm_analysis(state.task.task_id, state.task.version, state.task.current_analysis)
@@ -94,6 +95,7 @@ def test_partial_http_draft_survives_restart_without_fabricating_inputs(service)
 
 def test_draft_autosave_during_recognition_preserves_job_and_new_text(service):
     state = service.create("Type while reference processing")
+    state = service.set_language(state.task.task_id, state.task.version, "English")
     state = service.load_sample(state.task.task_id, state.task.version)
     task_id, delegate = state.task.task_id, service.sample_recognition
     original_brief = state.task.current_brief
@@ -259,6 +261,7 @@ def test_apply_during_creative_job_rejects_superseded_provider_result(service):
 
 def test_manual_m2_claim_metadata_reaches_m6_m7_and_exports(service):
     state = service.create("Synthetic constrained product")
+    state = service.set_language(state.task.task_id, state.task.version, "English")
     task_id = state.task.task_id
     included = m.M2Claim(claim_id="claim_warm", statement="Keeps drinks warm for up to 6 hours",
                          qualification="In our indoor test only", supporting_notes="Synthetic supplied test note 原文",

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import copy
 from contextvars import ContextVar
+from dataclasses import replace
 from functools import wraps
 import threading
 from typing import Annotated
@@ -24,7 +26,7 @@ from .base import ProviderError
 from .config import ProviderSettings
 from .transport import OpenAITransport
 
-PROMPT_VERSION = "creative-v2-m2-claims"
+PROMPT_VERSION = "creative-v3-approved-workspace"
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
 
 
@@ -65,7 +67,7 @@ class ProductionContent(Content):
     narrative: Text
     cta: Text
     production_notes: list[Text] = Field(max_length=30)
-    evidence: list[Citation] = Field(min_length=1, max_length=20)
+    evidence: list[Citation] = Field(max_length=20)
 
 
 class RowContent(Content):
@@ -76,7 +78,7 @@ class RowContent(Content):
     on_screen_text: Text | None
     sound: Text | None
     cta: Text | None
-    evidence: list[Citation] = Field(min_length=1, max_length=20)
+    evidence: list[Citation] = Field(max_length=20)
 
 
 class OutputsContent(Content):
@@ -91,7 +93,17 @@ def _ref(record, field):
 def _context(brief, analysis, **extra):
     return {"brief": brief.model_dump(mode="json"),
             "reviewed_analysis": analysis.model_dump(mode="json"),
-            **{key: value.model_dump(mode="json") for key, value in extra.items()}}
+            **{key: value if isinstance(value, dict) else value.model_dump(mode="json")
+               for key, value in extra.items()}}
+
+
+def _direction_context(direction):
+    """Do not present explanations from before a manual edit as current facts."""
+    context = direction.model_dump(mode="json")
+    if direction.auxiliary_status == "needs_review":
+        for field in ("rationale", "production_requirements", "production_notes", "evidence", "hypotheses"):
+            context.pop(field, None)
+    return context
 
 
 def _constraints(brief):
@@ -134,6 +146,14 @@ class OpenAICreativeAdapter:
         self._lock = threading.Lock()
         self.records: list[dict] = []
 
+    def for_language(self, language: str) -> OpenAICreativeAdapter:
+        if language not in {"English", "Chinese"}:
+            raise ValueError("Choose English or Chinese for creative generation")
+        # Share transport/lock/diagnostics, but never mutate process-wide settings.
+        scoped = copy(self)
+        scoped.settings = replace(self.settings, creative_language=language)
+        return scoped
+
     @property
     def diagnostics_context(self):
         return self._diagnostics_context.get() or {}
@@ -170,15 +190,31 @@ class OpenAICreativeAdapter:
             "and every claim_details qualification, supporting note and source restriction. Use only "
             "the supplied confirmed claims; preserve limiting words and conditions exactly. Confirmation "
             "records user permission, never independent verification. Source URLs are unverified references. "
-            "and prohibited claims. Source advertising statements are observed claims, not verified facts "
+            "Honor prohibited claims. Source advertising statements are observed claims, not verified facts "
             "about this brand or product. Do not invent performance measurements or claim retention, "
             "click-through or conversion improvements from views/likes/comments. For each direction "
             "provide a tentative hypothesis and a concrete test_method; effectiveness is unmeasured. "
-            "For directions produce exactly two substantially different creative approaches. "
+            "For directions produce exactly two approaches in this order: A closely follows the reviewed "
+            "reference's structural progression; B reorganizes useful observed elements into a different "
+            "narrative. Their hook or narrative must differ substantively, not just their resource list. "
+            "Explain each direction's fit with this brand, audience and goal, and resources to prepare. "
+            "Never supply an effectiveness score or imply proposed resources are already available. "
             "For refine, interpret the saved feedback and return one complete revised direction, "
-            "preserving applicable existing constraints and notes. For production, faithfully develop "
+            "refreshing rationale, production requirements, citation reasons, hypotheses and notes for "
+            "the revised text. Retain applicable input constraints, not obsolete direction explanations. "
+            "A direction marked auxiliary_status=needs_review has manually edited text: its omitted "
+            "explanations are stale and must not constrain production or refinement. For production, faithfully develop "
             "the approved direction; rows use planned seconds, start at zero, are contiguous and end at "
             "brief.target_duration_seconds, independently of reference frames or duration. "
+            "Create a shoot-discussion draft: include audience, objective, materials, people, setting and "
+            "constraints in production_notes; each visual specifies a subject, action and setting, with "
+            "shot size when useful. Choose the row count to suit duration and narrative, not a fixed "
+            "four-part template. Dialogue, on_screen_text, sound and cta may be null; keep text speakable "
+            "and readable within the shot. Missing resources are items to prepare, never possessions. "
+            "Original proposed shots may have evidence=[] and must be described as an original production "
+            "suggestion. Cite only the exact observed element actually borrowed, never force a citation "
+            "onto an original shot. Originality does not permit invented product facts or performance. "
+            "Do not add camera equipment specifications, budgets or detailed shoot schedules. "
             "Any suggested sounds or dialogue in a new storyboard are proposals, not recognized evidence. "
             "Do not add a required claim unsupported by the brief.\nINPUT_JSON:\n"
             + json.dumps(context, ensure_ascii=False, separators=(",", ":"))
@@ -249,7 +285,7 @@ class OpenAICreativeAdapter:
         _inputs(brief, analysis)
         result = self._request("directions", _context(brief, analysis), DirectionsContent)
         fingerprints = {hashlib.sha256(json.dumps(
-            [item.hook.casefold(), item.narrative.casefold(), item.production_requirements],
+            [" ".join(item.hook.casefold().split()), " ".join(item.narrative.casefold().split())],
             ensure_ascii=False).encode()).hexdigest() for item in result.directions}
         if len(fingerprints) != 2:
             self._diagnostic_failure("invalid_creative_output")
@@ -266,9 +302,8 @@ class OpenAICreativeAdapter:
         if (feedback.task_id != brief.task_id or feedback.target_direction != _ref(target, "direction_id")
                 or feedback.brief_ref != target.brief_ref or feedback.analysis_ref != target.analysis_ref):
             raise ValueError("Feedback must identify this exact direction and its input versions")
-        content = self._request("refine", _context(brief, analysis, direction=target, feedback=feedback),
+        content = self._request("refine", _context(brief, analysis, direction=_direction_context(target), feedback=feedback),
                                 DirectionContent)
-        content.production_notes = list(dict.fromkeys([*target.production_notes, *content.production_notes]))
         output = self._direction(content, brief, analysis, direction_id=target.direction_id,
                                  revision=target.revision + 1,
                                  feedback_refs=[*target.feedback_refs, _ref(feedback, "feedback_id")])
@@ -281,18 +316,20 @@ class OpenAICreativeAdapter:
         _matches(direction, brief, analysis)
         if direction.approval_status != "approved" or direction.approved_at is None:
             raise ValueError("Production generation requires explicit approval of this exact direction revision")
-        result = self._request("production", _context(brief, analysis, direction=direction), OutputsContent)
+        result = self._request("production", _context(brief, analysis, direction=_direction_context(direction)), OutputsContent)
         common = {**self._base(brief, analysis), "direction_ref": _ref(direction, "direction_id"),
                   "feedback_refs": list(direction.feedback_refs)}
         content = result.production_brief
-        notes = list(dict.fromkeys([*content.production_notes, *direction.production_requirements,
-                                   *direction.production_notes, *_constraints(brief),
-                                   *direction.hypotheses]))
+        auxiliary = ([] if direction.auxiliary_status == "needs_review" else
+                     [*direction.production_requirements, *direction.production_notes, *direction.hypotheses])
+        notes = list(dict.fromkeys([*content.production_notes, *auxiliary, *_constraints(brief)]))
         production = ProductionCreativeBrief(
             **common, output_id=f"production_{uuid4().hex}",
             **content.model_dump(exclude={"evidence", "production_notes"}),
             evidence=self._evidence(content.evidence, analysis), production_notes=notes)
+        original_label = "原创制作建议：" if self.settings.creative_language == "Chinese" else "Original production suggestion: "
         rows = [{**row.model_dump(exclude={"evidence"}), "row_id": f"row_{uuid4().hex}",
+                 "visual": row.visual if row.evidence or row.visual.startswith(original_label) else original_label + row.visual,
                  "evidence": self._evidence(row.evidence, analysis)} for row in result.rows]
         try:
             storyboard = TextStoryboard(**common, output_id=f"storyboard_{uuid4().hex}",

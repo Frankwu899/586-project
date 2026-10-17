@@ -1,4 +1,5 @@
 import { cloneElement, isValidElement, useId, type ReactNode } from 'react';
+import type { TaskState } from './generated/contracts';
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   const id = useId();
@@ -13,4 +14,4 @@ export function Badge({ children, warning = false }: { children: ReactNode; warn
 
 export const lines = (value: string) => value.split('\n').map((line) => line.trim()).filter(Boolean);
 export const seconds = (value: number) => `${Number(value.toFixed(2))}s`;
-export type Mutate = (path: string, payload?: Record<string, unknown> | FormData) => Promise<boolean>;
+export type Mutate = (path: string, payload?: Record<string, unknown> | FormData) => Promise<TaskState | false>;

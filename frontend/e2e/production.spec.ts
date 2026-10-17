@@ -1,0 +1,112 @@
+import { expect, test, type Page, type APIRequestContext } from '@playwright/test';
+import { readFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { TaskState } from '../src/generated/contracts';
+
+async function prepared(request: APIRequestContext, title: string): Promise<TaskState> {
+  let response = await request.post('/api/tasks', { data: { title } });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  let state: TaskState = await response.json();
+  const update = async (path: string, extra: Record<string, unknown> = {}) => {
+    response = await request.post(`/api/tasks/${state.task.task_id}${path}`, { data: { expected_version: state.task.version, ...extra } });
+    expect(response.ok(), await response.text()).toBeTruthy(); state = await response.json();
+  };
+  await update('/sample');
+  await update('/recognize', { video_id: state.task.current_video_id });
+  await update('/analysis/confirm', { analysis_ref: state.task.current_analysis });
+  if (!state.task.generation_language) await update('/language', { generation_language: 'English' });
+  await update('/directions/generate', { brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis });
+  const direction = state.directions[0];
+  await update(`/directions/${direction.direction_id}/approve`, { direction_revision: direction.revision, brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis });
+  await update('/outputs/generate', { direction_ref: state.task.selected_direction, brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis });
+  expect(state.production_briefs).toHaveLength(1);
+  return state;
+}
+async function openProduction(page: Page, state: TaskState) {
+  await page.goto('/');
+  await page.evaluate((taskId) => { localStorage.setItem('video-anatomy-task', taskId); localStorage.setItem(`video-anatomy-area:${taskId}`, 'production'); }, state.task.task_id);
+  await page.reload();
+  await expect(page.getByLabel('Production title', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Production title', { exact: true })).toBeEnabled();
+}
+
+test('production draft survives reopening, save-and-export uses new text, failed saves never download old text', async ({ page, request }) => {
+  const state = await prepared(request, `Production export acceptance ${Date.now()}`);
+  const otherTitle = `Another saved task ${Date.now()}`;
+  await request.post('/api/tasks', { data: { title: otherTitle } });
+  await openProduction(page, state);
+  await page.getByLabel('Production title', { exact: true }).fill('通勤杯 — saved export checkpoint');
+  await page.getByLabel('Shot 1 visuals', { exact: true }).fill('中文 close-up: hand places cup in a commuter bag.');
+  await expect.poll(async () => (await (await request.get(`/api/tasks/${state.task.task_id}/editors/production`)).json()).content.brief_fields.title).toBe('通勤杯 — saved export checkpoint');
+  await page.getByRole('button', { name: new RegExp(otherTitle) }).click();
+  await expect(page.getByRole('heading', { name: otherTitle, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: new RegExp(state.task.title) }).click();
+  await expect(page.getByLabel('Shot 1 visuals', { exact: true })).toHaveValue('中文 close-up: hand places cup in a commuter bag.');
+  await page.reload();
+  await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('通勤杯 — saved export checkpoint');
+  await page.getByRole('button', { name: 'Storyboard CSV', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Save changes before exporting?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  let downloadCount = 0; page.on('download', () => { downloadCount += 1; });
+  await page.route('**/outputs/edit', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Controlled save failure' } }) }));
+  await page.getByRole('button', { name: 'Storyboard CSV', exact: true }).click();
+  await page.getByRole('button', { name: 'Save and export', exact: true }).click();
+  await expect(page.getByText('Production changes could not be saved. Your draft is retained. Nothing was exported.')).toBeVisible();
+  expect(downloadCount).toBe(0);
+  await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('通勤杯 — saved export checkpoint');
+  await page.unroute('**/outputs/edit');
+  await page.getByRole('button', { name: 'Storyboard CSV', exact: true }).click();
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save and export', exact: true }).click();
+  const artifact = await downloaded;
+  expect(artifact.suggestedFilename()).toContain('storyboard-r2');
+  expect(await readFile((await artifact.path())!, 'utf8')).toContain('中文 close-up: hand places cup in a commuter bag.');
+  const persisted: TaskState = await (await request.get(`/api/tasks/${state.task.task_id}`)).json();
+  expect(persisted.production_briefs.at(-1)?.title).toBe('通勤杯 — saved export checkpoint');
+  expect(persisted.storyboards.at(-1)?.revision).toBe(2);
+});
+
+test('saved PDF preview, long bilingual print layout, historical/deleted-source export', async ({ page, request, browser }, testInfo) => {
+  const state = await prepared(request, 'Bilingual production print acceptance');
+  await openProduction(page, state);
+  const longText = '近景，手将杯子放入通勤包侧袋。保留真实产品细节，不夸大产品性能。 Close-up: place the cup in the side pocket. '.repeat(22);
+  await page.getByLabel('Production title', { exact: true }).fill('通勤的一天 / Production plan');
+  await page.getByLabel('Shot 1 visuals', { exact: true }).fill(longText);
+  await page.getByRole('button', { name: 'Production PDF', exact: true }).click();
+  await page.getByRole('button', { name: 'Save and export', exact: true }).click();
+  const preview = page.frameLocator('iframe[title="Saved production document"]');
+  await expect(preview.getByRole('heading', { name: '通勤的一天 / Production plan', exact: true })).toBeVisible();
+  await expect(preview.getByText(longText, { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Print / Save as PDF', exact: true })).toBeEnabled();
+  const html = await page.locator('iframe[title="Saved production document"]').getAttribute('srcdoc');
+  const printPage = await browser.newPage({ viewport: { width: 794, height: 1123 } });
+  await printPage.setContent(html!);
+  await printPage.emulateMedia({ media: 'print' });
+  expect(await printPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  const pdfPath = testInfo.outputPath('production-bilingual-long.pdf');
+  const pdf = await printPage.pdf({ path: pdfPath, format: 'A4', printBackground: true, preferCSSPageSize: true });
+  expect(pdf.byteLength).toBeGreaterThan(2000);
+  expect(pdf.toString('latin1', 0, 5)).toBe('%PDF-');
+  await testInfo.attach('Bilingual production PDF', { path: pdfPath, contentType: 'application/pdf' });
+  await printPage.close();
+  await page.getByRole('button', { name: 'Close preview', exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await mkdir(join(process.cwd(), '../.local-data/workspace-ui-evidence'), { recursive: true });
+  await page.screenshot({ path: join(process.cwd(), '../.local-data/workspace-ui-evidence/production-390.png'), fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: join(process.cwd(), '../.local-data/workspace-ui-evidence/production-1440.png'), fullPage: true });
+  const current: TaskState = await (await request.get(`/api/tasks/${state.task.task_id}`)).json();
+  const deleted = await request.post(`/api/tasks/${state.task.task_id}/videos/${state.task.current_video_id}/delete`, { data: { expected_version: current.task.version } });
+  expect(deleted.ok(), await deleted.text()).toBeTruthy();
+  await page.reload();
+  await expect(page.getByText(/Reference media deleted; playback unavailable/).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Export historical CSV', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Export a historical version?' })).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export historical version', exact: true }).click();
+  const artifact = await download;
+  expect(artifact.suggestedFilename()).toContain('historical');
+  const csv = await readFile((await artifact.path())!, 'utf8');
+  expect(csv).toContain('HISTORICAL VERSION'); expect(csv).toContain('Reference media deleted');
+});

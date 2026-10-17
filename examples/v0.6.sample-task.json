@@ -1,0 +1,1547 @@
+{
+  "task": {
+    "schema_version": "0.6.0",
+    "created_at": "2026-10-15T08:29:56.446339Z",
+    "updated_at": "2026-10-15T08:29:57.628913Z",
+    "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+    "title": "Fictional LumaCup sample — scripted review and approval walkthrough",
+    "mode": "sample",
+    "generation_language": null,
+    "progress": "production",
+    "version": 22,
+    "current_brief": {
+      "id": "brief_22016075ba8c4787858b5e871f941703",
+      "revision": 1
+    },
+    "current_video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+    "current_analysis": {
+      "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+      "revision": 2
+    },
+    "chosen_direction": {
+      "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+      "revision": 2
+    },
+    "selected_direction": {
+      "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+      "revision": 2
+    },
+    "current_production_brief": {
+      "id": "production_5f2a04bacb314b0eaf01a8710bbdb5b7",
+      "revision": 2
+    },
+    "current_storyboard": {
+      "id": "storyboard_3b19c50bdbb14bfe97d32168c95b3a2d",
+      "revision": 2
+    }
+  },
+  "briefs": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.580034Z",
+      "updated_at": "2026-10-15T08:29:57.580035Z",
+      "brief_id": "brief_22016075ba8c4787858b5e871f941703",
+      "revision": 1,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "brand_company": "Luma Studio (fictional)",
+      "product": "LumaCup (fictional)",
+      "selling_points": [
+        "Removable lid",
+        "Three illustrated colors"
+      ],
+      "claim_details": [
+        {
+          "claim_id": "claim_4207718bd1f095a6633d",
+          "statement": "Removable lid",
+          "supporting_notes": null,
+          "source_urls": [],
+          "qualification": null,
+          "confirmation_origin": "legacy_unrecorded"
+        },
+        {
+          "claim_id": "claim_b5f53bc396cdec7984e4",
+          "statement": "Three illustrated colors",
+          "supporting_notes": null,
+          "source_urls": [],
+          "qualification": null,
+          "confirmation_origin": "legacy_unrecorded"
+        }
+      ],
+      "approved_messages": [
+        "Removable lid",
+        "Explore three colors"
+      ],
+      "target_audience": "People comparing colorful everyday drinkware",
+      "platform": "Short-form social video",
+      "communication_goal": "Introduce the fictional product and invite color exploration",
+      "target_duration_seconds": 15.0,
+      "available_footage": "Original simple cup illustrations; no live-action footage",
+      "presenters": "One presenter available if needed",
+      "locations": "Tabletop studio",
+      "tone": "Clear and playful",
+      "production_limits": "Small team; simple graphics; no generated storyboard images",
+      "prohibited_claims": [
+        "Leak-proof",
+        "Keeps drinks hot",
+        "Verified performance or conversion claims"
+      ]
+    }
+  ],
+  "videos": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.579314Z",
+      "updated_at": "2026-10-15T08:29:57.579319Z",
+      "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "deleted_at": null,
+      "purpose": "reference",
+      "input_method": "sample",
+      "storage_id": "794671f38c334dd7b415b5058747868d.mp4",
+      "content_sha256": "b28c5332644c059c1ff6f229135c6528bf8a6abacdfb81abb75580e9ea55e869",
+      "sample_key": "lumacup_shapes_v1",
+      "original_file_name": "lumacup_shapes_v1.mp4",
+      "source_url": null,
+      "duration_seconds": 10.0,
+      "frame_timing": {
+        "fps_numerator": 20,
+        "fps_denominator": 1,
+        "frame_count": 200,
+        "media_start_seconds": 0.0,
+        "frame_boundaries_seconds": [
+          0.0,
+          0.05,
+          0.1,
+          0.15,
+          0.2,
+          0.25,
+          0.3,
+          0.35,
+          0.4,
+          0.45,
+          0.5,
+          0.55,
+          0.6,
+          0.65,
+          0.7,
+          0.75,
+          0.8,
+          0.85,
+          0.9,
+          0.95,
+          1.0,
+          1.05,
+          1.1,
+          1.15,
+          1.2,
+          1.25,
+          1.3,
+          1.35,
+          1.4,
+          1.45,
+          1.5,
+          1.55,
+          1.6,
+          1.65,
+          1.7,
+          1.75,
+          1.8,
+          1.85,
+          1.9,
+          1.95,
+          2.0,
+          2.05,
+          2.1,
+          2.15,
+          2.2,
+          2.25,
+          2.3,
+          2.35,
+          2.4,
+          2.45,
+          2.5,
+          2.55,
+          2.6,
+          2.65,
+          2.7,
+          2.75,
+          2.8,
+          2.85,
+          2.9,
+          2.95,
+          3.0,
+          3.05,
+          3.1,
+          3.15,
+          3.2,
+          3.25,
+          3.3,
+          3.35,
+          3.4,
+          3.45,
+          3.5,
+          3.55,
+          3.6,
+          3.65,
+          3.7,
+          3.75,
+          3.8,
+          3.85,
+          3.9,
+          3.95,
+          4.0,
+          4.05,
+          4.1,
+          4.15,
+          4.2,
+          4.25,
+          4.3,
+          4.35,
+          4.4,
+          4.45,
+          4.5,
+          4.55,
+          4.6,
+          4.65,
+          4.7,
+          4.75,
+          4.8,
+          4.85,
+          4.9,
+          4.95,
+          5.0,
+          5.05,
+          5.1,
+          5.15,
+          5.2,
+          5.25,
+          5.3,
+          5.35,
+          5.4,
+          5.45,
+          5.5,
+          5.55,
+          5.6,
+          5.65,
+          5.7,
+          5.75,
+          5.8,
+          5.85,
+          5.9,
+          5.95,
+          6.0,
+          6.05,
+          6.1,
+          6.15,
+          6.2,
+          6.25,
+          6.3,
+          6.35,
+          6.4,
+          6.45,
+          6.5,
+          6.55,
+          6.6,
+          6.65,
+          6.7,
+          6.75,
+          6.8,
+          6.85,
+          6.9,
+          6.95,
+          7.0,
+          7.05,
+          7.1,
+          7.15,
+          7.2,
+          7.25,
+          7.3,
+          7.35,
+          7.4,
+          7.45,
+          7.5,
+          7.55,
+          7.6,
+          7.65,
+          7.7,
+          7.75,
+          7.8,
+          7.85,
+          7.9,
+          7.95,
+          8.0,
+          8.05,
+          8.1,
+          8.15,
+          8.2,
+          8.25,
+          8.3,
+          8.35,
+          8.4,
+          8.45,
+          8.5,
+          8.55,
+          8.6,
+          8.65,
+          8.7,
+          8.75,
+          8.8,
+          8.85,
+          8.9,
+          8.95,
+          9.0,
+          9.05,
+          9.1,
+          9.15,
+          9.2,
+          9.25,
+          9.3,
+          9.35,
+          9.4,
+          9.45,
+          9.5,
+          9.55,
+          9.6,
+          9.65,
+          9.7,
+          9.75,
+          9.8,
+          9.85,
+          9.9,
+          9.95,
+          10.0
+        ],
+        "rate_mode": "constant",
+        "source": "probed"
+      },
+      "playback": null,
+      "width": 640,
+      "height": 360,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "has_audio": true,
+      "intake_status": "ready",
+      "origin": {
+        "kind": "sample",
+        "description": "Fictional generated LumaCup shapes/cards/tones; lumacup_shapes_v1; no human speech or real product evidence."
+      },
+      "public_metrics": null,
+      "error": null
+    }
+  ],
+  "analyses": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.586592Z",
+      "updated_at": "2026-10-15T08:29:57.586594Z",
+      "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+      "revision": 1,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+      "duration_seconds": 10.0,
+      "frame_count": 200,
+      "status": "succeeded",
+      "events": [
+        {
+          "start_frame": 0,
+          "end_frame": 60,
+          "legacy_seconds": null,
+          "event_id": "event_intro_shape",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "A blue cup-shaped rectangle with an orange lid is centered on a dark background.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 0,
+          "end_frame": 60,
+          "legacy_seconds": null,
+          "event_id": "event_intro_text",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "LUMACUP\nFICTIONAL SAMPLE",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 140,
+          "legacy_seconds": null,
+          "event_id": "event_lid_shape",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "An orange rectangular lid moves upward during seconds 3–4, then stays above the blue cup shape.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 140,
+          "legacy_seconds": null,
+          "event_id": "event_lid_text",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "REMOVABLE LID",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_cta_shape",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "Three blue, pink, and green cup-shaped rectangles appear with orange lids.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_cta_text",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "EXPLORE THE COLORS",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 0,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_footer",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "SYNTHETIC DEMO - NO REAL PRODUCT CLAIMS",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 0,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_melody",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "audio",
+          "kind": "music",
+          "text": null,
+          "description": "A quiet repeating synthesized melody changes note once per second.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 65,
+          "legacy_seconds": null,
+          "event_id": "event_chime_1",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "audio",
+          "kind": "sfx",
+          "text": null,
+          "description": "A short high sine-tone chime overlaps the melody as the lid starts moving.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 145,
+          "legacy_seconds": null,
+          "event_id": "event_chime_2",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "audio",
+          "kind": "sfx",
+          "text": null,
+          "description": "A short high sine-tone chime overlaps the melody as the three colors appear.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        }
+      ],
+      "segments": [
+        {
+          "start_frame": 0,
+          "end_frame": 60,
+          "legacy_seconds": null,
+          "segment_id": "segment_hook",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "roles": [
+            "hook"
+          ],
+          "evidence_ids": [
+            "event_intro_shape",
+            "event_intro_text",
+            "event_footer",
+            "event_melody"
+          ],
+          "interpretation": "An introductory product card functions as a possible Hook; effectiveness has not been measured."
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 140,
+          "legacy_seconds": null,
+          "segment_id": "segment_demo",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "roles": [
+            "product_demo"
+          ],
+          "evidence_ids": [
+            "event_lid_shape",
+            "event_lid_text",
+            "event_footer",
+            "event_melody",
+            "event_chime_1"
+          ],
+          "interpretation": "The graphic illustrates a removable lid; this is no evidence of a real product's performance."
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "segment_id": "segment_cta",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "roles": [
+            "cta"
+          ],
+          "evidence_ids": [
+            "event_cta_shape",
+            "event_cta_text",
+            "event_footer",
+            "event_melody",
+            "event_chime_2"
+          ],
+          "interpretation": "The final card invites color exploration; no click or conversion data exists."
+        }
+      ],
+      "coverage": {
+        "visual_action": "observations",
+        "on_screen_text": "observations",
+        "speech": "none_found",
+        "music": "observations",
+        "sfx": "observations"
+      },
+      "origin": {
+        "kind": "sample",
+        "description": "Deterministic fictional matching-media fixture, job job_fa208635128a422fa41bd087e475bf21; no model run."
+      },
+      "original_revision": 1,
+      "review": {
+        "user_confirmed": false,
+        "confirmed_at": null
+      },
+      "corrections": [],
+      "error": null,
+      "empty_result_reason": null
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.590181Z",
+      "updated_at": "2026-10-15T08:29:57.593170Z",
+      "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+      "revision": 2,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+      "duration_seconds": 10.0,
+      "frame_count": 200,
+      "status": "succeeded",
+      "events": [
+        {
+          "start_frame": 0,
+          "end_frame": 60,
+          "legacy_seconds": null,
+          "event_id": "event_intro_shape",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "A flat blue illustrated cup is shown against a dark background; this is a synthetic drawing.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 0,
+          "end_frame": 60,
+          "legacy_seconds": null,
+          "event_id": "event_intro_text",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "LUMACUP\nFICTIONAL SAMPLE",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 140,
+          "legacy_seconds": null,
+          "event_id": "event_lid_shape",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "An orange rectangular lid moves upward during seconds 3–4, then stays above the blue cup shape.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 140,
+          "legacy_seconds": null,
+          "event_id": "event_lid_text",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "REMOVABLE LID",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_cta_shape",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "Three blue, pink, and green cup-shaped rectangles appear with orange lids.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_cta_text",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "EXPLORE THE COLORS",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 0,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_footer",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "SYNTHETIC DEMO - NO REAL PRODUCT CLAIMS",
+          "description": null,
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 0,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "event_id": "event_melody",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "audio",
+          "kind": "music",
+          "text": null,
+          "description": "A quiet repeating synthesized melody changes note once per second.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 65,
+          "legacy_seconds": null,
+          "event_id": "event_chime_1",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "audio",
+          "kind": "sfx",
+          "text": null,
+          "description": "A short high sine-tone chime overlaps the melody as the lid starts moving.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 145,
+          "legacy_seconds": null,
+          "event_id": "event_chime_2",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "lane": "audio",
+          "kind": "sfx",
+          "text": null,
+          "description": "A short high sine-tone chime overlaps the melody as the three colors appear.",
+          "source": "Programmatic synthetic sample manifest",
+          "method": "Prepared matching fixture; no recognition provider was called",
+          "uncertainty": null,
+          "visual_details": null
+        }
+      ],
+      "segments": [
+        {
+          "start_frame": 0,
+          "end_frame": 60,
+          "legacy_seconds": null,
+          "segment_id": "segment_hook",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "roles": [
+            "other"
+          ],
+          "evidence_ids": [
+            "event_intro_shape",
+            "event_intro_text",
+            "event_footer",
+            "event_melody"
+          ],
+          "interpretation": null
+        },
+        {
+          "start_frame": 60,
+          "end_frame": 140,
+          "legacy_seconds": null,
+          "segment_id": "segment_demo",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "roles": [
+            "product_demo"
+          ],
+          "evidence_ids": [
+            "event_lid_shape",
+            "event_lid_text",
+            "event_footer",
+            "event_melody",
+            "event_chime_1"
+          ],
+          "interpretation": null
+        },
+        {
+          "start_frame": 140,
+          "end_frame": 200,
+          "legacy_seconds": null,
+          "segment_id": "segment_cta",
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "roles": [
+            "cta"
+          ],
+          "evidence_ids": [
+            "event_cta_shape",
+            "event_cta_text",
+            "event_footer",
+            "event_melody",
+            "event_chime_2"
+          ],
+          "interpretation": null
+        }
+      ],
+      "coverage": {
+        "visual_action": "observations",
+        "on_screen_text": "observations",
+        "speech": "none_found",
+        "music": "observations",
+        "sfx": "observations"
+      },
+      "origin": {
+        "kind": "sample",
+        "description": "Deterministic fictional matching-media fixture, job job_fa208635128a422fa41bd087e475bf21; no model run."
+      },
+      "original_revision": 1,
+      "review": {
+        "user_confirmed": true,
+        "confirmed_at": "2026-10-15T08:29:57.593159Z"
+      },
+      "corrections": [
+        {
+          "target_type": "event",
+          "target_id": "event_intro_shape",
+          "field": "description",
+          "before": "A blue cup-shaped rectangle with an orange lid is centered on a dark background.",
+          "after": "A flat blue illustrated cup is shown against a dark background; this is a synthetic drawing."
+        },
+        {
+          "target_type": "segment",
+          "target_id": "segment_hook",
+          "field": "roles",
+          "before": [
+            "hook"
+          ],
+          "after": [
+            "other"
+          ]
+        }
+      ],
+      "error": null,
+      "empty_result_reason": null
+    }
+  ],
+  "directions": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.600816Z",
+      "updated_at": "2026-10-15T08:29:57.600818Z",
+      "direction_id": "direction_dbd6deed366c4ef689099fb743081ca8",
+      "revision": 1,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "feedback_refs": [],
+      "core_message": "Removable lid / Explore three colors",
+      "hook": "A presenter introduces LumaCup (fictional) with the message: Removable lid / Explore three colors.",
+      "narrative": "Presenter-led introduction, a close product view, then an invitation supporting the goal: Introduce the fictional product and invite color exploration.",
+      "cta": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+      "production_requirements": [
+        "Presenter-led: one on-camera presenter and a simple product setup.",
+        "Plan 15 seconds for Short-form social video."
+      ],
+      "evidence": [
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_intro_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_lid_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_cta_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        }
+      ],
+      "rationale": "A guided introduction is a sample hypothesis using the reviewed opening-to-demonstration-to-CTA sequence.",
+      "auxiliary_status": "current",
+      "hypotheses": [
+        "A clear product sequence may help People comparing colorful everyday drinkware understand the approved message; test with reviewers before claiming effectiveness."
+      ],
+      "production_notes": [],
+      "origin": {
+        "kind": "sample",
+        "description": "Deterministic sample creative templates; not model output or validated strategy."
+      },
+      "approval_status": "draft",
+      "approved_at": null,
+      "currentness": "outdated"
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.600874Z",
+      "updated_at": "2026-10-15T08:29:57.600874Z",
+      "direction_id": "direction_228b8f740537449798d6778a7c955a0c",
+      "revision": 1,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "feedback_refs": [],
+      "core_message": "Removable lid / Explore three colors",
+      "hook": "Open with a product-only graphic reveal of LumaCup (fictional) and an on-screen message: Removable lid / Explore three colors.",
+      "narrative": "Use product-only details and short text cards to communicate Removable lid / Explore three colors, ending with Introduce the fictional product and invite color exploration.",
+      "cta": "Discover the details of LumaCup (fictional).",
+      "production_requirements": [
+        "Presenter-free: product-only visuals and on-screen text; no spoken dialogue.",
+        "Plan 15 seconds for Short-form social video."
+      ],
+      "evidence": [
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_intro_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_lid_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_cta_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        }
+      ],
+      "rationale": "A text-led graphic sequence offers a distinct production approach; any comprehension benefit remains a hypothesis.",
+      "auxiliary_status": "current",
+      "hypotheses": [
+        "A clear product sequence may help People comparing colorful everyday drinkware understand the approved message; test with reviewers before claiming effectiveness."
+      ],
+      "production_notes": [],
+      "origin": {
+        "kind": "sample",
+        "description": "Deterministic sample creative templates; not model output or validated strategy."
+      },
+      "approval_status": "draft",
+      "approved_at": null,
+      "currentness": "current"
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.600816Z",
+      "updated_at": "2026-10-15T08:29:57.614628Z",
+      "direction_id": "direction_dbd6deed366c4ef689099fb743081ca8",
+      "revision": 2,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "feedback_refs": [
+        {
+          "id": "feedback_88aec449fb334bd5bf8f547827949277",
+          "revision": 1
+        }
+      ],
+      "core_message": "Removable lid / Explore three colors",
+      "hook": "Open with a product-only close-up of LumaCup (fictional); show 'Removable lid / Explore three colors' as on-screen text.",
+      "narrative": "Presenter-free sequence: product close-ups, graphics carrying Removable lid / Explore three colors, then the CTA. No on-camera presenter or spoken dialogue.",
+      "cta": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+      "production_requirements": [
+        "Presenter-free: no on-camera presenter or spoken dialogue; use product-only visuals and on-screen text.",
+        "Plan 15 seconds for Short-form social video."
+      ],
+      "evidence": [
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_intro_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_lid_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_cta_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        }
+      ],
+      "rationale": "A guided introduction is a sample hypothesis using the reviewed opening-to-demonstration-to-CTA sequence.",
+      "auxiliary_status": "current",
+      "hypotheses": [
+        "A clear product sequence may help People comparing colorful everyday drinkware understand the approved message; test with reviewers before claiming effectiveness."
+      ],
+      "production_notes": [
+        "Applied literal sample instruction: Make it presenter-free"
+      ],
+      "origin": {
+        "kind": "sample",
+        "description": "Deterministic presenter-free sample refinement; exact saved feedback received, no unrestricted language interpretation."
+      },
+      "approval_status": "approved",
+      "approved_at": "2026-10-15T08:29:57.614624Z",
+      "currentness": "current"
+    }
+  ],
+  "feedback": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.604975Z",
+      "updated_at": "2026-10-15T08:29:57.604977Z",
+      "feedback_id": "feedback_88aec449fb334bd5bf8f547827949277",
+      "revision": 1,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "instruction": "Make it presenter-free",
+      "target_direction": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 1
+      },
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "status": "applied",
+      "resulting_direction": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 2
+      },
+      "explanation": "Deterministic sample refinement applied: presenter-free production. Review and explicitly approve this new draft."
+    }
+  ],
+  "production_briefs": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.623076Z",
+      "updated_at": "2026-10-15T08:29:57.623078Z",
+      "bundle_id": null,
+      "output_id": "production_5f2a04bacb314b0eaf01a8710bbdb5b7",
+      "revision": 1,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "direction_ref": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 2
+      },
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "feedback_refs": [
+        {
+          "id": "feedback_88aec449fb334bd5bf8f547827949277",
+          "revision": 1
+        }
+      ],
+      "origin": {
+        "kind": "sample",
+        "description": "Template production draft from exact approved direction and saved task inputs; not validated effectiveness."
+      },
+      "currentness": "outdated",
+      "edited": false,
+      "title": "LumaCup (fictional): production creative brief",
+      "core_message": "Removable lid / Explore three colors",
+      "hook": "Open with a product-only close-up of LumaCup (fictional); show 'Removable lid / Explore three colors' as on-screen text.",
+      "narrative": "Presenter-free sequence: product close-ups, graphics carrying Removable lid / Explore three colors, then the CTA. No on-camera presenter or spoken dialogue.",
+      "cta": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+      "production_notes": [
+        "Sample production plan for Luma Studio (fictional) / LumaCup (fictional).",
+        "Audience: People comparing colorful everyday drinkware. Platform: Short-form social video. Target: 15 seconds.",
+        "Goal: Introduce the fictional product and invite color exploration.",
+        "Approved messages: Removable lid / Explore three colors.",
+        "Presenter-free: no on-camera presenter or spoken dialogue; use product-only visuals and on-screen text.",
+        "Plan 15 seconds for Short-form social video.",
+        "Applied literal sample instruction: Make it presenter-free",
+        "Input constraint — Available footage: Original simple cup illustrations; no live-action footage",
+        "Input constraint — Available presenters: One presenter available if needed",
+        "Input constraint — Locations: Tabletop studio",
+        "Input constraint — Tone: Clear and playful",
+        "Input constraint — Production limits: Small team; simple graphics; no generated storyboard images",
+        "Do not claim: Leak-proof; Keeps drinks hot; Verified performance or conversion claims"
+      ],
+      "evidence": [
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_intro_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_lid_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_cta_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        }
+      ]
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.628775Z",
+      "updated_at": "2026-10-15T08:29:57.628775Z",
+      "bundle_id": null,
+      "output_id": "production_5f2a04bacb314b0eaf01a8710bbdb5b7",
+      "revision": 2,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "direction_ref": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 2
+      },
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "feedback_refs": [
+        {
+          "id": "feedback_88aec449fb334bd5bf8f547827949277",
+          "revision": 1
+        }
+      ],
+      "origin": {
+        "kind": "sample",
+        "description": "Template production draft from exact approved direction and saved task inputs; not validated effectiveness."
+      },
+      "currentness": "current",
+      "edited": true,
+      "title": "Fictional LumaCup production plan — edited sample",
+      "core_message": "Removable lid / Explore three colors",
+      "hook": "Open with a product-only close-up of LumaCup (fictional); show 'Removable lid / Explore three colors' as on-screen text.",
+      "narrative": "Presenter-free sequence: product close-ups, graphics carrying Removable lid / Explore three colors, then the CTA. No on-camera presenter or spoken dialogue.",
+      "cta": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+      "production_notes": [
+        "Sample production plan for Luma Studio (fictional) / LumaCup (fictional).",
+        "Audience: People comparing colorful everyday drinkware. Platform: Short-form social video. Target: 15 seconds.",
+        "Goal: Introduce the fictional product and invite color exploration.",
+        "Approved messages: Removable lid / Explore three colors.",
+        "Presenter-free: no on-camera presenter or spoken dialogue; use product-only visuals and on-screen text.",
+        "Plan 15 seconds for Short-form social video.",
+        "Applied literal sample instruction: Make it presenter-free",
+        "Input constraint — Available footage: Original simple cup illustrations; no live-action footage",
+        "Input constraint — Available presenters: One presenter available if needed",
+        "Input constraint — Locations: Tabletop studio",
+        "Input constraint — Tone: Clear and playful",
+        "Input constraint — Production limits: Small team; simple graphics; no generated storyboard images",
+        "Do not claim: Leak-proof; Keeps drinks hot; Verified performance or conversion claims"
+      ],
+      "evidence": [
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_intro_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_lid_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        },
+        {
+          "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "analysis_revision": 2,
+          "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+          "event_id": "event_cta_shape",
+          "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+        }
+      ]
+    }
+  ],
+  "storyboards": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.623153Z",
+      "updated_at": "2026-10-15T08:29:57.623154Z",
+      "bundle_id": null,
+      "output_id": "storyboard_3b19c50bdbb14bfe97d32168c95b3a2d",
+      "revision": 1,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "direction_ref": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 2
+      },
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "feedback_refs": [
+        {
+          "id": "feedback_88aec449fb334bd5bf8f547827949277",
+          "revision": 1
+        }
+      ],
+      "origin": {
+        "kind": "sample",
+        "description": "Template production draft from exact approved direction and saved task inputs; not validated effectiveness."
+      },
+      "currentness": "outdated",
+      "edited": false,
+      "target_duration_seconds": 15.0,
+      "rows": [
+        {
+          "row_id": "row_1",
+          "start_seconds": 0.0,
+          "end_seconds": 3.0,
+          "visual": "Open with a product-only close-up of LumaCup (fictional); show 'Removable lid / Explore three colors' as on-screen text.",
+          "dialogue": null,
+          "on_screen_text": "Removable lid / Explore three colors",
+          "sound": "Optional licensed or original instrumental bed; no spoken dialogue.",
+          "cta": null,
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_intro_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        },
+        {
+          "row_id": "row_2",
+          "start_seconds": 3.0,
+          "end_seconds": 7.5,
+          "visual": "Product-only detail view of LumaCup (fictional). Use approved message cards; do not imply unapproved performance.",
+          "dialogue": null,
+          "on_screen_text": "Removable lid / Explore three colors",
+          "sound": "Optional licensed or original instrumental bed; no spoken dialogue.",
+          "cta": null,
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_lid_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        },
+        {
+          "row_id": "row_3",
+          "start_seconds": 7.5,
+          "end_seconds": 12.0,
+          "visual": "Presenter-free sequence: product close-ups, graphics carrying Removable lid / Explore three colors, then the CTA. No on-camera presenter or spoken dialogue.",
+          "dialogue": null,
+          "on_screen_text": "Removable lid / Explore three colors",
+          "sound": "Optional licensed or original instrumental bed; no spoken dialogue.",
+          "cta": null,
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_cta_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        },
+        {
+          "row_id": "row_4",
+          "start_seconds": 12.0,
+          "end_seconds": 15.0,
+          "visual": "Product-only end card for Luma Studio (fictional) and LumaCup (fictional). Explore LumaCup (fictional) from Luma Studio (fictional).",
+          "dialogue": null,
+          "on_screen_text": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+          "sound": "Optional licensed or original instrumental bed; no spoken dialogue.",
+          "cta": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_cta_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.628835Z",
+      "updated_at": "2026-10-15T08:29:57.628835Z",
+      "bundle_id": null,
+      "output_id": "storyboard_3b19c50bdbb14bfe97d32168c95b3a2d",
+      "revision": 2,
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "direction_ref": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 2
+      },
+      "brief_ref": {
+        "id": "brief_22016075ba8c4787858b5e871f941703",
+        "revision": 1
+      },
+      "analysis_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 2
+      },
+      "feedback_refs": [
+        {
+          "id": "feedback_88aec449fb334bd5bf8f547827949277",
+          "revision": 1
+        }
+      ],
+      "origin": {
+        "kind": "sample",
+        "description": "Template production draft from exact approved direction and saved task inputs; not validated effectiveness."
+      },
+      "currentness": "current",
+      "edited": true,
+      "target_duration_seconds": 15.0,
+      "rows": [
+        {
+          "row_id": "row_1",
+          "start_seconds": 0.0,
+          "end_seconds": 3.0,
+          "visual": "Open with a product-only close-up of LumaCup (fictional); show 'Removable lid / Explore three colors' as on-screen text.",
+          "dialogue": null,
+          "on_screen_text": "Removable lid / Explore three colors",
+          "sound": "Soft original instrumental bed; keep any dialogue intelligible.",
+          "cta": null,
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_intro_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        },
+        {
+          "row_id": "row_2",
+          "start_seconds": 3.0,
+          "end_seconds": 7.5,
+          "visual": "Product-only detail view of LumaCup (fictional). Use approved message cards; do not imply unapproved performance.",
+          "dialogue": null,
+          "on_screen_text": "Removable lid / Explore three colors",
+          "sound": "Optional licensed or original instrumental bed; no spoken dialogue.",
+          "cta": null,
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_lid_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        },
+        {
+          "row_id": "row_3",
+          "start_seconds": 7.5,
+          "end_seconds": 12.0,
+          "visual": "Presenter-free sequence: product close-ups, graphics carrying Removable lid / Explore three colors, then the CTA. No on-camera presenter or spoken dialogue.",
+          "dialogue": null,
+          "on_screen_text": "Removable lid / Explore three colors",
+          "sound": "Optional licensed or original instrumental bed; no spoken dialogue.",
+          "cta": null,
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_cta_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        },
+        {
+          "row_id": "row_4",
+          "start_seconds": 12.0,
+          "end_seconds": 15.0,
+          "visual": "Product-only end card for Luma Studio (fictional) and LumaCup (fictional). Explore LumaCup (fictional) from Luma Studio (fictional).",
+          "dialogue": null,
+          "on_screen_text": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+          "sound": "Optional licensed or original instrumental bed; no spoken dialogue.",
+          "cta": "Explore LumaCup (fictional) from Luma Studio (fictional).",
+          "evidence": [
+            {
+              "analysis_id": "analysis_ae879c9a3e414884ba0353d62a500318",
+              "analysis_revision": 2,
+              "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+              "event_id": "event_cta_shape",
+              "reason": "Consider this reviewed visual sequence as a structural reference; effectiveness is unmeasured."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "jobs": [
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.582808Z",
+      "updated_at": "2026-10-15T08:29:57.587205Z",
+      "job_id": "job_fa208635128a422fa41bd087e475bf21",
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "operation": "analyze",
+      "status": "succeeded",
+      "input_refs": {},
+      "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+      "result_ref": {
+        "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+        "revision": 1
+      },
+      "result_type": "analysis",
+      "error": null,
+      "attempt": 1,
+      "partial_coverage": false
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.596337Z",
+      "updated_at": "2026-10-15T08:29:57.601432Z",
+      "job_id": "job_db46a29b2f9649f3863fc4005447c4b7",
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "operation": "directions",
+      "status": "succeeded",
+      "input_refs": {
+        "brief": {
+          "id": "brief_22016075ba8c4787858b5e871f941703",
+          "revision": 1
+        },
+        "analysis": {
+          "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "revision": 2
+        }
+      },
+      "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+      "result_ref": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 1
+      },
+      "result_type": "direction",
+      "error": null,
+      "attempt": 1,
+      "partial_coverage": false
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.605047Z",
+      "updated_at": "2026-10-15T08:29:57.610901Z",
+      "job_id": "job_f7f858a31b1e4970b46babe108a4ead3",
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "operation": "refine",
+      "status": "succeeded",
+      "input_refs": {
+        "brief": {
+          "id": "brief_22016075ba8c4787858b5e871f941703",
+          "revision": 1
+        },
+        "analysis": {
+          "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "revision": 2
+        },
+        "direction": {
+          "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+          "revision": 1
+        },
+        "feedback": {
+          "id": "feedback_88aec449fb334bd5bf8f547827949277",
+          "revision": 1
+        }
+      },
+      "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+      "result_ref": {
+        "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+        "revision": 2
+      },
+      "result_type": "direction",
+      "error": null,
+      "attempt": 1,
+      "partial_coverage": false
+    },
+    {
+      "schema_version": "0.6.0",
+      "created_at": "2026-10-15T08:29:57.617673Z",
+      "updated_at": "2026-10-15T08:29:57.623865Z",
+      "job_id": "job_f60b080c360a4ebc8ab2d726d80828ee",
+      "task_id": "task_668fc20b4d67485db37169f95f0ddb71",
+      "operation": "production",
+      "status": "succeeded",
+      "input_refs": {
+        "brief": {
+          "id": "brief_22016075ba8c4787858b5e871f941703",
+          "revision": 1
+        },
+        "analysis": {
+          "id": "analysis_ae879c9a3e414884ba0353d62a500318",
+          "revision": 2
+        },
+        "direction": {
+          "id": "direction_dbd6deed366c4ef689099fb743081ca8",
+          "revision": 2
+        }
+      },
+      "video_id": "video_0e16ba83b00a4199868ac10af31e5052",
+      "result_ref": {
+        "id": "production_5f2a04bacb314b0eaf01a8710bbdb5b7",
+        "revision": 1
+      },
+      "result_type": "production_brief",
+      "error": null,
+      "attempt": 1,
+      "partial_coverage": false
+    }
+  ]
+}

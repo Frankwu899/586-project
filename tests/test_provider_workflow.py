@@ -40,6 +40,7 @@ def mutate(client, state, route, **fields):
 
 
 def recognize(client, state):
+    state = mutate(client, state, "language", generation_language="English")
     state = mutate(client, state, "brief", brief={
         "brand_company": "DemoCup 品牌", "product": "随行杯", "selling_points": ["方便携带"],
         "claim_details": [{"claim_id": "claim_portable", "statement": "方便携带",

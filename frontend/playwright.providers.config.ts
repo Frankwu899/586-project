@@ -11,6 +11,7 @@ const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? (exist
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/providers.spec.ts',
+  outputDir: 'test-results/providers',
   timeout: 120_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

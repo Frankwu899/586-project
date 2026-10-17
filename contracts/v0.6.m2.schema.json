@@ -1,0 +1,3705 @@
+{
+  "$defs": {
+    "AnalysisResult": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "analysis_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Analysis Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "video_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Video Id",
+          "type": "string"
+        },
+        "duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_count": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Count"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "partial",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/EvidenceEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/ContentSegment"
+          },
+          "title": "Segments",
+          "type": "array"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "original_revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Original Revision",
+          "type": "integer"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewState"
+        },
+        "corrections": {
+          "items": {
+            "$ref": "#/$defs/Correction"
+          },
+          "title": "Corrections",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "empty_result_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Empty Result Reason"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "analysis_id",
+        "revision",
+        "task_id",
+        "video_id",
+        "duration_seconds",
+        "frame_count",
+        "status",
+        "events",
+        "segments",
+        "coverage",
+        "origin",
+        "original_revision",
+        "review",
+        "corrections",
+        "error",
+        "empty_result_reason"
+      ],
+      "title": "AnalysisResult",
+      "type": "object"
+    },
+    "BrandTaskBrief": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "brief_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Brief Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "brand_company": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Brand Company",
+          "type": "string"
+        },
+        "product": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Product",
+          "type": "string"
+        },
+        "selling_points": {
+          "items": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Selling Points",
+          "type": "array"
+        },
+        "claim_details": {
+          "items": {
+            "$ref": "#/$defs/ClaimDetail"
+          },
+          "minItems": 1,
+          "title": "Claim Details",
+          "type": "array"
+        },
+        "approved_messages": {
+          "items": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "title": "Approved Messages",
+          "type": "array"
+        },
+        "target_audience": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Target Audience",
+          "type": "string"
+        },
+        "platform": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Platform",
+          "type": "string"
+        },
+        "communication_goal": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Communication Goal",
+          "type": "string"
+        },
+        "target_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Target Duration Seconds",
+          "type": "number"
+        },
+        "available_footage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Available Footage"
+        },
+        "presenters": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Presenters"
+        },
+        "locations": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locations"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "production_limits": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Production Limits"
+        },
+        "prohibited_claims": {
+          "items": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "title": "Prohibited Claims",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "brief_id",
+        "revision",
+        "task_id",
+        "brand_company",
+        "product",
+        "selling_points",
+        "claim_details",
+        "approved_messages",
+        "target_audience",
+        "platform",
+        "communication_goal",
+        "target_duration_seconds",
+        "available_footage",
+        "presenters",
+        "locations",
+        "tone",
+        "production_limits",
+        "prohibited_claims"
+      ],
+      "title": "BrandTaskBrief",
+      "type": "object"
+    },
+    "ClaimDetail": {
+      "additionalProperties": false,
+      "description": "Permission to use exact supplied wording; never a factual verification.",
+      "properties": {
+        "claim_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "statement": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Statement",
+          "type": "string"
+        },
+        "supporting_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supporting Notes"
+        },
+        "source_urls": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Source Urls",
+          "type": "array"
+        },
+        "qualification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Qualification"
+        },
+        "confirmation_origin": {
+          "enum": [
+            "user_confirmed",
+            "legacy_unrecorded"
+          ],
+          "title": "Confirmation Origin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "statement",
+        "supporting_notes",
+        "source_urls",
+        "qualification",
+        "confirmation_origin"
+      ],
+      "title": "ClaimDetail",
+      "type": "object"
+    },
+    "ContentSegment": {
+      "additionalProperties": false,
+      "properties": {
+        "start_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Frame"
+        },
+        "end_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Frame"
+        },
+        "legacy_seconds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegacySeconds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "segment_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "video_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Video Id",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "hook",
+              "product_demo",
+              "proof",
+              "cta",
+              "other"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "interpretation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interpretation"
+        }
+      },
+      "required": [
+        "start_frame",
+        "end_frame",
+        "legacy_seconds",
+        "segment_id",
+        "video_id",
+        "roles",
+        "evidence_ids",
+        "interpretation"
+      ],
+      "title": "ContentSegment",
+      "type": "object"
+    },
+    "Correction": {
+      "additionalProperties": false,
+      "properties": {
+        "target_type": {
+          "enum": [
+            "event",
+            "segment"
+          ],
+          "title": "Target Type",
+          "type": "string"
+        },
+        "target_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Target Id",
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "text",
+            "description",
+            "roles",
+            "visual_details"
+          ],
+          "title": "Field",
+          "type": "string"
+        },
+        "before": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "after": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "target_type",
+        "target_id",
+        "field",
+        "before",
+        "after"
+      ],
+      "title": "Correction",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "visual_action": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Visual Action",
+          "type": "string"
+        },
+        "on_screen_text": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "On Screen Text",
+          "type": "string"
+        },
+        "speech": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Speech",
+          "type": "string"
+        },
+        "music": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Music",
+          "type": "string"
+        },
+        "sfx": {
+          "default": "not_analyzed",
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Sfx",
+          "type": "string"
+        }
+      },
+      "required": [
+        "visual_action",
+        "on_screen_text",
+        "speech",
+        "music",
+        "sfx"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "CreativeDirection": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "direction_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Direction Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "brief_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "analysis_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "feedback_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "title": "Feedback Refs",
+          "type": "array"
+        },
+        "core_message": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Core Message",
+          "type": "string"
+        },
+        "hook": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Hook",
+          "type": "string"
+        },
+        "narrative": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Narrative",
+          "type": "string"
+        },
+        "cta": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Cta",
+          "type": "string"
+        },
+        "production_requirements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Production Requirements",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceReference"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "rationale": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Rationale",
+          "type": "string"
+        },
+        "auxiliary_status": {
+          "default": "current",
+          "enum": [
+            "current",
+            "needs_review"
+          ],
+          "title": "Auxiliary Status",
+          "type": "string"
+        },
+        "hypotheses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Hypotheses",
+          "type": "array"
+        },
+        "production_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Production Notes",
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "approval_status": {
+          "default": "draft",
+          "enum": [
+            "draft",
+            "approved"
+          ],
+          "title": "Approval Status",
+          "type": "string"
+        },
+        "approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        },
+        "currentness": {
+          "default": "current",
+          "enum": [
+            "current",
+            "outdated"
+          ],
+          "title": "Currentness",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "direction_id",
+        "revision",
+        "task_id",
+        "brief_ref",
+        "analysis_ref",
+        "feedback_refs",
+        "core_message",
+        "hook",
+        "narrative",
+        "cta",
+        "production_requirements",
+        "evidence",
+        "rationale",
+        "auxiliary_status",
+        "hypotheses",
+        "production_notes",
+        "origin",
+        "approval_status",
+        "approved_at",
+        "currentness"
+      ],
+      "title": "CreativeDirection",
+      "type": "object"
+    },
+    "CreativeFeedback": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "feedback_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Feedback Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "instruction": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Instruction",
+          "type": "string"
+        },
+        "target_direction": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "brief_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "analysis_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "applied",
+            "not_interpreted"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "resulting_direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explanation"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "feedback_id",
+        "revision",
+        "task_id",
+        "instruction",
+        "target_direction",
+        "brief_ref",
+        "analysis_ref",
+        "status",
+        "resulting_direction",
+        "explanation"
+      ],
+      "title": "CreativeFeedback",
+      "type": "object"
+    },
+    "CreativeTask": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Title",
+          "type": "string"
+        },
+        "mode": {
+          "default": "real",
+          "enum": [
+            "real",
+            "sample"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "generation_language": {
+          "anyOf": [
+            {
+              "enum": [
+                "English",
+                "Chinese"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generation Language"
+        },
+        "progress": {
+          "default": "setup",
+          "enum": [
+            "setup",
+            "analysis",
+            "review",
+            "directions",
+            "production"
+          ],
+          "title": "Progress",
+          "type": "string"
+        },
+        "version": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "current_brief": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "current_video_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current Video Id"
+        },
+        "current_analysis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "chosen_direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "selected_direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "current_production_brief": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "current_storyboard": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "task_id",
+        "title",
+        "mode",
+        "generation_language",
+        "progress",
+        "version",
+        "current_brief",
+        "current_video_id",
+        "current_analysis",
+        "chosen_direction",
+        "selected_direction",
+        "current_production_brief",
+        "current_storyboard"
+      ],
+      "title": "CreativeTask",
+      "type": "object"
+    },
+    "ErrorInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "ErrorInfo",
+      "type": "object"
+    },
+    "EvidenceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "start_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Frame"
+        },
+        "end_frame": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Frame"
+        },
+        "legacy_seconds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegacySeconds"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "event_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "video_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Video Id",
+          "type": "string"
+        },
+        "lane": {
+          "enum": [
+            "visual",
+            "audio"
+          ],
+          "title": "Lane",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "visual_action",
+            "on_screen_text",
+            "speech",
+            "music",
+            "sfx"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        },
+        "method": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Method",
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "visual_details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VisualDetails"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "start_frame",
+        "end_frame",
+        "legacy_seconds",
+        "event_id",
+        "video_id",
+        "lane",
+        "kind",
+        "text",
+        "description",
+        "source",
+        "method",
+        "uncertainty",
+        "visual_details"
+      ],
+      "title": "EvidenceEvent",
+      "type": "object"
+    },
+    "EvidenceReference": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Analysis Id",
+          "type": "string"
+        },
+        "analysis_revision": {
+          "minimum": 1,
+          "title": "Analysis Revision",
+          "type": "integer"
+        },
+        "video_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Video Id",
+          "type": "string"
+        },
+        "event_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "analysis_id",
+        "analysis_revision",
+        "video_id",
+        "event_id",
+        "reason"
+      ],
+      "title": "EvidenceReference",
+      "type": "object"
+    },
+    "FrameTiming": {
+      "additionalProperties": false,
+      "description": "Decoded presentation-order frames; the final boundary is video duration.\n\nFrame IDs are zero-based and intervals are half-open. The nominal rational\nrate is for readable timecode; actual boundaries map frames to playback,\nincluding variable-rate footage without assuming a constant interval.\nBoundaries remain relative to frame zero; add media_start_seconds to reach\nthe original source presentation timestamps used by browser playback.",
+      "properties": {
+        "fps_numerator": {
+          "exclusiveMinimum": 0,
+          "title": "Fps Numerator",
+          "type": "integer"
+        },
+        "fps_denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Fps Denominator",
+          "type": "integer"
+        },
+        "frame_count": {
+          "exclusiveMinimum": 0,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "media_start_seconds": {
+          "default": 0.0,
+          "description": "First source frame presentation timestamp in browser playback seconds. Add this signed origin to zero-relative frame boundaries when seeking.",
+          "title": "Media Start Seconds",
+          "type": "number"
+        },
+        "frame_boundaries_seconds": {
+          "items": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "minItems": 2,
+          "title": "Frame Boundaries Seconds",
+          "type": "array"
+        },
+        "rate_mode": {
+          "enum": [
+            "constant",
+            "variable"
+          ],
+          "title": "Rate Mode",
+          "type": "string"
+        },
+        "source": {
+          "const": "probed",
+          "default": "probed",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fps_numerator",
+        "fps_denominator",
+        "frame_count",
+        "media_start_seconds",
+        "frame_boundaries_seconds",
+        "rate_mode",
+        "source"
+      ],
+      "title": "FrameTiming",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LegacySeconds": {
+      "additionalProperties": false,
+      "description": "Preserved legacy interval when source media is unavailable for probing.",
+      "properties": {
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start_seconds",
+        "end_seconds"
+      ],
+      "title": "LegacySeconds",
+      "type": "object"
+    },
+    "M2AdoptRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "source_draft_version": {
+          "minimum": 1,
+          "title": "Source Draft Version",
+          "type": "integer"
+        },
+        "request_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/M2Candidate"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Candidates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_draft_version",
+        "request_id",
+        "candidates"
+      ],
+      "title": "M2AdoptRequest",
+      "type": "object"
+    },
+    "M2ApplyRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_draft_version": {
+          "minimum": 1,
+          "title": "Expected Draft Version",
+          "type": "integer"
+        },
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "based_on_brief": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "expected_draft_version",
+        "expected_version",
+        "based_on_brief"
+      ],
+      "title": "M2ApplyRequest",
+      "type": "object"
+    },
+    "M2ApplyResult": {
+      "additionalProperties": false,
+      "properties": {
+        "changed": {
+          "title": "Changed",
+          "type": "boolean"
+        },
+        "draft": {
+          "$ref": "#/$defs/M2Draft"
+        },
+        "task": {
+          "$ref": "#/$defs/TaskState"
+        }
+      },
+      "required": [
+        "changed",
+        "draft",
+        "task"
+      ],
+      "title": "M2ApplyResult",
+      "type": "object"
+    },
+    "M2AssistanceRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "draft_version": {
+          "minimum": 1,
+          "title": "Draft Version",
+          "type": "integer"
+        },
+        "request_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "mode": {
+          "default": "extract",
+          "enum": [
+            "extract",
+            "suggest_task_field"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "requested_field": {
+          "anyOf": [
+            {
+              "enum": [
+                "target_audience",
+                "communication_goal"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Field"
+        }
+      },
+      "required": [
+        "draft_version",
+        "request_id",
+        "mode",
+        "requested_field"
+      ],
+      "title": "M2AssistanceRequest",
+      "type": "object"
+    },
+    "M2AssistanceResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "source_draft_version": {
+          "minimum": 1,
+          "title": "Source Draft Version",
+          "type": "integer"
+        },
+        "provider_mode": {
+          "enum": [
+            "real",
+            "fake"
+          ],
+          "title": "Provider Mode",
+          "type": "string"
+        },
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/M2Candidate"
+          },
+          "maxItems": 30,
+          "title": "Candidates",
+          "type": "array"
+        },
+        "unresolved_notes": {
+          "items": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Unresolved Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "request_id",
+        "source_draft_version",
+        "provider_mode",
+        "candidates",
+        "unresolved_notes"
+      ],
+      "title": "M2AssistanceResponse",
+      "type": "object"
+    },
+    "M2Candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "enum": [
+            "brand_company",
+            "product",
+            "target_audience",
+            "platform",
+            "communication_goal",
+            "target_duration_seconds",
+            "available_footage",
+            "presenters",
+            "locations",
+            "tone",
+            "production_limits",
+            "approved_messages",
+            "prohibited_claims",
+            "claim"
+          ],
+          "title": "Target",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "maxLength": 8000,
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "$ref": "#/$defs/M2ProposedClaim"
+            }
+          ],
+          "title": "Value"
+        },
+        "origin": {
+          "enum": [
+            "extracted",
+            "suggested"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "source_excerpt": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Excerpt"
+        },
+        "candidate_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Candidate Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "value",
+        "origin",
+        "source_excerpt",
+        "candidate_id"
+      ],
+      "title": "M2Candidate",
+      "type": "object"
+    },
+    "M2Claim": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "statement": {
+          "default": "",
+          "title": "Statement",
+          "type": "string"
+        },
+        "supporting_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supporting Notes"
+        },
+        "source_urls": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Source Urls",
+          "type": "array"
+        },
+        "qualification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Qualification"
+        },
+        "confirmed_for_use": {
+          "default": false,
+          "title": "Confirmed For Use",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "claim_id",
+        "statement",
+        "supporting_notes",
+        "source_urls",
+        "qualification",
+        "confirmed_for_use"
+      ],
+      "title": "M2Claim",
+      "type": "object"
+    },
+    "M2DiscardRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_draft_version": {
+          "minimum": 1,
+          "title": "Expected Draft Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "expected_draft_version"
+      ],
+      "title": "M2DiscardRequest",
+      "type": "object"
+    },
+    "M2Draft": {
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "draft_version": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Draft Version",
+          "type": "integer"
+        },
+        "based_on_brief": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fields": {
+          "$ref": "#/$defs/M2Fields"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/M2Claim"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "source_notes": {
+          "default": "",
+          "maxLength": 30000,
+          "title": "Source Notes",
+          "type": "string"
+        },
+        "reviewed_input_checkpoint": {
+          "title": "Reviewed Input Checkpoint",
+          "type": "string"
+        },
+        "has_pending_inputs": {
+          "default": false,
+          "title": "Has Pending Inputs",
+          "type": "boolean"
+        },
+        "legacy_review_required": {
+          "default": false,
+          "title": "Legacy Review Required",
+          "type": "boolean"
+        },
+        "missing_fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Fields",
+          "type": "array"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "draft_version",
+        "based_on_brief",
+        "fields",
+        "claims",
+        "source_notes",
+        "reviewed_input_checkpoint",
+        "has_pending_inputs",
+        "legacy_review_required",
+        "missing_fields",
+        "updated_at"
+      ],
+      "title": "M2Draft",
+      "type": "object"
+    },
+    "M2DraftUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_draft_version": {
+          "minimum": 1,
+          "title": "Expected Draft Version",
+          "type": "integer"
+        },
+        "fields": {
+          "$ref": "#/$defs/M2Fields"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/M2Claim"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "source_notes": {
+          "maxLength": 30000,
+          "title": "Source Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expected_draft_version",
+        "fields",
+        "claims",
+        "source_notes"
+      ],
+      "title": "M2DraftUpdate",
+      "type": "object"
+    },
+    "M2Fields": {
+      "additionalProperties": false,
+      "description": "Partial task-local input; null is unknown, explicit 'none' remains text.",
+      "properties": {
+        "brand_company": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brand Company"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product"
+        },
+        "target_audience": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Audience"
+        },
+        "platform": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Platform"
+        },
+        "communication_goal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Communication Goal"
+        },
+        "target_duration_seconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Duration Seconds"
+        },
+        "available_footage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Available Footage"
+        },
+        "presenters": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Presenters"
+        },
+        "locations": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locations"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "production_limits": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Production Limits"
+        },
+        "approved_messages": {
+          "items": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "title": "Approved Messages",
+          "type": "array"
+        },
+        "prohibited_claims": {
+          "items": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "title": "Prohibited Claims",
+          "type": "array"
+        }
+      },
+      "required": [
+        "brand_company",
+        "product",
+        "target_audience",
+        "platform",
+        "communication_goal",
+        "target_duration_seconds",
+        "available_footage",
+        "presenters",
+        "locations",
+        "tone",
+        "production_limits",
+        "approved_messages",
+        "prohibited_claims"
+      ],
+      "title": "M2Fields",
+      "type": "object"
+    },
+    "M2ProposedClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "statement": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Statement",
+          "type": "string"
+        },
+        "supporting_notes": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supporting Notes"
+        },
+        "source_urls": {
+          "items": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Source Urls",
+          "type": "array"
+        },
+        "qualification": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Qualification"
+        }
+      },
+      "required": [
+        "statement",
+        "supporting_notes",
+        "source_urls",
+        "qualification"
+      ],
+      "title": "M2ProposedClaim",
+      "type": "object"
+    },
+    "ObservationGroup_ProductPresentation_": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observations"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "error": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ProductPresentation"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "items",
+        "error"
+      ],
+      "title": "ObservationGroup[ProductPresentation]",
+      "type": "object"
+    },
+    "ObservationGroup_VisualAction_": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observations"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "error": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VisualAction"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "items",
+        "error"
+      ],
+      "title": "ObservationGroup[VisualAction]",
+      "type": "object"
+    },
+    "ObservationGroup_VisualSubject_": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observations"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "error": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_analyzed",
+            "observations",
+            "none_found",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VisualSubject"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "items",
+        "error"
+      ],
+      "title": "ObservationGroup[VisualSubject]",
+      "type": "object"
+    },
+    "Origin": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "sample",
+            "provider",
+            "manual",
+            "legacy"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "description"
+      ],
+      "title": "Origin",
+      "type": "object"
+    },
+    "PlaybackRepresentation": {
+      "additionalProperties": false,
+      "description": "Browser derivative with one measured presentation frame per source frame.",
+      "properties": {
+        "storage_id": {
+          "pattern": "^[a-f0-9]{32}\\.mp4$",
+          "title": "Storage Id",
+          "type": "string"
+        },
+        "video_codec": {
+          "const": "h264",
+          "title": "Video Codec",
+          "type": "string"
+        },
+        "audio_codec": {
+          "anyOf": [
+            {
+              "const": "aac",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Audio Codec"
+        },
+        "duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "frame_timing": {
+          "$ref": "#/$defs/FrameTiming"
+        }
+      },
+      "required": [
+        "storage_id",
+        "video_codec",
+        "audio_codec",
+        "duration_seconds",
+        "frame_timing"
+      ],
+      "title": "PlaybackRepresentation",
+      "type": "object"
+    },
+    "ProcessingJob": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "job_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "analyze",
+            "directions",
+            "refine",
+            "production"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "running",
+            "succeeded",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "input_refs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "title": "Input Refs",
+          "type": "object"
+        },
+        "video_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Id"
+        },
+        "result_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "result_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Type"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "attempt": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "partial_coverage": {
+          "default": false,
+          "title": "Partial Coverage",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "job_id",
+        "task_id",
+        "operation",
+        "status",
+        "input_refs",
+        "video_id",
+        "result_ref",
+        "result_type",
+        "error",
+        "attempt",
+        "partial_coverage"
+      ],
+      "title": "ProcessingJob",
+      "type": "object"
+    },
+    "ProductPresentation": {
+      "additionalProperties": false,
+      "properties": {
+        "product_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Product Subject Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "presentation_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "appearance",
+                "feature_demo",
+                "use_case",
+                "result_display",
+                "comparison",
+                "packaging",
+                "unboxing",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Presentation Type"
+        },
+        "description": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_subject_ids",
+        "presentation_type",
+        "description"
+      ],
+      "title": "ProductPresentation",
+      "type": "object"
+    },
+    "ProductionCreativeBrief": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "bundle_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Id"
+        },
+        "output_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Output Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "direction_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "brief_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "analysis_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "feedback_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "title": "Feedback Refs",
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "currentness": {
+          "default": "current",
+          "enum": [
+            "current",
+            "outdated"
+          ],
+          "title": "Currentness",
+          "type": "string"
+        },
+        "edited": {
+          "default": false,
+          "title": "Edited",
+          "type": "boolean"
+        },
+        "title": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Title",
+          "type": "string"
+        },
+        "core_message": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Core Message",
+          "type": "string"
+        },
+        "hook": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Hook",
+          "type": "string"
+        },
+        "narrative": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Narrative",
+          "type": "string"
+        },
+        "cta": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Cta",
+          "type": "string"
+        },
+        "production_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Production Notes",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceReference"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "bundle_id",
+        "output_id",
+        "revision",
+        "task_id",
+        "direction_ref",
+        "brief_ref",
+        "analysis_ref",
+        "feedback_refs",
+        "origin",
+        "currentness",
+        "edited",
+        "title",
+        "core_message",
+        "hook",
+        "narrative",
+        "cta",
+        "production_notes",
+        "evidence"
+      ],
+      "title": "ProductionCreativeBrief",
+      "type": "object"
+    },
+    "PublicMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "source_url": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source Url",
+          "type": "string"
+        },
+        "captured_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Captured At"
+        },
+        "views": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Views"
+        },
+        "likes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Likes"
+        },
+        "comments": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comments"
+        }
+      },
+      "required": [
+        "source_url",
+        "captured_at",
+        "views",
+        "likes",
+        "comments"
+      ],
+      "title": "PublicMetrics",
+      "type": "object"
+    },
+    "ReviewState": {
+      "additionalProperties": false,
+      "properties": {
+        "user_confirmed": {
+          "default": false,
+          "title": "User Confirmed",
+          "type": "boolean"
+        },
+        "confirmed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confirmed At"
+        }
+      },
+      "required": [
+        "user_confirmed",
+        "confirmed_at"
+      ],
+      "title": "ReviewState",
+      "type": "object"
+    },
+    "StoryboardRow": {
+      "additionalProperties": false,
+      "properties": {
+        "row_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Row Id",
+          "type": "string"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "visual": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Visual",
+          "type": "string"
+        },
+        "dialogue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dialogue"
+        },
+        "on_screen_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Screen Text"
+        },
+        "sound": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sound"
+        },
+        "cta": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cta"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceReference"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "row_id",
+        "start_seconds",
+        "end_seconds",
+        "visual",
+        "dialogue",
+        "on_screen_text",
+        "sound",
+        "cta",
+        "evidence"
+      ],
+      "title": "StoryboardRow",
+      "type": "object"
+    },
+    "TaskState": {
+      "additionalProperties": false,
+      "properties": {
+        "task": {
+          "$ref": "#/$defs/CreativeTask"
+        },
+        "briefs": {
+          "items": {
+            "$ref": "#/$defs/BrandTaskBrief"
+          },
+          "title": "Briefs",
+          "type": "array"
+        },
+        "videos": {
+          "items": {
+            "$ref": "#/$defs/VideoAsset"
+          },
+          "title": "Videos",
+          "type": "array"
+        },
+        "analyses": {
+          "items": {
+            "$ref": "#/$defs/AnalysisResult"
+          },
+          "title": "Analyses",
+          "type": "array"
+        },
+        "directions": {
+          "items": {
+            "$ref": "#/$defs/CreativeDirection"
+          },
+          "title": "Directions",
+          "type": "array"
+        },
+        "feedback": {
+          "items": {
+            "$ref": "#/$defs/CreativeFeedback"
+          },
+          "title": "Feedback",
+          "type": "array"
+        },
+        "production_briefs": {
+          "items": {
+            "$ref": "#/$defs/ProductionCreativeBrief"
+          },
+          "title": "Production Briefs",
+          "type": "array"
+        },
+        "storyboards": {
+          "items": {
+            "$ref": "#/$defs/TextStoryboard"
+          },
+          "title": "Storyboards",
+          "type": "array"
+        },
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/ProcessingJob"
+          },
+          "title": "Jobs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task",
+        "briefs",
+        "videos",
+        "analyses",
+        "directions",
+        "feedback",
+        "production_briefs",
+        "storyboards",
+        "jobs"
+      ],
+      "title": "TaskState",
+      "type": "object"
+    },
+    "TextStoryboard": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "bundle_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Id"
+        },
+        "output_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Output Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "direction_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "brief_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "analysis_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "feedback_refs": {
+          "items": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "title": "Feedback Refs",
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "currentness": {
+          "default": "current",
+          "enum": [
+            "current",
+            "outdated"
+          ],
+          "title": "Currentness",
+          "type": "string"
+        },
+        "edited": {
+          "default": false,
+          "title": "Edited",
+          "type": "boolean"
+        },
+        "target_duration_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Target Duration Seconds",
+          "type": "number"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/StoryboardRow"
+          },
+          "minItems": 1,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "bundle_id",
+        "output_id",
+        "revision",
+        "task_id",
+        "direction_ref",
+        "brief_ref",
+        "analysis_ref",
+        "feedback_refs",
+        "origin",
+        "currentness",
+        "edited",
+        "target_duration_seconds",
+        "rows"
+      ],
+      "title": "TextStoryboard",
+      "type": "object"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision"
+      ],
+      "title": "VersionRef",
+      "type": "object"
+    },
+    "VideoAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "0.6.0",
+          "default": "0.6.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "video_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Video Id",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "deleted_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deleted At"
+        },
+        "purpose": {
+          "default": "reference",
+          "enum": [
+            "reference",
+            "draft"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "input_method": {
+          "enum": [
+            "file",
+            "sample",
+            "legacy"
+          ],
+          "title": "Input Method",
+          "type": "string"
+        },
+        "storage_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{32}\\.mp4$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Storage Id"
+        },
+        "content_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Sha256"
+        },
+        "sample_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Key"
+        },
+        "original_file_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original File Name"
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Url"
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "frame_timing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FrameTiming"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "playback": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlaybackRepresentation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "width": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
+        "video_codec": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Codec"
+        },
+        "audio_codec": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audio Codec"
+        },
+        "has_audio": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Audio"
+        },
+        "intake_status": {
+          "enum": [
+            "ready",
+            "failed",
+            "missing"
+          ],
+          "title": "Intake Status",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "public_metrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicMetrics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "schema_version",
+        "created_at",
+        "updated_at",
+        "video_id",
+        "task_id",
+        "deleted_at",
+        "purpose",
+        "input_method",
+        "storage_id",
+        "content_sha256",
+        "sample_key",
+        "original_file_name",
+        "source_url",
+        "duration_seconds",
+        "frame_timing",
+        "playback",
+        "width",
+        "height",
+        "video_codec",
+        "audio_codec",
+        "has_audio",
+        "intake_status",
+        "origin",
+        "public_metrics",
+        "error"
+      ],
+      "title": "VideoAsset",
+      "type": "object"
+    },
+    "VisualAction": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "hold",
+                "pick_up",
+                "put_down",
+                "open",
+                "close",
+                "pour",
+                "apply",
+                "operate",
+                "assemble",
+                "disassemble",
+                "wear",
+                "eat_drink",
+                "point",
+                "move",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Action Type"
+        },
+        "actor_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "title": "Actor Subject Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "target_subject_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "title": "Target Subject Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "description": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "actor_subject_ids",
+        "target_subject_ids",
+        "description"
+      ],
+      "title": "VisualAction",
+      "type": "object"
+    },
+    "VisualDetails": {
+      "additionalProperties": false,
+      "description": "Event-local observations inheriting their parent source-frame interval.",
+      "properties": {
+        "subjects": {
+          "$ref": "#/$defs/ObservationGroup_VisualSubject_"
+        },
+        "actions": {
+          "$ref": "#/$defs/ObservationGroup_VisualAction_"
+        },
+        "product_presentations": {
+          "$ref": "#/$defs/ObservationGroup_ProductPresentation_"
+        }
+      },
+      "required": [
+        "subjects",
+        "actions",
+        "product_presentations"
+      ],
+      "title": "VisualDetails",
+      "type": "object"
+    },
+    "VisualSubject": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "kind": {
+                    "const": "other"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "roles": {
+                    "contains": {
+                      "const": "other"
+                    },
+                    "type": "array"
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "description": {
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "subject_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "person",
+                "animal",
+                "plant",
+                "physical_object",
+                "digital_interface",
+                "graphic",
+                "environment",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Kind"
+        },
+        "label": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Description"
+        },
+        "roles": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "if": {
+                    "contains": {
+                      "const": "other"
+                    }
+                  },
+                  "then": {
+                    "maxItems": 1
+                  }
+                }
+              ],
+              "items": {
+                "enum": [
+                  "product",
+                  "presenter",
+                  "product_user",
+                  "context",
+                  "other"
+                ],
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Roles"
+        }
+      },
+      "required": [
+        "subject_id",
+        "kind",
+        "label",
+        "description",
+        "roles"
+      ],
+      "title": "VisualSubject",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Generation bundle; endpoints consume the individual referenced records.",
+  "properties": {
+    "task_state": {
+      "$ref": "#/$defs/TaskState"
+    },
+    "draft": {
+      "$ref": "#/$defs/M2Draft"
+    },
+    "draft_update": {
+      "$ref": "#/$defs/M2DraftUpdate"
+    },
+    "apply_request": {
+      "$ref": "#/$defs/M2ApplyRequest"
+    },
+    "apply_result": {
+      "$ref": "#/$defs/M2ApplyResult"
+    },
+    "discard_request": {
+      "$ref": "#/$defs/M2DiscardRequest"
+    },
+    "assistance_request": {
+      "$ref": "#/$defs/M2AssistanceRequest"
+    },
+    "assistance_response": {
+      "$ref": "#/$defs/M2AssistanceResponse"
+    },
+    "adopt_request": {
+      "$ref": "#/$defs/M2AdoptRequest"
+    }
+  },
+  "required": [
+    "task_state",
+    "draft",
+    "draft_update",
+    "apply_request",
+    "apply_result",
+    "discard_request",
+    "assistance_request",
+    "assistance_response",
+    "adopt_request"
+  ],
+  "title": "M2ContractBundle",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/video-anatomy/contracts/v0.6.m2.schema.json",
+  "$comment": "Generated by scripts/export_contracts.py from backend/app/models.py. Cross-record references, interval semantics and workflow gates also require runtime validation."
+}

@@ -135,4 +135,6 @@ def migrate_v02_task(payload: dict, media_root: Path) -> TaskState:
     _archive_unavailable_creative(state)
     state["task"]["version"] += 1
     add_v05_fields(state)
+    from .workspace_migration import add_v06_fields
+    add_v06_fields(state)
     return validate_state(TaskState.model_validate(state))

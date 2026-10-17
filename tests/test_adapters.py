@@ -136,3 +136,71 @@ def test_adapter_rejects_unconfirmed_mismatched_and_failed_inputs(matched):
     direction.brief_ref = VersionRef(id=brief.brief_id, revision=99)
     with pytest.raises(ValueError, match="exact current"):
         adapter.generate_production(brief, analysis, direction)
+
+
+def test_sample_language_selection_preserves_fixed_copy_and_original_source(matched):
+    brief, analysis = sample_brief(matched.task_id), confirmed_analysis(matched)
+    brief.approved_messages = ["LumaCup — Keep this exact approved copy"]
+    original = analysis.model_dump()
+    adapter = SampleCreativeAdapter()
+    chinese = adapter.for_language("Chinese")
+    a, b = chinese.generate_directions(brief, analysis)
+    assert "贴近参考结构" in a.narrative
+    assert "倒回局部细节" in b.narrative
+    assert a.core_message == b.core_message == brief.approved_messages[0]
+    assert a.origin.kind == b.origin.kind == "sample"
+    assert adapter.language == "English"
+    assert analysis.model_dump() == original
+    a.approval_status, a.approved_at = "approved", utc_now()
+    production, story = chinese.generate_production(brief, analysis, a)
+    assert "制作简报" in production.title
+    assert any("原创制作建议" in row.visual and not row.evidence for row in story.rows)
+    assert production.core_message == brief.approved_messages[0]
+    with pytest.raises(ValueError):
+        adapter.for_language("French")
+
+
+def test_sample_shots_follow_duration_and_do_not_force_reference_citations(matched):
+    brief, analysis = sample_brief(matched.task_id), confirmed_analysis(matched)
+    adapter = SampleCreativeAdapter()
+    row_counts = []
+    for duration in (10, 30, 60):
+        brief.target_duration_seconds = duration
+        direction = adapter.generate_directions(brief, analysis)[1]
+        direction.approval_status, direction.approved_at = "approved", utc_now()
+        _, story = adapter.generate_production(brief, analysis, direction)
+        row_counts.append(len(story.rows))
+        assert story.rows[0].start_seconds == 0 and story.rows[-1].end_seconds == duration
+        assert all(a.end_seconds == b.start_seconds for a, b in zip(story.rows, story.rows[1:]))
+        assert any(not row.evidence for row in story.rows)
+        assert all(row.dialogue is None for row in story.rows)
+    assert row_counts == [3, 5, 10]
+
+
+def test_sample_manual_edit_does_not_reuse_stale_auxiliary_fields(matched):
+    brief, analysis = sample_brief(matched.task_id), confirmed_analysis(matched)
+    adapter = SampleCreativeAdapter()
+    target = adapter.generate_directions(brief, analysis)[0]
+    marker = "OBSOLETE paid actor and unapproved sales promise"
+    target.auxiliary_status = "needs_review"
+    target.production_requirements = [marker]
+    target.production_notes = [marker]
+    target.evidence[0].reason = marker
+    target.hook = "A product-only illustration reveal"
+    target.approval_status, target.approved_at = "approved", utc_now()
+    production, story = adapter.generate_production(brief, analysis, target)
+    assert marker not in str(production.model_dump())
+    assert marker not in str(story.model_dump())
+    assert production.hook == target.hook
+    refined = adapter.refine_direction(brief, analysis, target, feedback_for(target, "Make it presenter-free"))
+    assert refined.auxiliary_status == "current"
+    assert marker not in str(refined.model_dump())
+
+
+def test_sample_repeated_fixed_claim_keeps_its_condition(matched):
+    brief, analysis = sample_brief(matched.task_id), confirmed_analysis(matched)
+    brief.claim_details[0].qualification = "Only for the illustrated sample; not tested on a real product."
+    brief.approved_messages = [brief.claim_details[0].statement]
+    direction = SampleCreativeAdapter().for_language("Chinese").generate_directions(brief, analysis)[0]
+    assert brief.approved_messages[0] in direction.core_message
+    assert brief.claim_details[0].qualification in direction.core_message

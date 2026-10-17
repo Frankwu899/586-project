@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TaskState } from '../src/generated/contracts';
-import { applyInputs, editBrand, fillInputs } from './m2-helpers';
+import { applyInputs, area, editBrand, fillInputs } from './m2-helpers';
 
 async function mutation(page: Page, name: string, route: string, within = page.locator('body')): Promise<TaskState> {
   const pending = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(route));
@@ -34,6 +34,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     };
     await fillInputs(page, briefFields);
     await applyInputs(page);
+    await area(page, 'reference');
     await page.getByLabel('Reference video file', { exact: true }).setInputFiles(mediaPath);
     let state = await mutation(page, 'Upload reference', '/video');
     const source = state.videos[0];
@@ -53,7 +54,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     await expect(page.getByTestId('reference-frame-position')).toContainText('frame 1 /');
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeCloseTo(playbackTiming.media_start_seconds + playbackTiming.frame_boundaries_seconds[1], 2);
 
-    state = await mutation(page, 'Request real analysis', '/recognize');
+    state = await mutation(page, 'Start analysis', '/recognize');
     const original = state.analyses.at(-1)!;
     expect(original.status).toBe('succeeded');
     expect(original.origin.kind).toBe('provider');
@@ -63,10 +64,9 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     const speech = original.events.find((event) => event.kind === 'speech')!;
     expect(ocr.text).not.toBe(speech.text);
     for (const event of [visual, ocr, speech]) {
-      const segmentIndex = original.segments.findIndex((segment) => segment.evidence_ids.includes(event.event_id));
-      const summary = segmentIndex >= 0 ? page.getByText(`Section ${segmentIndex + 1} ·`, { exact: false }) : page.getByText('Other observations', { exact: true });
-      if (!await summary.evaluate((element) => element.parentElement?.hasAttribute('open'))) await summary.click();
+      await page.locator(`[data-evidence-id="${event.event_id}"]`).getByRole('button', { name: /^Correct / }).click();
     }
+    await page.locator(`[data-evidence-id="${visual.event_id}"]`).getByText('Correct subjects, actions or product labels', { exact: true }).click();
     const subjectLabel = `Subject label · ${visual.event_id} · ${product.subject_id}`;
     const actionLabel = `Action type · ${visual.event_id} · 1`;
     const presentationLabel = `Presentation type · ${visual.event_id} · 1`;
@@ -79,8 +79,8 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeDisabled();
     // An atomic label edit must not silently break a product relationship.
     const roles = page.getByRole('group', { name: `Subject roles · ${visual.event_id} · ${product.subject_id}`, exact: true }).first();
+    const rejected = page.waitForResponse((response) => response.request().method() === 'POST' && ['/editors/analysis', '/analysis/correct'].some((path) => new URL(response.url()).pathname.endsWith(path)) && !response.ok());
     await roles.getByLabel('product', { exact: true }).uncheck();
-    const rejected = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/analysis/correct'));
     await page.getByRole('button', { name: 'Save analysis corrections', exact: true }).click();
     expect((await rejected).ok()).toBe(false);
     await expect(page.getByRole('alert').first()).toContainText(/product/i);
@@ -97,33 +97,40 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     expect(savedVisual.visual_details!.actions.items[0].actor_subject_ids).toEqual(visual.visual_details!.actions.items[0].actor_subject_ids);
     expect(savedVisual.visual_details!.subjects.items.find((subject) => subject.subject_id === product.subject_id)?.label).toBe('蓝色 LumaCup 杯子');
     await mutation(page, 'Use this reviewed analysis', '/analysis/confirm');
+    await area(page, 'directions');
+    await page.getByLabel('Generation language', { exact: true }).selectOption('Chinese');
+    await mutation(page, 'Save generation language', '/language');
     await mutation(page, 'Generate two directions', '/directions/generate');
     const cards = page.locator('article.direction');
     await expect(cards).toHaveCount(2);
     const selection = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/select'));
     await cards.first().getByRole('radio').click();
     expect((await selection).ok()).toBeTruthy();
+    await cards.first().getByText('Read full direction and edit', { exact: true }).click();
     await cards.first().getByLabel('Refinement instruction', { exact: true }).fill('请保留 LumaCup 品牌名，使用中英混合字幕。');
     state = await mutation(page, 'Apply instruction', '/refine', cards.first());
     expect(state.feedback.at(-1)?.instruction).toBe('请保留 LumaCup 品牌名，使用中英混合字幕。');
     expect(state.feedback.at(-1)?.status).toBe('applied');
     await mutation(page, 'Approve this direction', '/approve', cards.first());
+    await area(page, 'production');
     state = await mutation(page, 'Generate production materials', '/outputs/generate');
     expect(state.storyboards.at(-1)?.target_duration_seconds).toBe(12);
     await page.getByLabel('Production title', { exact: true }).fill('LumaCup 创意简报 — 中英双语');
     await page.getByLabel('Shot 1 visuals', { exact: true }).fill('蓝色杯身 close-up；保留 350 mL 字样。');
     state = await mutation(page, 'Save production edits', '/outputs/edit');
-    for (const [name, content] of [['Export brief (Markdown)', 'LumaCup 创意简报'], ['Export storyboard (CSV)', '蓝色杯身 close-up']] as const) {
+    for (const [name, content] of [['Markdown', 'LumaCup 创意简报'], ['Storyboard CSV', '蓝色杯身 close-up']] as const) {
       const pending = page.waitForEvent('download');
-      await page.getByRole('link', { name, exact: true }).click();
+      await page.locator('.production-export-bar').getByRole('button', { name, exact: true }).click();
       expect(await readFile((await (await pending).path())!, 'utf8')).toContain(content);
     }
     await page.reload();
     await editBrand(page);
     await expect(page.getByLabel('Brand/company', { exact: true })).toHaveValue('Luma 乐玛');
+    await area(page, 'production');
     await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('LumaCup 创意简报 — 中英双语');
-    const visualSection = corrected.segments.findIndex((segment) => segment.evidence_ids.includes(visual.event_id));
-    await page.getByText(visualSection >= 0 ? `Section ${visualSection + 1} ·` : 'Other observations', { exact: visualSection < 0 }).click();
+    await area(page, 'reference');
+    await page.locator(`[data-evidence-id="${visual.event_id}"]`).getByRole('button', { name: /^Correct / }).click();
+    await page.locator(`[data-evidence-id="${visual.event_id}"]`).getByText('Correct subjects, actions or product labels', { exact: true }).click();
     await expect(page.getByLabel(subjectLabel, { exact: true }).first()).toHaveValue('蓝色 LumaCup 杯子');
     await page.getByLabel(subjectLabel, { exact: true }).first().fill('蓝色 LumaCup 杯子（再次核对）');
     state = await mutation(page, 'Save analysis corrections', '/analysis/correct');
@@ -131,7 +138,9 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     expect(state.production_briefs.at(-1)?.currentness).toBe('outdated');
     expect(state.storyboards.at(-1)?.currentness).toBe('outdated');
     expect(state.analyses.at(-1)?.review.user_confirmed).toBe(false);
-    await expect(page.getByText('These outputs are outdated because an upstream input changed.', { exact: false })).toBeVisible();
+    await area(page, 'production');
+    await expect(page.getByText('These materials are historical because their inputs', { exact: false })).toBeVisible();
+    await area(page, 'directions');
     await expect(page.getByRole('button', { name: 'Generate two new directions', exact: true })).toBeDisabled();
     expect(clientErrors).toEqual([]);
   } finally {
@@ -164,15 +173,23 @@ test('partial and legacy structured coverage stays visible without editable extr
     if (route.request().method() === 'GET') await route.fulfill({ json: [state] });
     else await route.continue();
   });
+  await page.route(`**/api/tasks/${taskId}/editors/analysis`, async (route) => {
+    const response = await route.fetch();
+    const draft = await response.json();
+    await route.fulfill({ json: { ...draft, content: { events: analysis.events, segments: analysis.segments } } });
+  });
   await page.addInitScript((id) => localStorage.setItem('video-anatomy-task', id), taskId);
   await page.goto('/');
-  for (let index = 0; index < analysis.segments.length; index += 1) await page.getByText(`Section ${index + 1} ·`, { exact: false }).click();
+  await area(page, 'reference');
+  for (const summary of await page.getByText('Observed details & source', { exact: true }).all()) await summary.click();
   await expect(page.getByText('Subject extraction failed in this UI fixture.', { exact: true })).toBeVisible();
   await expect(page.getByText('Not analyzed', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Checked; none found', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Structured visual details were not analyzed for this observation.', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeDisabled();
+  await area(page, 'directions');
   await expect(page.getByRole('button', { name: 'Generate two sample directions', exact: true })).toBeDisabled();
+  await area(page, 'reference');
   await expect(page.getByLabel(`Structured visual details · ${visual.event_id}`, { exact: true }).getByRole('combobox')).toHaveCount(0);
 });
 
