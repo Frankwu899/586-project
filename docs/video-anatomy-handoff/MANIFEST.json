@@ -1,0 +1,90 @@
+{
+  "package": "Video Anatomy first real recognition handoff",
+  "prepared_date": "2026-10-16",
+  "observed_main": "a456329e4fe8cab76669c8c8254cfed8ce11bbcb",
+  "baseline_contract": "0.3.0",
+  "implementation_proposal": "0.4.0 if still available; inspect live repository",
+  "artifact_checks": {
+    "current_record_groups": 26,
+    "current_field_rows_including_inheritance": 256,
+    "synthetic_current_fixture_validated": true,
+    "proposed_example_semantics_checked": true,
+    "json_schema_external_validator_run": false,
+    "html_internal_anchors_checked": true,
+    "embedded_markdown_updated": true,
+    "actual_video_recognition_run": false,
+    "application_test_suite_run": false
+  },
+  "files": [
+    {
+      "path": "CODEX_PROMPT.md",
+      "bytes": 7670,
+      "sha256": "8ec8489dfe68d4d86d36033eae96cbdb2593042d94994026dc30fd1120da4a22"
+    },
+    {
+      "path": "DATA_CONTRACT.md",
+      "bytes": 52106,
+      "sha256": "1132bbe81962f6e378be47b3caee2afcc0e18f8075f98eec70bc7d98067bce69"
+    },
+    {
+      "path": "IMPLEMENTATION_SPEC.md",
+      "bytes": 21689,
+      "sha256": "84e0983cdc4e07381530b133a0d59475d1038694a9e98874ff795a65189067df"
+    },
+    {
+      "path": "README_FIRST.md",
+      "bytes": 3542,
+      "sha256": "19c79b46b944494054659e326a18e14d3ef056b2325e9c9827b9ca30065b8d57"
+    },
+    {
+      "path": "docs/Video_Anatomy_Data_Dictionary.html",
+      "bytes": 256124,
+      "sha256": "f939db0ffd58f6d0c67d34e8fda14c7af78f3204837fce4eec910da47b31a51f"
+    },
+    {
+      "path": "docs/blueprint.html",
+      "bytes": 154423,
+      "sha256": "f75b024b73824c060d84cb38b2d7a10b9de6a7d03a97021443c31f09978d7964"
+    },
+    {
+      "path": "examples/bilingual-test-cases.json",
+      "bytes": 1707,
+      "sha256": "171eb1619df5f4a9927b5fa45359f861c1638811de10e01940c334f0a33ddc81"
+    },
+    {
+      "path": "examples/current-v0.3-video-analysis.json",
+      "bytes": 9122,
+      "sha256": "15b2094794b627835def5e169d7e1fb80b0ac815ae9e3c43beefbdb6082221a1"
+    },
+    {
+      "path": "examples/proposed-visual-details.json",
+      "bytes": 1781,
+      "sha256": "90530febf0f3fd32b367db3a2911760c11e3bef6b330b1d8c554042e3f79bb0d"
+    },
+    {
+      "path": "reference/current-v0.3/analysis.schema.json",
+      "bytes": 13242,
+      "sha256": "04df4abfb776e0bf51b1a41220570ca7cbf3f4b937955ed8fc8da3b6e87fe267"
+    },
+    {
+      "path": "reference/current-v0.3/interfaces.md",
+      "bytes": 26959,
+      "sha256": "7a6ca43d46dd24ad77316a259437b3159dc90f14a16ee3930def59d1bb46217c"
+    },
+    {
+      "path": "reference/current-v0.3/models.py",
+      "bytes": 32417,
+      "sha256": "0e280e801f07dd451ba5887b578942302cd6a6a0dbc6734602654e56184b1a54"
+    },
+    {
+      "path": "reference/current-v0.3/task-state.schema.json",
+      "bytes": 50703,
+      "sha256": "7dee91aa5ffba01febd463ee688165d5d0a64330fe3e690957e6d265e0e3df99"
+    },
+    {
+      "path": "schemas/proposed/visual-details.schema.json",
+      "bytes": 11142,
+      "sha256": "409ee3bb7b89d78dd4b8db8590b1a72779e04e6e5c900cc54e801eef00650ec7"
+    }
+  ]
+}
