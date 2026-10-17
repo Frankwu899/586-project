@@ -1,5 +1,9 @@
 # Video Anatomy — v0.6 local workflow
 
+For a single-port local app with an API key entered securely at startup, use
+[LOCAL_API.md](LOCAL_API.md). The private launch bundle can preload the owner's
+reference clip without analyzing it; the offline launcher below remains separate.
+
 For the single-port demo with paid providers disabled, use [DEMO.md](DEMO.md). Current delivery scope and verification are in [the workspace handoff](docs/handoff/creative-workspace-demo.md). These instructions also support development and later explicitly authorized provider evaluation.
 
 Combine one brand/task brief and one reference video with reviewed evidence, two creative directions, explicit approval, an editable production brief and a text storyboard. The dedicated fictional sample works offline. Real tasks use replaceable OpenAI adapters for visual/OCR evidence, timestamped speech and creative generation when configured. Offline and real-media tests passed; live recognition accuracy has **not** been evaluated in this delivery.
