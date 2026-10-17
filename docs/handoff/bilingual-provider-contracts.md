@@ -7,7 +7,7 @@
 - **Base:** latest fetched `origin/main`, `a456329e4fe8cab76669c8c8254cfed8ce11bbcb`; refetched before delivery, unchanged.
 - **Handoff source:** `origin/docs/english-starter`, `c3f40ca184212ec52025810e6420a5e97d1fe37c`.
 - **Implementation commit before documentation:** `a782be4a86dd64ee3e9e6828b2ef7a04008d58f6`.
-- **Publication:** prepared for ordinary push and a draft PR into main; final publication confirmation belongs to the PR/chat delivery record. No merge or deployment is authorized/performed.
+- **Publication:** ordinary push verified remote head `545739a104dc3d83835932c2f861b78649ad4d0c`; [draft PR #3](https://github.com/Frankwu899/586-project/pull/3) was created into main with that head. This documentation follow-up records the confirmed publication. No merge or deployment was performed.
 
 ## Baseline and requirement decisions
 
