@@ -11,6 +11,12 @@ as the new design source, with a Glassmorphism preference. Proposed dependency
 changes are not confirmed merely because they appear in the prototype. All future
 installer/launcher text, package documentation and handoffs must be English.
 
+When the owner invokes grill-me, read `.agents/skills/grill-me/SKILL.md` and its
+local `grilling` dependency. The owner requires native interactive question boxes
+for all interview questions, never plain-text question lists. Preserve previously
+confirmed decisions. The current Structure discussion is product design; its
+dedicated product agent is requested but not yet implemented.
+
 1. `docs/project-brief.md`
 2. `docs/architecture.md`
 3. `docs/interfaces.md` and `contracts/v0.5.task-state.schema.json` when touching shared data (v0.1/v0.2/v0.3/v0.4 artifacts are historical snapshots)
