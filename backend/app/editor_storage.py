@@ -20,6 +20,8 @@ def _record(records, reference):
 
 def editor_snapshot(state, scope):
     """Return current immutable refs and the complete editable form payload."""
+    if scope == "idea":
+        return {}, {key: "" for key in DIRECTION_FIELDS}
     if scope == "analysis":
         record = _record(state.analyses, state.task.current_analysis)
         if record is not None:

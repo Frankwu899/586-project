@@ -38,3 +38,15 @@ export function analysisCorrections(analysis: AnalysisResult, content: AnalysisE
   }).map(({ segment_id, roles }) => ({ segment_id, roles }));
   return { event_edits, segment_edits };
 }
+
+/** Group repeated OCR for browsing while preserving every source observation.
+ * A repeated price/logo is still content; grouping never invents a duration.
+ */
+export function repeatedTextGroups(events: EvidenceEvent[]) {
+  const groups = new Map<string, EvidenceEvent[]>();
+  for (const event of events.filter((item) => item.kind === 'on_screen_text')) {
+    const key = (event.text ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+    groups.set(key, [...(groups.get(key) ?? []), event]);
+  }
+  return groups;
+}

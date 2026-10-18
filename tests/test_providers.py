@@ -158,7 +158,10 @@ def test_cache_is_version_model_source_and_settings_scoped(recognition_input, tm
     assert adapter.records[-1]["cache_status"] == "hit"
     vision.model = "fixture-v2"
     adapter.analyze(recognition_input[0])
-    assert vision.calls == speech.calls == 2
+    assert vision.calls == 2 and speech.calls == 1
+    speech.model = "fixture-speech-v2"
+    adapter.analyze(recognition_input[0])
+    assert speech.calls == 2
     diagnostic = (tmp_path / "cache" / "runs.jsonl").read_text()
     assert "job_real" in diagnostic and "input_tokens" not in diagnostic
     assert "Luma杯" not in diagnostic  # no recognized private text in run records
@@ -279,10 +282,10 @@ def test_unbounded_settings_rejected(settings):
 def test_corrupt_cache_is_revalidated_and_recomputed(recognition_input, tmp_path):
     adapter, vision, speech = adapter_for(recognition_input, cache_dir=tmp_path / "cache")
     adapter.analyze(recognition_input[0])
-    cache = next((tmp_path / "cache").glob("*.json"))
+    cache = next(path for path in (tmp_path / "cache").glob("*.json") if not path.name.startswith("speech-"))
     cache.write_text('{"vision": {"frames": []}, "speech": []}')
     result = adapter.analyze(recognition_input[0])
-    assert result.status == "succeeded" and vision.calls == speech.calls == 2
+    assert result.status == "succeeded" and vision.calls == 2 and speech.calls == 1
 
 
 def test_openai_responses_and_audio_normalize_end_to_end_offline(recognition_input):

@@ -4,6 +4,12 @@ Every coding agent must read this file and the relevant interface documents befo
 
 ## Read first
 
+The owner's 2026-10-18 request authorizes implementing and testing the workspace
+redesign and confirmed Structure S1-S11, with a total USD 3 live API/training
+budget. This supersedes the earlier discussion-only status below. Centralize
+paid calls through the shared persisted budget; never allocate USD 3 per agent
+or reset the ledger between modules. No main merge or deployment is authorized.
+
 For the current UI/UX redesign discussion, start with
 `docs/handoff/workspace-redesign-review.md` and its linked design review. The owner
 requested product-flow review before implementation and selected UI UX Pro Max

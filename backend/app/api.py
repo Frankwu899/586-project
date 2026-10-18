@@ -57,6 +57,20 @@ class Inputs(Mutation):
     analysis_ref: VersionRef | None = None
 
 
+class GenerateDirections(Inputs):
+    use_reference: bool = True
+
+
+class ManualDirection(Mutation):
+    brief_ref: VersionRef
+    fields: dict[str, str]
+
+
+class OperationRequest(Request):
+    operation: Literal["recognize", "directions", "refine", "production"]
+    payload: dict[str, Any]
+
+
 class DirectionMutation(Inputs):
     direction_revision: Annotated[int, Field(ge=1)]
 
@@ -87,7 +101,7 @@ class EditOutputs(Mutation):
 
 
 def create_app(data_dir: Path | None = None, *, service: WorkflowService | None = None) -> FastAPI:
-    app = FastAPI(title="Video Anatomy", version="0.6.0")
+    app = FastAPI(title="Video Anatomy", version="0.7.0")
     svc = service or WorkflowService(Path(data_dir or os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data")))
     app.state.service = svc
 
@@ -108,7 +122,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "schema_version": "0.6.0",
+        return {"status": "ok", "schema_version": "0.7.0",
                 "real_analysis": "configured" if svc.provider_settings.api_key else "unconfigured",
                 "creative_generation": "provider_for_real_tasks" if svc.provider_settings.api_key else "unconfigured_for_real_tasks",
                 "sample_workflow": "available_offline"}
@@ -214,8 +228,12 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
         return svc.confirm_analysis(task_id, body.expected_version, body.analysis_ref)
 
     @app.post("/api/tasks/{task_id}/directions/generate", response_model=TaskState)
-    def directions(task_id: str, body: Inputs):
-        return svc.generate_directions(task_id, body.expected_version, body.brief_ref, body.analysis_ref)
+    def directions(task_id: str, body: GenerateDirections):
+        return svc.generate_directions(task_id, body.expected_version, body.brief_ref, body.analysis_ref, use_reference=body.use_reference)
+
+    @app.post("/api/tasks/{task_id}/directions/manual", response_model=TaskState)
+    def manual_direction(task_id: str, body: ManualDirection):
+        return svc.create_manual_direction(task_id, body.expected_version, body.brief_ref, body.fields)
 
     @app.post("/api/tasks/{task_id}/directions/{direction_id}/edit", response_model=TaskState)
     def direction_edit(task_id: str, direction_id: str, body: EditDirection):
@@ -247,6 +265,49 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
         content_type = "text/csv" if kind == "storyboard.csv" else "text/markdown"
         return Response(content=text, media_type=content_type, headers={"Content-Disposition": f'attachment; filename="{filename}"', "X-Content-Type-Options": "nosniff"})
 
+    from .background_jobs import BackgroundOperations
+    from .content_region import create_content_region_router
+    from .media_repair import create_media_repair_router
+    from .structure_api import install_structure_api
+
+    operation_models = {"recognize": Recognize, "directions": GenerateDirections,
+                        "refine": RefineDirection, "production": GenerateOutputs}
+
+    def execute_operation(task_id, operation, payload):
+        values = dict(payload)
+        direction_id = values.pop("direction_id", None) if operation == "refine" else None
+        body = operation_models[operation].model_validate(values)
+        if operation == "recognize":
+            return recognize(task_id, body)
+        if operation == "directions":
+            return directions(task_id, body)
+        if operation == "refine":
+            return direction_refine(task_id, direction_id, body)
+        return outputs(task_id, body)
+
+    operations = BackgroundOperations(svc.store, execute_operation)
+    app.state.operations = operations
+
+    @app.post("/api/tasks/{task_id}/operations", status_code=202)
+    def start_operation(task_id: str, body: OperationRequest):
+        values = dict(body.payload)
+        if body.operation == "refine":
+            if not isinstance(values.pop("direction_id", None), str):
+                raise WorkflowError("direction_required", "Choose the direction to refine.", 422)
+        operation_models[body.operation].model_validate(values)
+        return operations.submit(task_id, body.operation, body.payload)
+
+    @app.get("/api/tasks/{task_id}/operations")
+    def list_operations(task_id: str):
+        return operations.list(task_id)
+
+    @app.get("/api/tasks/{task_id}/operations/{operation_id}")
+    def get_operation(task_id: str, operation_id: str):
+        return operations.get(task_id, operation_id)
+
+    app.include_router(create_content_region_router(svc))
+    app.include_router(create_media_repair_router(svc))
+    install_structure_api(app, svc)
     return app
 
 

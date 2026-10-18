@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { area } from './m2-helpers';
 import type { TaskState } from '../src/generated/contracts';
 
 async function readyTask(api: APIRequestContext) {
@@ -47,14 +48,14 @@ test('a hidden recovered conflict never traps area navigation or discards anothe
   // Changing task still requires durable saving or explicit conflict resolution.
   await page.getByRole('complementary', { name: 'Saved tasks' }).getByRole('button', { name: new RegExp(other.task.title) }).click();
   await expect(page.getByRole('heading', { name: state.task.title, exact: true })).toBeVisible();
-  await expect(page.locator('.workspace > .error')).toContainText('newer saved draft');
+  await expect(page.locator('.sidebar-error')).toContainText('newer saved draft');
 
   // Viewing another area is safe: all editors stay mounted with their local text.
-  await page.locator('#tab-inputs').click();
-  await expect(page.locator('#area-inputs')).toBeVisible();
+  await area(page, 'inputs');
+  await expect(page.getByRole('dialog', { name: 'Project context', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Open reference', exact: false }).click();
   await expect(page.locator('#area-reference')).toBeVisible();
-  await page.locator('#tab-inputs').click();
+  await area(page, 'inputs');
   await page.getByRole('link', { name: 'Continue to directions', exact: true }).click();
   await expect(page.locator('#area-directions')).toBeVisible();
   await direction.getByText('Read full direction and edit', { exact: true }).click();

@@ -236,6 +236,7 @@ def test_legacy_migration_preserves_all_history_and_has_separate_review_gate(tmp
         assert video.pop("deleted_at") is None
     for direction in converted["directions"]:
         assert direction.pop("auxiliary_status") == "current"
+        assert direction.pop("structure_handoff_id") is None
     for output in [*converted["production_briefs"], *converted["storyboards"]]:
         assert output.pop("bundle_id") is None
     assert converted == original

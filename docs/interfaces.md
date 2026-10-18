@@ -1,6 +1,43 @@
-# Interface contract — v0.6.0
+# Interface contract — v0.7.0
 
-`backend/app/models.py` is the authoritative maintained record definition. Pydantic performs runtime and semantic validation; `scripts/export_contracts.py` generates `contracts/v0.6.task-state.schema.json`, `contracts/v0.6.analysis.schema.json`, `contracts/v0.6.m2.schema.json` and `contracts/v0.6.editors.schema.json`. Frontend types are generated from the merged M2/editor bundles, which include TaskState and independent endpoint models, into `frontend/src/generated/contracts.ts`. Change the models, generated artifacts, validators, fixtures, and consumers together. The v0.1–v0.5 schemas/examples remain unchanged as historical snapshots; current records use v0.6.0. The TypeScript generator omits JSON Schema conditionals from its structural input because it cannot represent them; authoritative schemas and runtime validators retain those constraints.
+`backend/app/models.py` is the maintained task-record definition. Pydantic performs runtime and semantic validation; `scripts/export_contracts.py` generates `contracts/v0.7.task-state.schema.json`, `v0.7.analysis.schema.json`, `v0.7.m2.schema.json`, `v0.7.editors.schema.json` and `v0.7.structure.schema.json`. Structure endpoint models live in `backend/app/structure_models.py`. Frontend task types are generated from the merged M2/editor bundles into `frontend/src/generated/contracts.ts`; Structure has a separate client boundary. Change models, generated artifacts, validators and consumers together.
+
+New records default to `0.7.0`; the runtime also accepts existing `0.6.0` records without rewriting saved content, IDs or approvals. Mixed retained v0.6 records and new v0.7 revisions are valid. The v0.1–v0.6 schemas/examples are immutable historical snapshots. Existing v0.2–v0.5 migration paths continue their archived, lossless v0.6 extension; accepting those records does not require a second migration. The TypeScript generator removes unsupported JSON Schema conditionals only from its structural input; canonical schemas and runtime validators retain them.
+
+## Independent workspace v0.7
+
+The UI has Research (Timeline / Structure), Ideas, Production, and independent project inputs. Source inspection does not require a brand brief. Original idea generation explicitly uses `use_reference=false` and `analysis_ref=null`; reference-driven generation still requires an exact, current, reviewed successful analysis. Applied brand inputs and an explicit generation-language choice remain prerequisites for creative provider calls. Production always requires the exact approved direction revision.
+
+`CreativeDirection`, `CreativeFeedback` and production outputs now permit `analysis_ref=null`. Such artifacts must have no reference-evidence citations. Their planned shots remain independent seconds. Adding, correcting or deleting an unrelated reference does not invalidate original ideas/outputs; changes to their applied brief, language or approved direction still do. A research handoff is selected inspiration with attributed sources and applicability conditions, never approval, a new brand fact or automatically reviewed evidence. `CreativeDirection.structure_handoff_id` pins the exact immutable selected snapshot; refinement and production reuse that snapshot rather than silently replacing it with the newest selection. Unknown or wrong-task snapshots fail before provider use.
+
+`POST /api/tasks/{task_id}/directions/manual` accepts `{expected_version, brief_ref, fields}` where `fields` contains exactly `core_message`, `hook`, `narrative` and `cta`. It creates a user-authored, unapproved direction with no reference dependency. The `idea` editor scope independently stores these four fields before a direction exists; its base reference is the applied brief when present.
+
+### Background operations
+
+`POST /api/tasks/{task_id}/operations` accepts `{operation, payload}` for `recognize`, `directions`, `refine` or `production` and returns `202` with a durable operation ticket. Payloads are the corresponding normal endpoint bodies; `refine` additionally includes `direction_id`. `GET /operations` lists task activity and `GET /operations/{operation_id}` polls a ticket. Status is `queued`, `running`, `succeeded` or `failed`; terminal tickets include the latest task aggregate as `result` and a safe error when applicable. Polling never starts a new provider request. Duplicate active operations of the same kind/task are rejected. On restart, interrupted tickets fail rather than replay paid work. Existing synchronous routes remain available for compatibility and tests. Run one backend process per local library.
+
+### Structure agent and persistence
+
+All paths below are under `/api/tasks/{task_id}/structure`:
+
+| Method / path | Request and result |
+|---|---|
+| `GET /` | Latest `Workspace`, or null before analysis. |
+| `POST /analyze` | `{analysis_ref?}` → `202 Workspace`; usable current video observations required, no brief/review gate. |
+| `POST /feedback` | `{expected_version, node_id, instruction, kind}`; kind is `question`, `context` or `reconsider`; asynchronous answer/proposal using completed evidence, without extending web research. |
+| `POST /proposals/{proposal_id}/adopt` | `{expected_version}`; adopts the previewed graph update only if its base graph revision is still current. |
+| `POST /handoff` | `{expected_version, node_ids?, method_ids?, all?}` → saved exact selected `Handoff`; selected methods bring their required supporting nodes. |
+| `GET /handoff` | Last selected handoff, or null. It is a historical snapshot; consumers verify its analysis/video currentness before new creative use. |
+
+`Workspace` tracks its own optimistic `version`, `graph_revision`, exact task/video/analysis identity, graph, sources, supplied contexts, answers and proposals. Primary status is `analyzing`, `researching`, `ready`, `partial` or `failed`; `feedback_status` separately reports optional follow-up processing. Source changes are exposed as `outdated` or `source_deleted`. SQLite tables `structure_runs`, `structure_history` and `structure_handoffs` preserve these records independently of task aggregate versions.
+
+A graph contains concise `nodes`, explanatory `edges`, transferable `methods` with conditions, and at most three relevant `research_gaps`. Node kinds are `observation`, `source_claim`, `inference` and `user_context`. Each node cites exact existing event IDs, returned external source IDs or saved context IDs. The server attaches measured `moments`; the provider cannot invent timestamps. One-frame visual samples remain points, speech intervals remain estimates, and external background has no video timestamp. Graphs cannot contain dangling references or duplicate identifiers. Semantic validation checks structural grounding, not whether every interpretation is correct.
+
+The agent publishes the video-based graph first, then performs one bounded hosted-search phase and a structured synthesis. Returned source URLs must occur in actual transport citations/sources. Relevant user context or adopted changes prevent automatic conflicting replacement: updates become previewable proposals. Questions/context do not initiate deeper retrieval. At a budget/time/source failure, completed work remains partial and the run ends. There is no manual graph-edit or Continue research endpoint. Startup closes interrupted Structure work without a provider retry. Only the explicitly loaded matching fictional sample uses the deterministic Structure fixture; arbitrary uploads never fall back to it.
+
+### Content-area treatment
+
+`GET/POST /api/tasks/{task_id}/videos/{video_id}/content-region` loads/saves normalized crop and exclusion rectangles, and `POST .../suggest` proposes conservative edge-bar removal for user review. This is non-destructive provider preparation; originals remain intact. Region revisions participate in cache keys and in-flight source-change checks. Static brand marks, prices and subtitles are not automatically classified as noise. OCR grouping retains sampled timing and does not infer uninterrupted text duration. This is a crop/mask plus conservative suggestion implementation, not a trained phone/platform-UI classifier.
 
 ## Workspace v0.6 additions
 
@@ -14,11 +51,11 @@
 | `POST /language` | `{expected_version, generation_language}` → task; changed language invalidates creative descendants, preserves reference review. |
 | `POST /videos/{video_id}/delete` | `{expected_version}` → task; delete media and retain historical records with a tombstone. |
 
-Scopes: `analysis` content contains complete `events` and `segments`; `direction-{direction_id}` contains core message/Hook/narrative/CTA; `production` contains `brief_fields` and full `rows`. Server-side allowlists preserve identity, relationship, timing and coverage fields. Formal correction/edit endpoints accept `expected_editor_version` to atomically validate and checkpoint the exact draft submitted. No-op saves preserve formal revisions. Draft conflicts never silently overwrite saved content. Missing or malformed scopes return structured errors.
+Scopes: `idea` stores an original idea draft; `analysis` content contains complete `events` and `segments`; `direction-{direction_id}` contains core message/Hook/narrative/CTA; `production` contains `brief_fields` and full `rows`. Server-side allowlists preserve identity, relationship, timing and coverage fields. Formal correction/edit endpoints accept `expected_editor_version` to atomically validate and checkpoint the exact draft submitted. No-op saves preserve formal revisions. Draft conflicts never silently overwrite saved content. Missing or malformed scopes return structured errors.
 
 Analysis drafts block dependent creative admission and review confirmation until applied or discarded; production drafts block regeneration. Direction drafts block their refinement/approval/production path. Manual direction text revisions clear approval and mark auxiliary explanations for review. Pending edits alone do not invalidate existing saved artifacts. Historical export remains explicit and labels its exact source/version context. Original shots may have empty citation lists; claims still come from applied inputs.
 
-`workspace_migration.py::migrate_v05_task` validates the archived v0.5 schema, adds the new metadata without inventing language/media/output pairing, and archives exact original JSON and hash transactionally with replacement. Older import paths now emit v0.6 directly. Historical schema and example snapshots remain unchanged. The v0.5 migration descriptions below are historical context; current output records are v0.6.
+`workspace_migration.py::migrate_v05_task` validates the archived v0.5 schema, adds the new metadata without inventing language/media/output pairing, and archives exact original JSON and hash transactionally with replacement. Existing v0.2–v0.5 import paths emit the retained compatible v0.6 representation. Historical schema and example snapshots remain unchanged. The v0.5 migration descriptions below remain historical context; newly created records default to v0.7.
 
 ## M2 editor and applied input contract
 
@@ -44,7 +81,7 @@ All paths are below `/api/tasks/{task_id}`. Saved draft optimistic conflicts ret
 
 Apply checks versions and complete input in a single SQLite transaction, compares every provider-relevant value (including optional details and claim IDs/conditions), and creates one new formal revision only for meaningful changes. Identical Apply preserves task version, approval and output eligibility. Exact retries are idempotent; failures roll back task and checkpoint. Changed Apply retains history and marks dependents outdated. Draft autosaves never pass through task update or overwrite the full task response in the UI.
 
-Creative request `brief_ref` and `analysis_ref` may be null at HTTP admission so incomplete input gets an actionable M2 error; service validation still requires exact current references before starting creative work.
+Creative request `brief_ref` and `analysis_ref` may be null at HTTP admission so incomplete input gets an actionable error. A current applied brief is required. An exact reviewed analysis is required only for reference-driven generation; explicit original mode requires `analysis_ref=null` and rejects invented evidence.
 
 Pending structured edits block new direction generation, refinement, approval and production admission transactionally. Reference operations remain available. Already admitted creative work may complete against its original applied input while a draft is edited; changed formal Apply still triggers the existing stale-response guard. Source notes and unaccepted proposals alone do not block generation.
 
@@ -126,10 +163,10 @@ A task's optimistic `version` increases on formal task mutations. Independent M2
 
 - The original extraction stays at analysis revision 1. Content/role corrections append a revision with the same analysis/event/section IDs, preserve timing/provenance, record before/after changes, and clear review confirmation. Allowed corrections are OCR/speech text, visual description, section roles and restricted visual labels. Identity, timing, lanes/kinds, evidence links, and provenance are not correction fields. Affected interpretation is cleared.
 - **Use this reviewed analysis** confirms the exact current revision separately. Confirmation metadata does not create an artificial content revision. Rerunning recognition creates a new analysis ID and preserves prior results.
-- Direction generation and refinement require the current brief and successful, confirmed analysis for the task's current video. The backend rejects unconfirmed, incomplete, failed, partial, outdated, or mismatched inputs even if a client sends the request directly.
+- Direction generation/refinement require the current brief. Reference-driven artifacts additionally require successful, confirmed analysis for the current video. Original artifacts carry `analysis_ref=null` and no reference citations; they do not acquire a reference gate merely because a video was uploaded.
 - Direct editing or supported prompt refinement produces an unapproved direction draft. Feedback records the instruction and exact target revision before processing, then its result or explicit `not_interpreted` outcome. Selection and generation never imply approval.
 - `CreativeTask.chosen_direction` persists an exact unapproved draft choice across refresh/restart. `selected_direction` identifies the explicitly approved choice used for production. Choosing a different draft clears the previous approval and marks its outputs outdated; selecting a draft never grants approval.
-- Production generation requires the exact selected, current, explicitly approved direction revision and matching upstream inputs. Brief/video/analysis changes invalidate downstream approval/currentness. Direction edits/refinement invalidate outputs for that direction. Older content remains available, marked `outdated`.
+- Production generation requires the exact selected, current, explicitly approved direction revision and matching upstream inputs. Brief and language changes invalidate dependent approval/currentness; video/analysis changes invalidate only artifacts that actually depend on that reference. Direction edits/refinement invalidate outputs for that direction. Older content remains available, marked `outdated`.
 - Output edits append revisions; explicit whole-output regeneration preserves previous manual work. No partial row generation is implemented. Atomic storage/version checks prevent a delayed result or stale browser tab from overwriting newer work.
 
 The handoff's baseline field catalog interchanges the descriptions of `chosen_direction` and `selected_direction`. The live implementation and approval rules above are authoritative: `chosen_direction` is draft selection; `selected_direction` is the explicitly approved production choice. Migration preserves these pointers without swapping them.
@@ -157,7 +194,7 @@ The existing `examples/analysis_result.original.json`, `examples/analysis_result
   --output .local-data/legacy-migrated.json
 ```
 
-The current migrated fixture is `examples/v0.6.legacy-migrated.json`; earlier versioned fixtures remain unchanged. Segment text/observations become canonical events with stable derived IDs, while sections reference them. Missing/unknown values and fictional provenance remain explicit. No real provider/model run is invented. The legacy media record has no storage ID and remains `missing`; `SYNTHETIC_LumaCup_demo_NO_MEDIA.mp4` is a historical fictional name, not a playback asset. Its source has no known FPS, so original intervals remain in `legacy_seconds` with null frame fields, structured details and playback. This CLI produces contract data, not an uploaded playable task. Do not substitute it for the dedicated generated sample workflow.
+The retained migration fixture is `examples/v0.6.legacy-migrated.json`; earlier versioned fixtures remain unchanged. Segment text/observations become canonical events with stable derived IDs, while sections reference them. Missing/unknown values and fictional provenance remain explicit. No real provider/model run is invented. The legacy media record has no storage ID and remains `missing`; `SYNTHETIC_LumaCup_demo_NO_MEDIA.mp4` is a historical fictional name, not a playback asset. Its source has no known FPS, so original intervals remain in `legacy_seconds` with null frame fields, structured details and playback. This CLI produces contract data, not an uploaded playable task. Do not substitute it for the dedicated generated sample workflow.
 
 ## HTTP operations
 
@@ -179,7 +216,8 @@ For compactness, `V` below means required `expected_version`; `I` means `V`, `br
 | `POST /api/tasks/{task_id}/recognize` | `{V, video_id?}`; operates on the current video and records analysis/job result. |
 | `POST /api/tasks/{task_id}/analysis/correct` | `{V, analysis_ref, event_edits?, segment_edits?}`; event edits identify `event_id` and allowed `text`/`description`/full `visual_details`; section edits identify `segment_id` and `roles`. |
 | `POST /api/tasks/{task_id}/analysis/confirm` | `{V, analysis_ref}`; explicit review of the current successful revision. |
-| `POST /api/tasks/{task_id}/directions/generate` | `{I}`; two current draft directions with exact inputs. |
+| `POST /api/tasks/{task_id}/directions/generate` | `{I, use_reference?}`; two drafts with exact inputs. `use_reference` defaults true; false requires `analysis_ref=null`. |
+| `POST /api/tasks/{task_id}/directions/manual` | `{V, brief_ref, fields}`; create an original user-authored draft, without approval. |
 | `POST /api/tasks/{task_id}/directions/{direction_id}/select` | `{V, direction_revision}`; persist a current draft choice separately from approval. |
 | `POST /api/tasks/{task_id}/directions/{direction_id}/edit` | `{V, direction_revision, fields}`; editable fields are `core_message`, `hook`, `narrative`, `cta`. |
 | `POST /api/tasks/{task_id}/directions/{direction_id}/refine` | `{I, direction_revision, instruction}`; instruction is 1–10,000 characters; saves exact target and adapter outcome. |
@@ -236,7 +274,7 @@ Generation operations persist `ProcessingJob` transitions and return the saved t
 
 A failed, stale, or interrupted refinement closes its linked pending feedback as `not_interpreted`, with an explanation containing the failure code. The original instruction and prior draft remain saved; this status does not turn the failed job into a success. The sample-loading CLI checks each new job's terminal status and expected result before advancing or reporting a completed walkthrough.
 
-The sample operations are synchronous; there is no background polling requirement or automatic retry loop. Retry by reopening the task and submitting a new explicit operation with current versions. A job completing after another write records `stale_result`, discards the delayed output, and preserves the newer saved work. The current job record and completed/failed jobs remain inspectable in task history. On backend startup, interrupted pending/running jobs become failed with `interrupted_job` and `retryable=true`; the task version increases. Reopen the task and retry explicitly. Run one backend worker so another worker cannot misclassify a live operation as interrupted. Do not retry permanent configuration/media errors without fixing their cause.
+The original compatibility routes execute synchronously; the workspace uses the background ticket API above. Neither polling nor restart automatically repeats a provider request. Retry by reopening the task and submitting a new explicit operation with current versions. A job completing after another write records `stale_result`, discards the delayed output, and preserves the newer saved work. The current job record and completed/failed jobs remain inspectable in task history. On backend startup, interrupted pending/running jobs become failed with `interrupted_job` and `retryable=true`; the task version increases. Reopen the task and retry explicitly. Run one backend worker so another worker cannot misclassify a live operation as interrupted. Do not retry permanent configuration/media errors without fixing their cause.
 
 ## Media boundary
 
@@ -278,19 +316,19 @@ A valid sample adapter exercise is the `recognize` operation in the HTTP example
 
 ```python
 generate_directions(brief: BrandTaskBrief,
-                    analysis: AnalysisResult) -> list[CreativeDirection]
+                    analysis: AnalysisResult | None) -> list[CreativeDirection]
 
 refine_direction(brief: BrandTaskBrief,
-                 analysis: AnalysisResult,
+                 analysis: AnalysisResult | None,
                  target: CreativeDirection,
                  feedback: CreativeFeedback) -> CreativeDirection | None
 
 generate_production(brief: BrandTaskBrief,
-                    analysis: AnalysisResult,
+                    analysis: AnalysisResult | None,
                     direction: CreativeDirection) -> tuple[ProductionCreativeBrief, TextStoryboard]
 ```
 
-Direction generation returns exactly two distinct drafts. Each cites the exact input revisions and real event IDs from that analysis. Refinement receives the entire persisted `CreativeFeedback`, including the original instruction and exact target/input references. A supported refinement returns the next revision of that same direction, with `approval_status=draft`, no approval timestamp, and its feedback reference. `None` means no interpreted refinement; the service retains the instruction with `status=not_interpreted`, an explanation, and no invented resulting draft.
+Direction generation returns exactly two distinct drafts. Reference-driven drafts cite exact input revisions and existing event IDs. Original drafts have `analysis_ref=null` and empty evidence arrays; their two alternatives are independent creative approaches, not claims of following a nonexistent reference. Refinement receives the entire persisted `CreativeFeedback`, including the original instruction and exact target/input references. A supported refinement returns the next revision of that same direction, with `approval_status=draft`, no approval timestamp, and its feedback reference. `None` means no interpreted refinement; the service retains the instruction with `status=not_interpreted`, an explanation, and no invented resulting draft.
 
 The deterministic sample accepts the case-insensitive literals **Make this direction presenter-free.**, **Make it presenter-free**, or **presenter-free** (with optional final period/exclamation mark). It visibly changes Hook, narrative, production requirements, and production notes; approved production output uses product-only imagery/text with no spoken dialogue. All other instructions are saved as user production notes in the feedback history and explicitly reported as uninterpreted; they do not silently modify a direction or establish unrestricted language understanding.
 

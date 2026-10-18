@@ -69,6 +69,7 @@ def test_readable_media_preserves_edits_approval_refs_and_storyboard_seconds(tmp
                 assert all(detail["confirmation_origin"] == "legacy_unrecorded" for detail in details)
             if collection == "directions":
                 assert after.pop("auxiliary_status") == "current"
+                assert after.pop("structure_handoff_id") is None
             if collection in ("production_briefs", "storyboards"):
                 assert after.pop("bundle_id") is None
             assert after == {**before, "schema_version": "0.6.0"}

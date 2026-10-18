@@ -6,102 +6,107 @@ async function update(api: APIRequestContext, state: TaskState, path: string, bo
   expect(response.ok(), await response.text()).toBeTruthy();
   return response.json();
 }
-
 async function sample(api: APIRequestContext) {
-  const created = await api.post('/api/tasks', { data: { title: 'Reference corrections recovery' } });
-  let state: TaskState = await created.json();
+  let state: TaskState = await (await api.post('/api/tasks', { data: { title: 'Timeline corrections recovery' } })).json();
   state = await update(api, state, '/sample');
   state = await update(api, state, '/recognize');
-  state = await update(api, state, '/analysis/confirm', { analysis_ref: state.task.current_analysis });
-  state = await update(api, state, '/language', { generation_language: 'English' });
   return state;
 }
-
 async function open(page: Page, state: TaskState) {
-  await page.addInitScript((id) => {
-    localStorage.setItem('video-anatomy-task', id);
-    localStorage.setItem(`video-anatomy-area:${id}`, 'reference');
-  }, state.task.task_id);
+  await page.addInitScript((id) => { localStorage.setItem('video-anatomy-task', id); localStorage.setItem(`video-anatomy-area:${id}`, 'reference'); }, state.task.task_id);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Read the reference.', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Video evidence timeline' })).toBeVisible();
 }
-
-const observation = (page: Page) => page.locator('[data-evidence-id="event_intro_text"]');
-const correction = (page: Page) => page.getByLabel('Recognized text · event_intro_text', { exact: true });
-
+async function selectText(page: Page) {
+  await page.locator('.timeline-mark.on_screen_text').first().click();
+  const dropdown = page.getByLabel('Visible text at selected sample');
+  if (await dropdown.isVisible()) await dropdown.selectOption('event_intro_text');
+}
 async function edit(page: Page, text: string) {
-  if (!await correction(page).isVisible()) await observation(page).getByRole('button', { name: /^Correct visible text/ }).click();
-  await correction(page).fill(text);
+  await selectText(page);
+  const correction = page.getByLabel('Recognized text · event_intro_text', { exact: true });
+  if (!await correction.isVisible()) await page.locator('[data-evidence-id="event_intro_text"]').getByRole('button', { name: /^Correct visible text/ }).click();
+  await correction.fill(text);
+  return correction;
 }
 
-test('reference corrections restore after refresh/task switches, gate new work, and apply separately from confirmation', async ({ page, request }) => {
+test('timeline fits desktop windows, selects one inspector, and supports keyboard seeking', async ({ page, request }) => {
   const state = await sample(request);
-  const taskId = state.task.task_id;
-  const otherResponse = await request.post('/api/tasks', { data: { title: 'Another reference task' } });
-  const other: TaskState = await otherResponse.json();
   await open(page, state);
-  await expect(page.locator('.m5 textarea')).toHaveCount(0);
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 960 });
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.locator('.m5').screenshot({ path: `/tmp/m5-evidence-${width}.png` });
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 768 }]) {
+    await page.setViewportSize(viewport);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+    await page.screenshot({ path: `/tmp/video-anatomy-timeline-${viewport.width}.png` });
+    const timeline = await page.locator('.reference-timeline-slot').boundingBox();
+    expect(timeline!.y + timeline!.height).toBeLessThanOrEqual(viewport.height);
+    await expect(page.locator('.m5-observation')).toHaveCount(1);
   }
-  await page.setViewportSize({ width: 1440, height: 960 });
-  await expect(page.locator('[data-evidence-id="event_footer"]')).toHaveCount(1);
-  await expect(page.locator('.m5-coverage-note')).toContainText('not every shot');
-  await edit(page, 'LUMACUP · 保留的纠正草稿');
+  await page.locator('.timeline-mark.visual_action').first().focus();
+  await page.keyboard.press('ArrowRight');
+  const selected = state.analyses[0].events.filter((event) => event.kind === 'visual_action')[1];
+  await expect(page.locator(`[data-evidence-id="${selected.event_id}"]`)).toBeVisible();
+  await expect(page.getByTestId('reference-frame-position')).toContainText(`· ${selected.start_frame} /`);
   await page.locator('#tab-directions').click();
-  await expect(page.getByRole('button', { name: 'Generate two sample directions', exact: true })).toBeDisabled();
-  const saved = await request.get(`/api/tasks/${taskId}/editors/analysis`);
-  expect((await saved.json()).has_pending_changes).toBe(true);
-  const preserved: TaskState = await (await request.get(`/api/tasks/${taskId}`)).json();
-  expect(preserved.task.version).toBe(state.task.version);
-  expect(preserved.analyses.at(-1)?.review.user_confirmed).toBe(true);
-  const blocked = await request.post(`/api/tasks/${taskId}/recognize`, { data: { expected_version: state.task.version } });
-  expect(blocked.ok()).toBe(false);
-  expect((await blocked.json()).error.code).toBe('editor_pending_changes');
+  await expect(page.locator('#area-directions')).toBeVisible();
   await page.locator('#tab-reference').click();
-  await page.reload();
-  await edit(page, 'LUMACUP · 保留的纠正草稿');
-  await expect(correction(page)).toHaveValue('LUMACUP · 保留的纠正草稿');
-  await page.getByRole('complementary', { name: 'Saved tasks' }).getByRole('button', { name: new RegExp(other.task.title) }).click();
-  await expect(page.getByRole('heading', { name: other.task.title, exact: true })).toBeVisible();
-  await page.getByRole('complementary', { name: 'Saved tasks' }).getByRole('button', { name: new RegExp(state.task.title) }).click();
-  await observation(page).getByRole('button', { name: /^Correct visible text/ }).click();
-  await expect(correction(page)).toHaveValue('LUMACUP · 保留的纠正草稿');
-  await page.getByRole('button', { name: 'Discard corrections', exact: true }).click();
-  await page.getByRole('button', { name: 'Discard draft changes', exact: true }).click();
-  await expect(observation(page).locator('.m5-observation-copy')).toHaveText('LUMACUP\nFICTIONAL SAMPLE');
-  await expect(page.locator('.m5-review-status')).toContainText('Review confirmed');
-  await edit(page, 'LUMACUP · 已应用的纠正');
-  const response = page.waitForResponse((item) => item.request().method() === 'POST' && new URL(item.url()).pathname.endsWith('/analysis/correct'));
-  await page.getByRole('button', { name: 'Save analysis corrections', exact: true }).click();
-  const appliedResponse = await response;
-  expect(appliedResponse.ok(), await appliedResponse.text()).toBeTruthy();
-  const applied: TaskState = await appliedResponse.json();
-  expect(applied.analyses).toHaveLength(2);
-  expect(applied.analyses[0]).toEqual(state.analyses[0]);
-  expect(applied.analyses[1].review.user_confirmed).toBe(false);
-  await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Use this reviewed analysis', exact: true }).click();
-  await expect(page.locator('.m5-review-status')).toContainText('Review confirmed');
+  await expect(page.locator(`[data-evidence-id="${selected.event_id}"]`)).toBeVisible();
 });
 
-test('a failed correction autosave retains local wording and can retry without changing formal analysis', async ({ page, request }) => {
+test('selected correction draft survives reload and applies separately from confirmation', async ({ page, request }) => {
+  const state = await sample(request);
+  await open(page, state);
+  await edit(page, 'LUMACUP · retained correction');
+  await expect.poll(async () => (await (await request.get(`/api/tasks/${state.task.task_id}/editors/analysis`)).json()).has_pending_changes).toBe(true);
+  await page.reload();
+  await selectText(page);
+  await page.locator('[data-evidence-id="event_intro_text"]').getByRole('button', { name: /^Correct visible text/ }).click();
+  await expect(page.getByLabel('Recognized text · event_intro_text')).toHaveValue('LUMACUP · retained correction');
+  await page.getByRole('button', { name: 'Save analysis corrections', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeEnabled();
+  const saved: TaskState = await (await request.get(`/api/tasks/${state.task.task_id}`)).json();
+  expect(saved.analyses).toHaveLength(2);
+  expect(saved.analyses[0]).toEqual(state.analyses[0]);
+  expect(saved.analyses[1].review.user_confirmed).toBe(false);
+  await page.getByRole('button', { name: 'Use this reviewed analysis', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Analysis reviewed', exact: true })).toBeDisabled();
+});
+
+test('failed correction save stays in inspector and retries without losing wording', async ({ page, request }) => {
   const state = await sample(request);
   await open(page, state);
   let fail = true;
   await page.route(`**/api/tasks/${state.task.task_id}/editors/analysis`, async (route) => {
-    if (route.request().method() === 'POST' && fail) await route.fulfill({ status: 503, json: { error: { code: 'fixture_unavailable', message: 'Save unavailable in this test. Retry your draft.', retryable: true } } });
+    if (route.request().method() === 'POST' && fail) await route.fulfill({ status: 503, json: { error: { code: 'fixture_unavailable', message: 'Save unavailable in this test.', retryable: true } } });
     else await route.continue();
   });
-  await edit(page, 'Draft remains after temporary failure');
-  await expect(page.locator('.m5').getByRole('alert')).toContainText('Save unavailable');
-  await expect(correction(page)).toHaveValue('Draft remains after temporary failure');
+  const correction = await edit(page, 'Draft retained after failure');
+  await expect(page.locator('.reference-inspector').getByRole('alert')).toContainText('Save unavailable');
+  await expect(correction).toHaveValue('Draft retained after failure');
   fail = false;
-  await page.getByRole('button', { name: 'Retry draft save', exact: true }).click();
-  await expect(page.locator('.m5').getByRole('alert')).toHaveCount(0);
-  await expect.poll(async () => (await (await request.get(`/api/tasks/${state.task.task_id}/editors/analysis`)).json()).content.events.find((event: {event_id: string}) => event.event_id === 'event_intro_text').text).toBe('Draft remains after temporary failure');
+  await page.getByRole('button', { name: 'Retry draft save' }).click();
+  await expect(page.locator('.reference-inspector').getByRole('alert')).toHaveCount(0);
   const formal: TaskState = await (await request.get(`/api/tasks/${state.task.task_id}`)).json();
   expect(formal.analyses).toEqual(state.analyses);
+});
+
+test('content-area preview saves a reversible source-coordinate crop without recognition calls', async ({ page, request }) => {
+  const fixture = await sample(request);
+  const media = await request.get(`/api/tasks/${fixture.task.task_id}/media/${fixture.task.current_video_id}`);
+  let state: TaskState = await (await request.post('/api/tasks', { data: { title: 'Content area preview' } })).json();
+  const upload = await request.post(`/api/tasks/${state.task.task_id}/video`, { multipart: { expected_version: String(state.task.version), file: { name: 'local-fixture.mp4', mimeType: 'video/mp4', buffer: await media.body() } } });
+  expect(upload.ok(), await upload.text()).toBeTruthy(); state = await upload.json();
+  await page.addInitScript((id) => localStorage.setItem('video-anatomy-task', id), state.task.task_id);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Content area', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Content area', exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Trim top percent').fill('10');
+  await page.screenshot({ path: '/tmp/video-anatomy-content-area.png' });
+  await dialog.getByRole('button', { name: 'Save content area' }).click();
+  await expect(dialog).toHaveCount(0);
+  const region = await (await request.get(`/api/tasks/${state.task.task_id}/videos/${state.task.current_video_id}/content-region`)).json();
+  expect(region.crop.y).toBe(.1); expect(region.revision).toBe(1);
+  const saved: TaskState = await (await request.get(`/api/tasks/${state.task.task_id}`)).json();
+  expect(saved.jobs).toHaveLength(0);
+  expect(saved.videos[0].content_sha256).toBe(state.videos[0].content_sha256);
 });

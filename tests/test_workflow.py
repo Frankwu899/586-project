@@ -219,7 +219,7 @@ def test_adapters_cannot_grant_review_or_approval(service):
     assert state.directions == [] and state.task.selected_direction is None
 
 
-def test_pending_job_race_and_restart_recovery(service, monkeypatch):
+def test_unrelated_pending_title_edit_preserved_and_restart_recovery(service, monkeypatch):
     state = ready(service)
     original_update = service._update
     intervened = False
@@ -232,8 +232,8 @@ def test_pending_job_race_and_restart_recovery(service, monkeypatch):
         return saved
     monkeypatch.setattr(service, "_update", update)
     state = service.generate_directions(state.task.task_id, state.task.version, state.task.current_brief, state.task.current_analysis)
-    assert state.jobs[-1].status == "failed" and state.jobs[-1].error.code == "stale_result"
-    assert not state.directions and state.task.title == "Concurrent title"
+    assert state.jobs[-1].status == "succeeded" and state.jobs[-1].error is None
+    assert len(state.directions) == 2 and state.task.title == "Concurrent title"
     def interrupted(task):
         task.jobs.append(m.ProcessingJob(job_id="job_interrupted", task_id=task.task.task_id, operation="directions", status="running"))
     original_update(state.task.task_id, state.task.version, interrupted)
@@ -270,7 +270,7 @@ def test_failed_refinement_resolves_only_its_pending_feedback(service, monkeypat
         job = saved.jobs[-1]
         if job.operation == "refine":
             if failure == "pending_race" and job.status == "pending":
-                original_update(task_id, saved.task.version, lambda task: setattr(task.task, "title", "Concurrent saved title"))
+                original_update(task_id, saved.task.version, lambda task: setattr(task.task, "generation_language", "Chinese"))
             if failure == f"restart_{job.status}":
                 raise StoppedBackend
         return saved
@@ -281,7 +281,7 @@ def test_failed_refinement_resolves_only_its_pending_feedback(service, monkeypat
                 raise RuntimeError("Synthetic adapter failure")
             if failure == "running_race":
                 latest = service.store.get(task_id)
-                original_update(task_id, latest.task.version, lambda task: setattr(task.task, "title", "Concurrent saved title"))
+                original_update(task_id, latest.task.version, lambda task: setattr(task.task, "generation_language", "Chinese"))
             result = delegate.refine_direction(brief, analysis, direction, feedback)
             if failure == "invalid_result":
                 result.revision += 1

@@ -1,0 +1,987 @@
+{
+  "$defs": {
+    "AdoptRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "expected_version"
+      ],
+      "title": "AdoptRequest",
+      "type": "object"
+    },
+    "AnalyzeRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "analysis_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VersionRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "AnalyzeRequest",
+      "type": "object"
+    },
+    "Answer": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "node_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "answer": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Answer",
+          "type": "string"
+        },
+        "event_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Event Ids",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "node_id",
+        "question",
+        "answer",
+        "event_ids",
+        "source_ids"
+      ],
+      "title": "Answer",
+      "type": "object"
+    },
+    "Edge": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "from_node": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "From Node",
+          "type": "string"
+        },
+        "to_node": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "To Node",
+          "type": "string"
+        },
+        "relation": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Relation",
+          "type": "string"
+        },
+        "explanation": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "from_node",
+        "to_node",
+        "relation",
+        "explanation"
+      ],
+      "title": "Edge",
+      "type": "object"
+    },
+    "FeedbackRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "node_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "instruction": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Instruction",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "question",
+            "context",
+            "reconsider"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expected_version",
+        "node_id",
+        "instruction",
+        "kind"
+      ],
+      "title": "FeedbackRequest",
+      "type": "object"
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "why_it_matters": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Why It Matters",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "why_it_matters"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "Graph": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "maxItems": 30,
+          "title": "Edges",
+          "type": "array"
+        },
+        "methods": {
+          "items": {
+            "$ref": "#/$defs/Method"
+          },
+          "maxItems": 8,
+          "title": "Methods",
+          "type": "array"
+        },
+        "research_gaps": {
+          "items": {
+            "$ref": "#/$defs/Gap"
+          },
+          "maxItems": 3,
+          "title": "Research Gaps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "summary",
+        "nodes",
+        "edges",
+        "methods",
+        "research_gaps"
+      ],
+      "title": "Graph",
+      "type": "object"
+    },
+    "Handoff": {
+      "additionalProperties": false,
+      "properties": {
+        "handoff_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Handoff Id",
+          "type": "string"
+        },
+        "task_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Task Id",
+          "type": "string"
+        },
+        "structure_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Structure Id",
+          "type": "string"
+        },
+        "structure_version": {
+          "title": "Structure Version",
+          "type": "integer"
+        },
+        "analysis_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "video_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Video Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "title": "Edges",
+          "type": "array"
+        },
+        "methods": {
+          "items": {
+            "$ref": "#/$defs/Method"
+          },
+          "title": "Methods",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "contexts": {
+          "items": {
+            "$ref": "#/$defs/UserContext"
+          },
+          "title": "Contexts",
+          "type": "array"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "note": {
+          "default": "Research context, not a new product claim or an approved creative direction.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "handoff_id",
+        "task_id",
+        "structure_id",
+        "structure_version",
+        "analysis_ref",
+        "video_id",
+        "title",
+        "nodes",
+        "edges",
+        "methods",
+        "sources",
+        "contexts"
+      ],
+      "title": "Handoff",
+      "type": "object"
+    },
+    "HandoffRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "node_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Node Ids",
+          "type": "array"
+        },
+        "method_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Method Ids",
+          "type": "array"
+        },
+        "all": {
+          "default": false,
+          "title": "All",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expected_version"
+      ],
+      "title": "HandoffRequest",
+      "type": "object"
+    },
+    "Method": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "explanation": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "node_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Node Ids",
+          "type": "array"
+        },
+        "conditions": {
+          "items": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Conditions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "explanation",
+        "node_ids",
+        "conditions"
+      ],
+      "title": "Method",
+      "type": "object"
+    },
+    "Moment": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Event Id",
+          "type": "string"
+        },
+        "start_frame": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Start Frame"
+        },
+        "end_frame": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "End Frame"
+        },
+        "start_seconds": {
+          "title": "Start Seconds",
+          "type": "number"
+        },
+        "end_seconds": {
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "precision": {
+          "enum": [
+            "sample",
+            "interval"
+          ],
+          "title": "Precision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "start_frame",
+        "end_frame",
+        "start_seconds",
+        "end_seconds",
+        "precision"
+      ],
+      "title": "Moment",
+      "type": "object"
+    },
+    "Node": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "explanation": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "observation",
+            "source_claim",
+            "inference",
+            "user_context"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "event_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Event Ids",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "context_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Context Ids",
+          "type": "array"
+        },
+        "moments": {
+          "items": {
+            "$ref": "#/$defs/Moment"
+          },
+          "maxItems": 12,
+          "title": "Moments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explanation",
+        "kind",
+        "event_ids",
+        "source_ids",
+        "context_ids"
+      ],
+      "title": "Node",
+      "type": "object"
+    },
+    "Proposal": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "graph": {
+          "$ref": "#/$defs/Graph"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "affected_node_ids": {
+          "items": {
+            "maxLength": 150,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Affected Node Ids",
+          "type": "array"
+        },
+        "base_graph_revision": {
+          "title": "Base Graph Revision",
+          "type": "integer"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "adopted",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reason",
+        "graph",
+        "sources",
+        "affected_node_ids",
+        "base_graph_revision"
+      ],
+      "title": "Proposal",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "claim": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Claim",
+          "type": "string"
+        },
+        "attribution": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Attribution",
+          "type": "string"
+        },
+        "retrieved_at": {
+          "title": "Retrieved At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "url",
+        "claim",
+        "attribution"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "StructureError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "StructureError",
+      "type": "object"
+    },
+    "UserContext": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "node_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Node Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "node_id",
+        "text"
+      ],
+      "title": "UserContext",
+      "type": "object"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision"
+      ],
+      "title": "VersionRef",
+      "type": "object"
+    },
+    "Workspace": {
+      "additionalProperties": false,
+      "properties": {
+        "structure_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Structure Id",
+          "type": "string"
+        },
+        "task_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Task Id",
+          "type": "string"
+        },
+        "video_id": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Video Id",
+          "type": "string"
+        },
+        "analysis_ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "version": {
+          "default": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "graph_revision": {
+          "default": 0,
+          "title": "Graph Revision",
+          "type": "integer"
+        },
+        "status": {
+          "default": "analyzing",
+          "enum": [
+            "analyzing",
+            "researching",
+            "ready",
+            "partial",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "sample",
+            "provider"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "graph": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Graph"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "contexts": {
+          "items": {
+            "$ref": "#/$defs/UserContext"
+          },
+          "title": "Contexts",
+          "type": "array"
+        },
+        "proposals": {
+          "items": {
+            "$ref": "#/$defs/Proposal"
+          },
+          "title": "Proposals",
+          "type": "array"
+        },
+        "answers": {
+          "items": {
+            "$ref": "#/$defs/Answer"
+          },
+          "title": "Answers",
+          "type": "array"
+        },
+        "feedback_status": {
+          "default": "idle",
+          "enum": [
+            "idle",
+            "running",
+            "failed"
+          ],
+          "title": "Feedback Status",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StructureError"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "research_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Research Note"
+        },
+        "outdated": {
+          "default": false,
+          "title": "Outdated",
+          "type": "boolean"
+        },
+        "source_deleted": {
+          "default": false,
+          "title": "Source Deleted",
+          "type": "boolean"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "structure_id",
+        "task_id",
+        "video_id",
+        "analysis_ref",
+        "origin"
+      ],
+      "title": "Workspace",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "workspace": {
+      "$ref": "#/$defs/Workspace"
+    },
+    "analyze_request": {
+      "$ref": "#/$defs/AnalyzeRequest"
+    },
+    "feedback_request": {
+      "$ref": "#/$defs/FeedbackRequest"
+    },
+    "adopt_request": {
+      "$ref": "#/$defs/AdoptRequest"
+    },
+    "handoff_request": {
+      "$ref": "#/$defs/HandoffRequest"
+    },
+    "handoff": {
+      "$ref": "#/$defs/Handoff"
+    }
+  },
+  "required": [
+    "workspace",
+    "analyze_request",
+    "feedback_request",
+    "adopt_request",
+    "handoff_request",
+    "handoff"
+  ],
+  "title": "StructureContractBundle",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/video-anatomy/contracts/v0.7.structure.schema.json",
+  "$comment": "Generated by scripts/export_contracts.py from authoritative backend Pydantic models. Cross-record references, interval semantics and workflow gates also require runtime validation."
+}

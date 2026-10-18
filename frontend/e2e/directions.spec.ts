@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { savedMutation } from './operation-helpers';
 import type { TaskState } from '../src/generated/contracts';
 
 async function update(api: APIRequestContext, state: TaskState, path: string, body: Record<string, unknown> = {}): Promise<TaskState> {
@@ -29,15 +30,13 @@ async function openDirections(page: Page, state: TaskState) {
     localStorage.setItem(`video-anatomy-area:${taskId}`, 'directions');
   }, state.task.task_id);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Find the story worth making.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ideas', exact: true })).toBeVisible();
 }
 
 async function clickMutation(page: Page, suffix: string, click: () => Promise<void>): Promise<TaskState> {
-  const responsePromise = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(suffix));
+  const pending = savedMutation(page, suffix);
   await click();
-  const response = await responsePromise;
-  expect(response.ok(), await response.text()).toBeTruthy();
-  return response.json();
+  return pending;
 }
 
 test('direction language is explicit, summaries are readable, and evidence opens the reference', async ({ page, request }) => {

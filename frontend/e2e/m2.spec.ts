@@ -18,6 +18,7 @@ async function create(page: Page, title: string): Promise<TaskState> {
   await page.getByRole('button', { name: 'Create task', exact: true }).click();
   const result = await response;
   expect(result.ok()).toBeTruthy();
+  await area(page, 'inputs');
   await expect(page.getByTestId('m2-editor')).toBeVisible();
   return result.json();
 }
@@ -230,10 +231,15 @@ test('reference processing response does not block editing or replace independen
   const held = new Promise<void>((resolveHeld) => { release = resolveHeld; });
   let received!: (state: TaskState) => void;
   const ready = new Promise<TaskState>((resolveReady) => { received = resolveReady; });
-  await page.route('**/recognize', async (route) => {
+  let heldUrl = '';
+  await page.route('**/operations**', async (route) => {
     const response = await route.fetch();
-    received(await response.json());
-    await held;
+    const ticket = await response.json();
+    if (ticket.operation === 'recognize' && ticket.status === 'succeeded' && !heldUrl) {
+      heldUrl = route.request().url();
+      received(ticket.result);
+      await held;
+    }
     await route.fulfill({ response });
   });
   await area(page, 'reference');
@@ -246,7 +252,7 @@ test('reference processing response does not block editing or replace independen
   await draftSaved(page);
   const whilePending = await savedState(page, sampleState.task.task_id);
   expect(whilePending.task.version).toBe(recognized.task.version);
-  const response = page.waitForResponse((item) => new URL(item.url()).pathname.endsWith('/recognize'));
+  const response = page.waitForResponse((item) => item.url() === heldUrl);
   release();
   expect((await response).ok()).toBeTruthy();
   await expect(page.getByLabel('Product', { exact: true })).toHaveValue('Typed while recognition response pending');
@@ -367,7 +373,7 @@ test('saved tasks restore their own last work area after switching and browser r
   await page.getByLabel('New task title', { exact: true }).fill('Workspace position target');
   await page.getByRole('button', { name: 'Create task', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Workspace position target', exact: true })).toBeVisible();
-  await expect(page.locator('#area-inputs')).toBeVisible();
+  await expect(page.locator('#area-reference')).toBeVisible();
   await area(page, 'production');
   await page.getByRole('button', { name: /^Workspace position source/ }).click();
   await expect(page.locator('#area-reference')).toBeVisible();
@@ -403,8 +409,9 @@ test('deleting reference media keeps historical work and pending brand inputs; r
   await draftSaved(page);
   await area(page, 'reference');
   await expect(page.getByLabel('Reference video player', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Source media', exact: true }).click();
   await page.getByRole('button', { name: 'Delete media', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Confirm reference deletion' })).toContainText('Historical analysis and creative work stay saved');
+  await expect(page.getByRole('region', { name: 'Confirm reference deletion' })).toContainText('Historical text remains');
   expect((await savedState(page, state.task.task_id)).videos[0].deleted_at).toBeNull();
   const deletedResponse = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(`/videos/${oldVideo}/delete`));
   await page.getByRole('button', { name: 'Delete reference media', exact: true }).click();
@@ -412,7 +419,7 @@ test('deleting reference media keeps historical work and pending brand inputs; r
   expect(deleted.ok(), await deleted.text()).toBeTruthy();
   state = await deleted.json();
   await expect(page.getByLabel('Reference video player', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('Source media deleted · history retained', { exact: true })).toBeVisible();
+  await expect(page.getByText('Deleted · history retained', { exact: true })).toBeVisible();
   expect(state.task.current_video_id).toBeNull();
   expect(state.task.current_analysis).toBeNull();
   expect(state.task.selected_direction).toBeNull();
@@ -438,11 +445,11 @@ test('deleting reference media keeps historical work and pending brand inputs; r
   expect(state.analyses).toEqual(beforeDelete.analyses);
   expect(state.task.mode).toBe('real');
   await expect(page.getByRole('button', { name: 'Start analysis', exact: true })).toBeEnabled();
-  const uploadDetails = page.locator('.reference-sources details').last();
+  const uploadDetails = page.locator('.reference-sources details').filter({ has: page.getByText('Import another reference', { exact: true }) });
   if (!await uploadDetails.evaluate((element) => element.hasAttribute('open'))) await uploadDetails.locator('summary').click();
   await page.getByLabel('Reference video file', { exact: true }).setInputFiles({ name: 'second-reference.mp4', mimeType: 'video/mp4', buffer: mediaBytes });
   await page.getByRole('button', { name: 'Upload reference', exact: true }).click();
-  await expect(page.getByText('This file becomes the current reference.', { exact: false })).toBeVisible();
+  await expect(page.getByText('This becomes the current reference.', { exact: false })).toBeVisible();
   expect((await savedState(page, state.task.task_id)).videos).toHaveLength(2);
   uploaded = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/video'));
   await page.getByRole('button', { name: 'Confirm replacement upload', exact: true }).click();

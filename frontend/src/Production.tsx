@@ -62,7 +62,7 @@ function OutputEditor({ state, snapshot, mutate, busy, canGenerate, onExport }: 
   useEffect(() => { void reload().catch((failure: unknown) => setLocalError(failure instanceof Error ? failure.message : 'Could not refresh the saved production draft.')); }, [brief.output_id, brief.revision, storyboard.output_id, storyboard.revision, reload]);
   const fields = draft.content.brief_fields;
   const rows = draft.content.rows;
-  const sourceAnalysis = state.analyses.find((item) => item.analysis_id === brief.analysis_ref.id && item.revision === brief.analysis_ref.revision);
+  const sourceAnalysis = state.analyses.find((item) => item.analysis_id === brief.analysis_ref?.id && item.revision === brief.analysis_ref?.revision);
   const sourceDeleted = state.videos.some((item) => item.video_id === sourceAnalysis?.video_id && item.deleted_at);
   const unavailable = busy || working || draft.loading;
   const setField = (field: keyof ProductionContent['brief_fields'], value: string | string[]) => draft.setContent((previous) => ({ ...previous, brief_fields: { ...previous.brief_fields, [field]: value } }));
@@ -78,7 +78,7 @@ function OutputEditor({ state, snapshot, mutate, busy, canGenerate, onExport }: 
     return result;
   };
   const regenerate = async () => {
-    const result = await mutate('/outputs/generate', { direction_ref: state.task.selected_direction, brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis });
+    const result = await mutate('/outputs/generate', { direction_ref: state.task.selected_direction, brief_ref: state.task.current_brief, analysis_ref: state.directions.find((item) => item.direction_id === state.task.selected_direction?.id && item.revision === state.task.selected_direction.revision)?.analysis_ref ?? null });
     if (result) await draft.reload();
   };
   const run = async (operation: () => Promise<void>) => {
@@ -109,7 +109,7 @@ function OutputEditor({ state, snapshot, mutate, busy, canGenerate, onExport }: 
     {brief.currentness !== 'current' && <p className="notice">These materials are historical because their inputs or approved direction changed. Your saved work remains available. Approve a current direction before regenerating.</p>}
     {sourceDeleted && <p className="notice">Reference media deleted; playback unavailable. Saved observations and production history are retained.</p>}
     <div className="production-export-bar"><div><strong>Ready to share with your team</strong><p>PDF combines the brief and storyboard. CSV keeps shot text editable in a spreadsheet.</p></div><div className="actions"><button disabled={unavailable} type="button" onClick={() => requestExport('pdf')}>{brief.currentness === 'current' ? 'Production PDF' : 'Export historical PDF'}</button><button disabled={unavailable} type="button" className="secondary" onClick={() => requestExport('csv')}>{storyboard.currentness === 'current' ? 'Storyboard CSV' : 'Export historical CSV'}</button><button disabled={unavailable} type="button" className="text-button" onClick={() => requestExport('markdown')}>Markdown</button></div></div>
-    <details className="production-source"><summary>Source versions · inputs r{brief.brief_ref.revision} · analysis r{brief.analysis_ref.revision} · direction r{brief.direction_ref.revision}</summary><p className="muted">{sourceSummary(snapshot)}</p></details>
+    <details className="production-source"><summary>Source versions · inputs r{brief.brief_ref.revision} · {brief.analysis_ref ? `analysis r${brief.analysis_ref.revision}` : 'original idea'} · direction r{brief.direction_ref.revision}</summary><p className="muted">{sourceSummary(snapshot)}</p></details>
     <div className="production-save-status" role="status">{draft.loading ? 'Restoring production draft…' : draft.saving ? 'Saving draft…' : draft.conflict ? 'Draft conflict — your changes are retained' : draft.pending ? 'Pending draft changes · save to update the production version' : 'All production changes saved'}</div>
     {localNotice && <p className="success" role="status">{localNotice}</p>}
     {(localError || draft.error) && <p className="error" role="alert">{localError || draft.error}</p>}
@@ -139,10 +139,10 @@ export default function Production({ state, mutate, busy, m2Blocked }: { state: 
   const performExport = (snapshot: ProductionSnapshot, format: ExportFormat) => { if (format === 'pdf') setPreview(snapshot); else download(snapshot, format); };
   const onExport = (snapshot: ProductionSnapshot, format: ExportFormat) => { if (snapshot.historical) setHistorical({ snapshot, format }); else performExport(snapshot, format); };
   return <section id="production" className="panel production-studio" aria-labelledby="production-heading">
-    <div className="production-heading"><p className="production-eyebrow">04 / Make it tangible</p><h2 id="production-heading">Production & delivery</h2><p>Turn your approved idea into a brief and shot-by-shot plan the team can work with.</p></div>
+    <div className="production-heading"><p className="production-eyebrow">Production</p><h2 id="production-heading">Production & delivery</h2><p>Turn your approved idea into a brief and shot-by-shot plan the team can work with.</p></div>
     {!approved && <p className="notice">Explicitly approve a current direction to generate production materials. Existing work stays available below.</p>}
-    {m2Blocked && <p className="notice">Resolve pending input or analysis changes before generating new production materials.</p>}
-    {current?.brief && current.storyboard ? <OutputEditor key={state.task.task_id} state={state} snapshot={current} mutate={mutate} busy={busy} canGenerate={Boolean(approved) && !m2Blocked} onExport={onExport} /> : <div className="production-empty"><span>From an idea to a shoot.</span><p>Your production brief and timed storyboard will appear here after you approve a direction.</p><button type="button" disabled={busy || m2Blocked || !approved} onClick={() => mutate('/outputs/generate', { direction_ref: state.task.selected_direction, brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis })}>Generate production materials</button><p className="muted">Generated drafts remain editable. Earlier saved work is retained when you generate again.</p></div>}
+    {m2Blocked && <p className="notice">Apply pending context changes before generating new production materials.</p>}
+    {current?.brief && current.storyboard ? <OutputEditor key={state.task.task_id} state={state} snapshot={current} mutate={mutate} busy={busy} canGenerate={Boolean(approved) && !m2Blocked} onExport={onExport} /> : <div className="production-empty"><span>From an idea to a shoot.</span><p>Your production brief and timed storyboard will appear here after you approve a direction.</p><button type="button" disabled={busy || m2Blocked || !approved} onClick={() => mutate('/outputs/generate', { direction_ref: state.task.selected_direction, brief_ref: state.task.current_brief, analysis_ref: state.directions.find((item) => item.direction_id === state.task.selected_direction?.id && item.revision === state.task.selected_direction.revision)?.analysis_ref ?? null })}>Generate production materials</button><p className="muted">Generated drafts remain editable. Earlier saved work is retained when you generate again.</p></div>}
     <SavedHistory state={state} onExport={onExport} busy={busy} />
     {historical && <SaveDialog title="Export a historical version?" onClose={() => setHistorical(null)}><p>{productionStatus(historical.snapshot)}. The filename and document will carry this label and the exact original source versions.</p><div className="actions"><button type="button" onClick={() => { performExport(historical.snapshot, historical.format); setHistorical(null); }}>Export historical version</button><button type="button" className="secondary" onClick={() => setHistorical(null)}>Cancel</button></div></SaveDialog>}
     {preview && <PdfPreview snapshot={preview} onClose={() => setPreview(null)} />}

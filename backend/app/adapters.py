@@ -29,6 +29,7 @@ class RecognitionRequest:
     job_id: str
     task_mode: str = "real"
     media_path: Path | None = None
+    content_region: dict | None = None
 
 
 class RecognitionAdapter(Protocol):
@@ -37,10 +38,11 @@ class RecognitionAdapter(Protocol):
 
 class CreativeAdapter(Protocol):
     def for_language(self, language: str) -> CreativeAdapter: ...
-    def generate_directions(self, brief: BrandTaskBrief, analysis: AnalysisResult) -> list[CreativeDirection]: ...
-    def refine_direction(self, brief: BrandTaskBrief, analysis: AnalysisResult, target: CreativeDirection,
+    def with_context(self, handoff) -> CreativeAdapter: ...
+    def generate_directions(self, brief: BrandTaskBrief, analysis: AnalysisResult | None) -> list[CreativeDirection]: ...
+    def refine_direction(self, brief: BrandTaskBrief, analysis: AnalysisResult | None, target: CreativeDirection,
                          feedback: CreativeFeedback) -> CreativeDirection | None: ...
-    def generate_production(self, brief: BrandTaskBrief, analysis: AnalysisResult,
+    def generate_production(self, brief: BrandTaskBrief, analysis: AnalysisResult | None,
                             direction: CreativeDirection) -> tuple[ProductionCreativeBrief, TextStoryboard]: ...
 
 
@@ -84,9 +86,11 @@ class SampleRecognitionAdapter:
         return sample_analysis(request.task_id, video, request.job_id)
 
 
-def _inputs(brief: BrandTaskBrief, analysis: AnalysisResult) -> None:
+def _inputs(brief: BrandTaskBrief, analysis: AnalysisResult | None) -> None:
     if any(claim.confirmation_origin != "user_confirmed" for claim in brief.claim_details):
         raise ValueError("Review and confirm the input claims before creative generation")
+    if analysis is None:
+        return
     if brief.task_id != analysis.task_id:
         raise ValueError("Brief and analysis must belong to the same task")
     if analysis.status != "succeeded" or not analysis.review.user_confirmed:
@@ -97,7 +101,9 @@ def _inputs(brief: BrandTaskBrief, analysis: AnalysisResult) -> None:
         raise ValueError("Creative generation needs reviewed observations")
 
 
-def _evidence(analysis: AnalysisResult, language: str = "English") -> list[EvidenceReference]:
+def _evidence(analysis: AnalysisResult | None, language: str = "English") -> list[EvidenceReference]:
+    if analysis is None:
+        return []
     events = [event for event in analysis.events if event.kind == "visual_action"] or analysis.events
     return [EvidenceReference(analysis_id=analysis.analysis_id, analysis_revision=analysis.revision,
                               video_id=analysis.video_id, event_id=event.event_id,
@@ -130,22 +136,58 @@ def claim_context(brief: BrandTaskBrief) -> list[str]:
     return result
 
 
-def _base(brief: BrandTaskBrief, analysis: AnalysisResult) -> dict:
+def _base(brief: BrandTaskBrief, analysis: AnalysisResult | None) -> dict:
     return {"task_id": brief.task_id, "brief_ref": VersionRef(id=brief.brief_id, revision=brief.revision),
-            "analysis_ref": VersionRef(id=analysis.analysis_id, revision=analysis.revision)}
+            "analysis_ref": VersionRef(id=analysis.analysis_id, revision=analysis.revision) if analysis else None}
 
 
-def _matches(direction: CreativeDirection, brief: BrandTaskBrief, analysis: AnalysisResult) -> None:
+def _matches(direction: CreativeDirection, brief: BrandTaskBrief, analysis: AnalysisResult | None) -> None:
     _inputs(brief, analysis)
     if (direction.task_id != brief.task_id or direction.brief_ref != VersionRef(id=brief.brief_id, revision=brief.revision)
-            or direction.analysis_ref != VersionRef(id=analysis.analysis_id, revision=analysis.revision)
+            or direction.analysis_ref != (VersionRef(id=analysis.analysis_id, revision=analysis.revision) if analysis else None)
             or direction.currentness != "current"):
         raise ValueError("Direction must match the exact current brief and reviewed analysis")
+    if analysis is None:
+        if direction.evidence:
+            raise ValueError("Original creative work cannot contain reference citations")
+        return
     event_ids = {event.event_id for event in analysis.events}
     for ref in direction.evidence:
         if (ref.analysis_id != analysis.analysis_id or ref.analysis_revision != analysis.revision
                 or ref.video_id != analysis.video_id or ref.event_id not in event_ids):
             raise ValueError("Direction evidence must resolve within the exact analysis revision")
+
+
+def creative_research_context(handoff, brief, analysis) -> dict | None:
+    """Validate an immutable selected snapshot without promoting it to evidence.
+
+    The workflow must separately check that the source is still current and not
+    deleted when selecting this snapshot. This boundary checks local identity,
+    exact reviewed citations (when supplied), and internal selection references.
+    """
+    if handoff is None:
+        return None
+    from .structure_models import Handoff
+    selected = Handoff.model_validate(handoff)
+    brief = brief if isinstance(brief, dict) else brief.model_dump(mode="json")
+    if selected.task_id != brief["task_id"]:
+        raise ValueError("Selected Structure context must belong to this task")
+    if analysis is not None:
+        analysis = analysis if isinstance(analysis, dict) else analysis.model_dump(mode="json")
+        if (selected.analysis_ref != VersionRef(id=analysis["analysis_id"], revision=analysis["revision"])
+                or selected.video_id != analysis["video_id"]):
+            raise ValueError("Selected Structure context must match the exact reviewed analysis")
+        allowed = {event["event_id"] for event in analysis["events"]}
+        if any(not set(node.event_ids) <= allowed for node in selected.nodes):
+            raise ValueError("Selected Structure context contains unknown reference events")
+    nodes = {node.id for node in selected.nodes}
+    sources = {source.id for source in selected.sources}
+    contexts = {context.id for context in selected.contexts}
+    if (any(not set(node.source_ids) <= sources or not set(node.context_ids) <= contexts for node in selected.nodes)
+            or any(edge.from_node not in nodes or edge.to_node not in nodes for edge in selected.edges)
+            or any(not set(method.node_ids) <= nodes for method in selected.methods)):
+        raise ValueError("Selected Structure context has unresolved selection references")
+    return selected.model_dump(mode="json")
 
 
 class SampleCreativeAdapter:
@@ -158,12 +200,20 @@ class SampleCreativeAdapter:
         if language not in {"English", "Chinese"}:
             raise ValueError("Choose English or Chinese for creative generation")
         self.language = language
+        self._research_handoff = None
 
     def for_language(self, language: str) -> SampleCreativeAdapter:
         if language not in {"English", "Chinese"}:
             raise ValueError("Choose English or Chinese for creative generation")
         scoped = copy(self)
         scoped.language = language
+        return scoped
+
+    def with_context(self, handoff) -> SampleCreativeAdapter:
+        from .structure_models import Handoff
+        scoped = copy(self)
+        scoped._research_handoff = (Handoff.model_validate(handoff).model_copy(deep=True)
+                                    if handoff is not None else None)
         return scoped
 
     def _text(self, english: str, chinese: str) -> str:
@@ -209,13 +259,19 @@ class SampleCreativeAdapter:
             f"待验证假设：该顺序帮助 {brief.target_audience} 理解已确认信息。"
             "请评审者复述信息并指出难懂的镜头；尚无效果测量。")]
 
-    def generate_directions(self, brief: BrandTaskBrief, analysis: AnalysisResult) -> list[CreativeDirection]:
+    def generate_directions(self, brief: BrandTaskBrief, analysis: AnalysisResult | None) -> list[CreativeDirection]:
         _inputs(brief, analysis)
+        research = creative_research_context(self._research_handoff, brief, analysis)
         free = self._presenter_free(brief)
         common = {**_base(brief, analysis), "core_message": _message(brief),
                   "evidence": _evidence(analysis, self.language), "production_notes": self._notes(brief),
                   "origin": Origin(kind="sample", description="Deterministic fictional creative templates; no model call or validated strategy."),
                   "hypotheses": self._hypotheses(brief)}
+        if research:
+            common["origin"].description += " Selected Structure snapshot: " + research["handoff_id"] + "."
+            common["production_notes"].append(self._text(
+                "Selected research is supplied for review; these deterministic sample templates do not interpret its strategy.",
+                "所选研究供审阅；这些确定性示例模板不会理解或推理其策略。"))
         a_hook = self._text(
             f"Product-only introduction: center {brief.product} on a plain background and reveal the message: {_message(brief)}."
             if free else f"A presenter introduces {brief.product} beside its illustration with the message: {_message(brief)}.",
@@ -225,17 +281,20 @@ class SampleCreativeAdapter:
             CreativeDirection(**common, direction_id=f"direction_{uuid4().hex}",
                               hook=a_hook,
                               narrative=self._text(
-                                  f"Follow the reference structure: product introduction → close detail demonstration → invitation. "
+                                  ("Follow the reference structure: " if analysis else "Original proposed sequence: ") +
+                                  f"product introduction → close detail demonstration → invitation. "
                                   f"Use only the approved message {_message(brief)} to support the goal: {brief.communication_goal}.",
-                                  f"贴近参考结构：产品亮相 → 局部细节展示 → 行动邀请。"
+                                  ("贴近参考结构：" if analysis else "原创顺序建议：") + "产品亮相 → 局部细节展示 → 行动邀请。"
                                   f"仅使用已确认信息 {_message(brief)}，服务本次目标：{brief.communication_goal}。"),
                               cta=self._text(f"Explore {brief.product} from {brief.brand_company}.",
                                              f"了解 {brief.brand_company} 的 {brief.product}。"),
                               production_requirements=self._requirements(brief, free),
                               rationale=self._text(
-                                  f"A keeps the reference's introduction/detail/CTA progression to introduce {brief.product} "
+                                  ("A keeps the reference's introduction/detail/CTA progression" if analysis else
+                                   "A proposes an original introduction/detail/CTA progression") + f" to introduce {brief.product} "
                                   f"to {brief.target_audience}. This supports the stated goal without a performance prediction.",
-                                  f"A 保留参考的亮相、细节、邀请顺序，向 {brief.target_audience} 介绍 {brief.product}，"
+                                  ("A 保留参考的亮相、细节、邀请顺序" if analysis else "A 原创提出亮相、细节、邀请顺序") +
+                                  f"，向 {brief.target_audience} 介绍 {brief.product}，"
                                   "对应已填写目标；不预测传播效果。")),
             CreativeDirection(**common, direction_id=f"direction_{uuid4().hex}",
                               hook=self._text(
@@ -249,13 +308,15 @@ class SampleCreativeAdapter:
                               cta=self._text(f"Discover the details of {brief.product}.", f"探索 {brief.product} 的细节。"),
                               production_requirements=self._requirements(brief, True),
                               rationale=self._text(
-                                  f"B reorganizes the observed product/detail elements around a question for {brief.target_audience}; "
+                                  ("B reorganizes the observed product/detail elements" if analysis else
+                                   "B proposes an original product/detail sequence") + f" around a question for {brief.target_audience}; "
                                   f"the question and reverse reveal are original proposals for {brief.brand_company}, not observations or measured improvements.",
-                                  f"B 为 {brief.target_audience} 把参考中的产品与细节元素重排成提问和反向揭示；"
+                                  (f"B 为 {brief.target_audience} 把参考中的产品与细节元素重排成提问和反向揭示；" if analysis else
+                                   f"B 为 {brief.target_audience} 原创提出产品提问和反向揭示的顺序；") +
                                   f"这是给 {brief.brand_company} 的原创建议，不是源视频观察或已验证的提升。")),
         ]
 
-    def refine_direction(self, brief: BrandTaskBrief, analysis: AnalysisResult, target: CreativeDirection,
+    def refine_direction(self, brief: BrandTaskBrief, analysis: AnalysisResult | None, target: CreativeDirection,
                          feedback: CreativeFeedback) -> CreativeDirection | None:
         _matches(target, brief, analysis)
         if (feedback.task_id != brief.task_id or feedback.target_direction != VersionRef(id=target.direction_id, revision=target.revision)
@@ -274,14 +335,17 @@ class SampleCreativeAdapter:
                           f"无人出镜顺序：产品特写、承载 {_message(brief)} 的图形卡、行动邀请。不安排出镜者或对白。"),
                       production_requirements=self._requirements(brief, True),
                       production_notes=[*self._notes(brief), self._text("Applied literal sample instruction: ", "已应用支持的示例指令：") + feedback.instruction],
-                      rationale=self._text("The revised product-only sequence retains the reference progression while removing presenter needs. Review its fit with the applied audience and goal.",
-                                           "修改后的纯产品顺序保留参考结构，同时移除出镜需求；请结合当前受众与目标审阅适配性。"),
+                      rationale=self._text(
+                          "The revised product-only sequence retains the reference progression while removing presenter needs. Review its fit with the applied audience and goal." if analysis else
+                          "The revised original product-only sequence removes presenter needs. Review its fit with the applied audience and goal; no reference evidence is asserted.",
+                          "修改后的纯产品顺序保留参考结构，同时移除出镜需求；请结合当前受众与目标审阅适配性。" if analysis else
+                          "修改后的原创纯产品顺序移除出镜需求；请结合当前受众与目标审阅适配性，不声称存在参考依据。"),
                       hypotheses=self._hypotheses(brief), evidence=_evidence(analysis, self.language),
                       feedback_refs=[*target.feedback_refs, VersionRef(id=feedback.feedback_id, revision=feedback.revision)],
                       origin=Origin(kind="sample", description="Deterministic presenter-free sample refinement; exact saved feedback received, no unrestricted language interpretation."))
         return CreativeDirection.model_validate(fields)
 
-    def generate_production(self, brief: BrandTaskBrief, analysis: AnalysisResult,
+    def generate_production(self, brief: BrandTaskBrief, analysis: AnalysisResult | None,
                             direction: CreativeDirection) -> tuple[ProductionCreativeBrief, TextStoryboard]:
         _matches(direction, brief, analysis)
         if direction.approval_status != "approved" or direction.approved_at is None:

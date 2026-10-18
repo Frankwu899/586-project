@@ -2,12 +2,31 @@ import { useEffect, useState } from 'react';
 import type { CreativeDirection, TaskState } from './generated/contracts';
 import { directionEvidence } from './directionPresentation';
 import { useEditorDraft } from './useEditorDraft';
+import { request } from './api';
 import { Badge, Field, type Mutate } from './ui';
 import './directions.css';
 
 type DirectionFields = Pick<CreativeDirection, 'core_message' | 'hook' | 'narrative' | 'cta'>;
 type GenerationLanguage = 'English' | 'Chinese';
 type SeekEvidence = (frame: number) => void;
+
+function IdeaNotebook({ state, mutate, busy, contextReady }: { state: TaskState; mutate: Mutate; busy: boolean; contextReady: boolean }) {
+  const draft = useEditorDraft<DirectionFields>({ taskId: state.task.task_id, scope: 'idea', baseRefs: {}, initialContent: { core_message: '', hook: '', narrative: '', cta: '' } });
+  const [error, setError] = useState('');
+  const promote = async () => {
+    try {
+      const saved = await draft.flush();
+      await mutate('/directions/manual', { brief_ref: state.task.current_brief, fields: saved.content });
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save the idea.'); }
+  };
+  return <details className="idea-notebook" open={!state.directions.length}><summary>Idea notebook</summary>
+    <p className="muted">Saved as you write. Research is optional.</p>
+    <div className="grid">{(['core_message', 'hook', 'narrative', 'cta'] as const).map((key) => <Field key={key} label={{ core_message: 'Idea', hook: 'Opening', narrative: 'Story', cta: 'Call to action' }[key]}><textarea disabled={draft.loading || draft.conflict} value={draft.content[key]} onChange={(event) => draft.setContent((previous) => ({ ...previous, [key]: event.target.value }))} /></Field>)}</div>
+    <p role="status">{draft.loading ? 'Loading notebook…' : draft.saving ? 'Saving…' : 'Notebook retained in this task'}</p>
+    {(draft.error || error) && <p role="alert" className="error">{draft.error || error}</p>}
+    <button type="button" className="secondary" disabled={busy || !contextReady || draft.loading || draft.conflict || !Object.values(draft.content).every((value) => value.trim())} onClick={() => void promote()}>Use as a direction</button>
+  </details>;
+}
 
 function EvidenceList({ direction, state, onSeekEvidence }: { direction: CreativeDirection; state: TaskState; onSeekEvidence?: SeekEvidence }) {
   return <ul className="direction-evidence">{direction.evidence.map((citation, index) => {
@@ -36,7 +55,7 @@ function AuxiliaryNotes({ direction, state, onSeekEvidence }: { direction: Creat
     <EvidenceList direction={direction} state={state} onSeekEvidence={onSeekEvidence} />
     {direction.hypotheses.length > 0 && <><h4>Hypotheses to test</h4><p className="muted">These are unverified ideas for evaluation, not performance predictions.</p><ul>{direction.hypotheses.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
     {direction.production_notes.length > 0 && <><h4>Production notes</h4>{direction.production_notes.map((item, index) => <p key={index}>{item}</p>)}</>}
-    <small>Uses brand/task input revision {direction.brief_ref.revision} and reviewed analysis revision {direction.analysis_ref.revision}.</small>
+    <small>Inputs r{direction.brief_ref.revision} · {direction.analysis_ref ? `Reviewed reference r${direction.analysis_ref.revision}` : 'Original idea · no reference citations'}.</small>
   </>;
 }
 
@@ -61,8 +80,8 @@ function DirectionCard({ direction, index, selected, onSelect, state, mutate, bu
   const current = direction.currentness === 'current';
   const auxiliaryStale = direction.auxiliary_status === 'needs_review';
   const dirty = editor.pending;
-  const cannotUse = busy || inputBlocked || !current || dirty || editor.loading || editor.conflict || Boolean(editor.error);
-  const inputs = { brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis, direction_revision: direction.revision };
+  const cannotUse = busy || inputBlocked || !state.task.generation_language || !current || dirty || editor.loading || editor.conflict || Boolean(editor.error);
+  const inputs = { brief_ref: direction.brief_ref, analysis_ref: direction.analysis_ref, direction_revision: direction.revision };
   useEffect(() => { onPendingChange(direction.direction_id, dirty || editor.conflict || Boolean(editor.error)); }, [direction.direction_id, dirty, editor.conflict, editor.error, onPendingChange]);
   useEffect(() => () => { onPendingChange(direction.direction_id, false); }, [direction.direction_id, onPendingChange]);
   useEffect(() => {
@@ -86,7 +105,7 @@ function DirectionCard({ direction, index, selected, onSelect, state, mutate, bu
     } catch { /* The draft channel keeps the text and displays its error. */ }
   };
   return <article className={`direction${selected ? ' selected' : ''}`} aria-label={`Direction ${String.fromCharCode(65 + index)}`}>
-    <div className="direction-card-heading"><div><p className="m2-eyebrow">DIRECTION {String.fromCharCode(65 + index)}</p><h3>{index === 0 ? 'Follow the reference' : 'Reframe the story'}</h3></div><span className="direction-letter" aria-hidden="true">{String.fromCharCode(65 + index)}</span></div>
+    <div className="direction-card-heading"><div><p className="m2-eyebrow">DIRECTION {String.fromCharCode(65 + index)}</p><h3>{direction.analysis_ref ? index === 0 ? 'Follow the reference' : 'Reframe the story' : 'Original approach'}</h3></div><span className="direction-letter" aria-hidden="true">{String.fromCharCode(65 + index)}</span></div>
     <p className="direction-badges"><Badge warning={!current}>{current ? 'Current version' : 'Historical version'}</Badge><Badge warning={direction.approval_status === 'draft'}>{direction.approval_status === 'approved' ? 'Approved' : 'Not approved'}</Badge><small>revision {direction.revision}</small></p>
     <dl className="direction-comparison">
       <div><dt>The idea</dt><dd>{direction.core_message}</dd></div><div><dt>Opening / Hook</dt><dd>{direction.hook}</dd></div><div><dt>Story structure</dt><dd>{direction.narrative}</dd></div>
@@ -135,6 +154,14 @@ function LanguageChoice({ state, mutate, busy, pending, onPendingChange }: { sta
 export default function Directions({ state, mutate, busy, m2Blocked, analysisBlocked = false, onSeekEvidence }: {
   state: TaskState; mutate: Mutate; busy: boolean; m2Blocked: boolean; analysisBlocked?: boolean; onSeekEvidence?: SeekEvidence;
 }) {
+  const [referenceChoice, setUseReference] = useState<boolean | null>(null);
+  const [handoff, setHandoff] = useState<{ title: string; analysis_ref: { id: string; revision: number }; methods: { id: string; title: string; conditions: string[] }[] } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const reload = () => { void request<typeof handoff>(`/tasks/${state.task.task_id}/structure/handoff`).then((value) => { if (alive) setHandoff(value); }).catch(() => { if (alive) setHandoff(null); }); };
+    reload(); window.addEventListener('structure-handoff', reload);
+    return () => { alive = false; window.removeEventListener('structure-handoff', reload); };
+  }, [state.task.task_id]);
   const [pendingByDirection, setPendingByDirection] = useState<Record<string, boolean>>({});
   const [languagePending, setLanguagePending] = useState(false);
   const [onPendingChange] = useState(() => (id: string, pending: boolean) => setPendingByDirection((previous) => previous[id] === pending ? previous : { ...previous, [id]: pending }));
@@ -145,21 +172,28 @@ export default function Directions({ state, mutate, busy, m2Blocked, analysisBlo
   const history = state.directions.filter((direction) => !displayed.has(`${direction.direction_id}:${direction.revision}`));
   const analysis = state.analyses.find((item) => item.analysis_id === state.task.current_analysis?.id && item.revision === state.task.current_analysis.revision);
   const video = state.videos.find((item) => item.video_id === analysis?.video_id);
-  const ready = Boolean(state.task.current_brief && analysis?.review.user_confirmed && analysis.status === 'succeeded' && analysis.frame_count !== null && video?.frame_timing && !video.deleted_at);
+  const referenceReady = Boolean(analysis?.review.user_confirmed && analysis.status === 'succeeded' && analysis.frame_count !== null && video?.frame_timing && !video.deleted_at);
+  // Once a source was reviewed, retain that reference intent across corrections;
+  // never silently switch a pending reference workflow to original generation.
+  const useReference = referenceChoice ?? (referenceReady || state.analyses.some((item) => item.review.user_confirmed));
+  const ready = Boolean(state.task.current_brief && (!useReference || referenceReady));
   const directionPending = Object.values(pendingByDirection).some(Boolean);
-  const inputBlocked = m2Blocked || analysisBlocked;
+  const inputBlocked = m2Blocked || (useReference && analysisBlocked);
   return <section id="directions" className="directions-workspace" aria-labelledby="directions-heading">
-    <div className="direction-heading"><div><p className="m2-eyebrow">03 / CREATIVE DIRECTIONS</p><h2 id="directions-heading">Find the story worth making.</h2><p className="muted">Compare the idea, its opening and what you need to make it. Choose a direction, then explicitly approve the saved version.</p></div><span className="direction-step" aria-hidden="true">03</span></div>
+    <div className="direction-heading"><div><h2 id="directions-heading">Ideas</h2><p className="muted">Start with a thought, or ask for two approaches to your brief.</p></div></div>
+    <IdeaNotebook key={state.task.task_id} state={state} mutate={mutate} busy={busy} contextReady={Boolean(state.task.current_brief) && !m2Blocked} />
+    {handoff && <aside className="notice"><strong>From Structure: {handoff.title}</strong>{handoff.analysis_ref.id !== state.task.current_analysis?.id || handoff.analysis_ref.revision !== state.task.current_analysis?.revision ? <p>Its source has changed. This saved selection will not be used for generation.</p> : <><p>Selected research informs inspiration; it does not confirm new product claims.</p><ul>{handoff.methods.map((method) => <li key={method.id}>{method.title}{method.conditions.length > 0 && <small> · {method.conditions.join('; ')}</small>}</li>)}</ul></>}</aside>}
     {state.task.mode === 'sample' && <p className="notice">Fictional offline sample. It demonstrates the workflow, not recognition accuracy or creative effectiveness.</p>}
     <LanguageChoice key={`${state.task.task_id}:${state.task.generation_language}`} state={state} mutate={mutate} busy={busy} pending={directionPending} onPendingChange={setLanguagePending} />
-    <div className="direction-generation"><button type="button" disabled={busy || inputBlocked || directionPending || languagePending || !ready || !state.task.generation_language} onClick={() => { void mutate('/directions/generate', { brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis }); }}>Generate two {state.directions.length ? 'new ' : ''}{state.task.mode === 'sample' ? 'sample ' : ''}directions</button><p className="muted">A follows the reference structure. B reorganizes useful elements into another narrative. Neither is an effectiveness score.</p></div>
-    {!ready && <p className="notice">Apply your brand/task inputs and confirm a successful current analysis before generating directions.</p>}
-    {!state.task.generation_language && <p className="muted">Choose and save a generation language before the first generation.</p>}
+    <label><input type="checkbox" checked={useReference} onChange={(event) => setUseReference(event.target.checked)} disabled={busy} /> Use reviewed reference evidence</label>
+    <div className="direction-generation"><button type="button" disabled={busy || inputBlocked || directionPending || languagePending || !ready || !state.task.generation_language} onClick={() => { void mutate('/directions/generate', { brief_ref: state.task.current_brief, analysis_ref: useReference ? state.task.current_analysis : null, use_reference: useReference }); }}>{busy ? 'Working…' : `Generate two ${state.directions.length ? 'new ' : ''}${state.task.mode === 'sample' ? 'sample ' : ''}directions`}</button><p className="muted">{useReference ? 'Compare two ways to adapt reviewed evidence.' : 'Explore original approaches from your applied brief.'}</p></div>
+    {!state.task.current_brief && <p className="notice">Apply your context to generate directions. You can keep writing in your notebook.</p>}
+    {useReference && !referenceReady && <p className="notice">Review the reference in Timeline, or turn off reference evidence to generate an original idea.</p>}
+    {!state.task.generation_language && <p className="muted">Choose and save a language before generation or approval.</p>}
     {inputBlocked && <p className="notice">Resolve pending brand inputs or reference corrections before new creative actions. Existing work remains available.</p>}
     {directionPending && <p className="notice">A direction has a pending draft. Save or discard it before generating alternatives or changing the generation language.</p>}
     {languagePending && <p className="notice">Save or reset the language choice before generating, refining or approving a direction.</p>}
-    {choices.length > 0 ? <div className="direction-grid">{choices.map((direction, index) => <DirectionCard key={`${state.task.task_id}:${direction.direction_id}:${direction.revision}`} direction={direction} index={index} selected={state.task.chosen_direction?.id === direction.direction_id && state.task.chosen_direction.revision === direction.revision} onSelect={() => { void mutate(`/directions/${direction.direction_id}/select`, { direction_revision: direction.revision }); }} state={state} mutate={mutate} busy={busy} inputBlocked={inputBlocked || languagePending} onSeekEvidence={onSeekEvidence} onPendingChange={onPendingChange} />)}</div>
-      : <div className="direction-empty"><p className="m2-eyebrow">TWO WAYS INTO THE SAME BRIEF</p><h3>One builds on the reference.<br />One tells the story differently.</h3><p>Your alternatives will appear here when your inputs and reviewed evidence are ready.</p></div>}
+    {choices.length > 0 && <div className="direction-grid">{choices.map((direction, index) => <DirectionCard key={`${state.task.task_id}:${direction.direction_id}:${direction.revision}`} direction={direction} index={index} selected={state.task.chosen_direction?.id === direction.direction_id && state.task.chosen_direction.revision === direction.revision} onSelect={() => { void mutate(`/directions/${direction.direction_id}/select`, { direction_revision: direction.revision }); }} state={state} mutate={mutate} busy={busy} inputBlocked={m2Blocked || (Boolean(direction.analysis_ref) && analysisBlocked) || languagePending} onSeekEvidence={onSeekEvidence} onPendingChange={onPendingChange} />)}</div>}
     {state.feedback.length > 0 && <details className="direction-history"><summary>Saved refinement instructions ({state.feedback.length})</summary>{state.feedback.map((feedback) => <div key={feedback.feedback_id}><p><strong>{feedback.instruction}</strong> <Badge warning={feedback.status !== 'applied'}>{feedback.status.replaceAll('_', ' ')}</Badge></p><p>{feedback.explanation}</p><small>Target revision {feedback.target_direction.revision}{feedback.resulting_direction ? ` → draft revision ${feedback.resulting_direction.revision}; approval required.` : ''}</small></div>)}</details>}
     {history.length > 0 && <details className="direction-history"><summary>Previous direction versions ({history.length})</summary>{[...history].reverse().map((direction) => <details key={`${direction.direction_id}:${direction.revision}`}><summary>{direction.core_message} · revision {direction.revision}</summary><p className="muted">{direction.currentness} · {direction.approval_status} · {direction.origin.description}</p><dl className="direction-comparison"><div><dt>Hook</dt><dd>{direction.hook}</dd></div><div><dt>Narrative</dt><dd>{direction.narrative}</dd></div><div><dt>CTA</dt><dd>{direction.cta}</dd></div></dl><AuxiliaryNotes direction={direction} state={state} onSeekEvidence={onSeekEvidence} /></details>)}</details>}
   </section>;

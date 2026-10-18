@@ -43,6 +43,7 @@ def test_v03_upgrade_preserves_all_content_review_history_and_citations(legacy):
     assert converted["task"].pop("generation_language") is None
     for direction in converted["directions"]:
         assert direction.pop("auxiliary_status") == "current"
+        assert direction.pop("structure_handoff_id") is None
     for output in [*converted["production_briefs"], *converted["storyboards"]]:
         assert output.pop("bundle_id") is None
     for video in converted["videos"]:

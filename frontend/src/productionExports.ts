@@ -35,10 +35,10 @@ export function evidenceDescription(state: TaskState, evidence: EvidenceReferenc
 
 export function sourceSummary(snapshot: ProductionSnapshot): string {
   const output = snapshot.brief ?? snapshot.storyboard!;
-  const analysis = snapshot.state.analyses.find((item) => item.analysis_id === output.analysis_ref.id && item.revision === output.analysis_ref.revision);
+  const analysis = snapshot.state.analyses.find((item) => item.analysis_id === output.analysis_ref?.id && item.revision === output.analysis_ref?.revision);
   const video = snapshot.state.videos.find((item) => item.video_id === analysis?.video_id);
   const deleted = video?.deleted_at ? ' · Reference media deleted; playback unavailable' : '';
-  return `Brand/task inputs ${output.brief_ref.id} r${output.brief_ref.revision} · Analysis ${output.analysis_ref.id} r${output.analysis_ref.revision} · Approved direction ${output.direction_ref.id} r${output.direction_ref.revision}${deleted}`;
+  return `Brand/task inputs ${output.brief_ref.id} r${output.brief_ref.revision} · ${output.analysis_ref ? `Analysis ${output.analysis_ref.id} r${output.analysis_ref.revision}` : 'Original idea; no reference'} · Approved direction ${output.direction_ref.id} r${output.direction_ref.revision}${deleted}`;
 }
 
 export function productionFilename(snapshot: ProductionSnapshot, extension: string): string {

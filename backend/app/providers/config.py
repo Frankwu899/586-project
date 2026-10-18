@@ -18,6 +18,12 @@ class ProviderSettings:
     transcription_model: str = "whisper-1"
     creative_model: str = "gpt-4.1-mini"
     m2_model: str = "gpt-4.1-mini"
+    structure_model: str = "gpt-4.1-mini"
+    research_model: str = "gpt-4.1-mini"
+    structure_research_max_calls: int = 2
+    structure_max_seconds: float = 120
+    budget_path: Path | None = None
+    experiment_max_usd: str = "3"
     creative_language: str = "English"
     analysis_language: str = "English"
     timeout_seconds: float = 45
@@ -38,7 +44,14 @@ class ProviderSettings:
                 raise ValueError(f"{name} outside supported bounded range")
         if not math.isfinite(self.audio_chunk_seconds) or not 1 <= self.audio_chunk_seconds <= 120:
             raise ValueError("Audio chunks must be between 1 and 120 seconds")
-        for name in ("vision_model", "transcription_model", "creative_model", "m2_model", "analysis_language", "creative_language"):
+        if type(self.structure_research_max_calls) is not int or not 1 <= self.structure_research_max_calls <= 3:
+            raise ValueError("Research requires one to three maximum search calls")
+        if not math.isfinite(self.structure_max_seconds) or not 1 <= self.structure_max_seconds <= 180:
+            raise ValueError("Structure run time must be bounded at 180 seconds")
+        from .budget import MAXIMUM_USD, _number
+        if _number(self.experiment_max_usd) > MAXIMUM_USD:
+            raise ValueError("The authorized experiment budget cannot exceed USD 3")
+        for name in ("vision_model", "transcription_model", "creative_model", "m2_model", "structure_model", "research_model", "analysis_language", "creative_language"):
             if not getattr(self, name).strip():
                 raise ValueError(f"{name} cannot be blank")
 
@@ -55,6 +68,12 @@ class ProviderSettings:
             transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "whisper-1"),
             creative_model=os.getenv("OPENAI_CREATIVE_MODEL", "gpt-4.1-mini"),
             m2_model=os.getenv("OPENAI_M2_MODEL", "gpt-4.1-mini"),
+            structure_model=os.getenv("OPENAI_STRUCTURE_MODEL", "gpt-4.1-mini"),
+            research_model=os.getenv("OPENAI_RESEARCH_MODEL", "gpt-4.1-mini"),
+            structure_research_max_calls=int(os.getenv("STRUCTURE_RESEARCH_MAX_CALLS", "2")),
+            structure_max_seconds=float(os.getenv("STRUCTURE_MAX_SECONDS", "120")),
+            budget_path=Path(os.getenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(data_dir / "provider-budget.sqlite3"))),
+            experiment_max_usd=os.getenv("VIDEO_EXPERIMENT_MAX_USD", "3"),
             creative_language=os.getenv("CREATIVE_OUTPUT_LANGUAGE", "English"),
             analysis_language=os.getenv("ANALYSIS_OUTPUT_LANGUAGE", "English"),
             timeout_seconds=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "45")),

@@ -3,16 +3,52 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { TaskState } from '../src/generated/contracts';
+import type { EvidenceEvent, TaskState } from '../src/generated/contracts';
 import { applyInputs, area, editBrand, fillInputs } from './m2-helpers';
 
 async function mutation(page: Page, name: string, route: string, within = page.locator('body')): Promise<TaskState> {
-  const pending = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(route));
-  await within.getByRole('button', { name, exact: true }).click();
+  const operation = route === '/recognize' ? 'recognize' : route === '/directions/generate' ? 'directions' : route === '/refine' ? 'refine' : route === '/outputs/generate' ? 'production' : null;
+  const pending = page.waitForResponse((response) => response.request().method() === 'POST' && (operation
+    ? new URL(response.url()).pathname.endsWith('/operations') && response.request().postDataJSON()?.operation === operation
+    : new URL(response.url()).pathname.endsWith(route)));
+  await within.getByRole('button', { name: name === 'Create task' ? /^(Create task|New project)$/ : name, exact: true }).click();
   const response = await pending;
   expect(response.ok(), await response.text()).toBeTruthy();
+  let result = await response.json();
+  if (operation) {
+    if (result.status === 'queued' || result.status === 'running') {
+      const completed = await page.waitForResponse(async (item) => {
+        if (item.request().method() !== 'GET' || !new URL(item.url()).pathname.endsWith(`/operations/${result.operation_id}`)) return false;
+        const ticket = await item.json();
+        return ticket.status === 'succeeded' || ticket.status === 'failed';
+      });
+      expect(completed.ok(), await completed.text()).toBeTruthy();
+      result = await completed.json();
+    }
+    expect(result.status, JSON.stringify(result.error)).toBe('succeeded');
+    expect(result.result).toBeTruthy();
+    result = result.result;
+  }
   await expect(page.getByRole('alert')).toHaveCount(0);
-  return response.json();
+  return result;
+}
+
+async function selectEvidence(page: Page, event: EvidenceEvent, events: EvidenceEvent[]) {
+  let candidates = events.filter((item) => item.kind === event.kind);
+  if (event.kind === 'on_screen_text') candidates = candidates.filter((item, index) => !candidates.slice(0, index).some((prior) => prior.start_frame === item.start_frame && prior.legacy_seconds?.start_seconds === item.legacy_seconds?.start_seconds));
+  const pointIndex = candidates.findIndex((item) => event.kind === 'on_screen_text' ? item.start_frame === event.start_frame && item.legacy_seconds?.start_seconds === event.legacy_seconds?.start_seconds : item.event_id === event.event_id);
+  await page.getByRole('region', { name: 'Video evidence timeline', exact: true }).locator(`.timeline-mark.${event.kind}`).nth(pointIndex).click();
+  const words = page.getByLabel('Visible text at selected sample', { exact: true });
+  if (event.kind === 'on_screen_text' && await words.isVisible()) await words.selectOption(event.event_id);
+  await expect(page.locator(`[data-evidence-id="${event.event_id}"]`)).toBeVisible();
+}
+
+async function correctEvidence(page: Page, event: EvidenceEvent, events: EvidenceEvent[]) {
+  await selectEvidence(page, event, events);
+  const inspector = page.locator(`[data-evidence-id="${event.event_id}"]`);
+  const open = inspector.getByRole('button', { name: /^Correct / });
+  if (await open.isVisible()) await open.click();
+  return inspector;
 }
 
 test('mocked real providers: HEVC playback, bilingual corrections, approval, export and stale outputs', async ({ page }) => {
@@ -49,9 +85,9 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     await video.evaluate(async (element: HTMLVideoElement) => { element.muted = true; await element.play(); });
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeGreaterThan(0.1);
     await video.evaluate((element: HTMLVideoElement) => { element.pause(); element.currentTime = 0; });
-    await expect(page.getByTestId('reference-frame-position')).toContainText('frame 0 /');
+    await expect(page.getByTestId('reference-frame-position')).toContainText('· 0 /');
     await page.getByRole('button', { name: 'Next frame', exact: true }).click();
-    await expect(page.getByTestId('reference-frame-position')).toContainText('frame 1 /');
+    await expect(page.getByTestId('reference-frame-position')).toContainText('· 1 /');
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeCloseTo(playbackTiming.media_start_seconds + playbackTiming.frame_boundaries_seconds[1], 2);
 
     state = await mutation(page, 'Start analysis', '/recognize');
@@ -63,9 +99,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     const ocr = original.events.find((event) => event.kind === 'on_screen_text')!;
     const speech = original.events.find((event) => event.kind === 'speech')!;
     expect(ocr.text).not.toBe(speech.text);
-    for (const event of [visual, ocr, speech]) {
-      await page.locator(`[data-evidence-id="${event.event_id}"]`).getByRole('button', { name: /^Correct / }).click();
-    }
+    await correctEvidence(page, visual, original.events);
     await page.locator(`[data-evidence-id="${visual.event_id}"]`).getByText('Correct subjects, actions or product labels', { exact: true }).click();
     const subjectLabel = `Subject label · ${visual.event_id} · ${product.subject_id}`;
     const actionLabel = `Action type · ${visual.event_id} · 1`;
@@ -74,10 +108,14 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     await page.getByLabel(`Subject kind · ${visual.event_id} · ${product.subject_id}`, { exact: true }).first().selectOption('physical_object');
     await page.getByLabel(actionLabel, { exact: true }).first().selectOption('hold');
     await page.getByLabel(presentationLabel, { exact: true }).first().selectOption('appearance');
+    await correctEvidence(page, ocr, original.events);
     await page.getByLabel(`Recognized text · ${ocr.event_id}`, { exact: true }).first().fill('LumaCup 随行杯 · 350 mL · ¥99');
+    await correctEvidence(page, speech, original.events);
     await page.getByLabel(`Recognized text · ${speech.event_id}`, { exact: true }).first().fill('试试 LumaCup，choose your color。');
     await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeDisabled();
     // An atomic label edit must not silently break a product relationship.
+    await selectEvidence(page, visual, original.events);
+    await page.locator(`[data-evidence-id="${visual.event_id}"]`).getByText('Correct subjects, actions or product labels', { exact: true }).click();
     const roles = page.getByRole('group', { name: `Subject roles · ${visual.event_id} · ${product.subject_id}`, exact: true }).first();
     const rejected = page.waitForResponse((response) => response.request().method() === 'POST' && ['/editors/analysis', '/analysis/correct'].some((path) => new URL(response.url()).pathname.endsWith(path)) && !response.ok());
     await roles.getByLabel('product', { exact: true }).uncheck();
@@ -100,6 +138,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     await area(page, 'directions');
     await page.getByLabel('Generation language', { exact: true }).selectOption('Chinese');
     await mutation(page, 'Save generation language', '/language');
+    await page.getByRole('checkbox', { name: 'Use reviewed reference evidence', exact: true }).check();
     await mutation(page, 'Generate two directions', '/directions/generate');
     const cards = page.locator('article.direction');
     await expect(cards).toHaveCount(2);
@@ -129,7 +168,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     await area(page, 'production');
     await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('LumaCup 创意简报 — 中英双语');
     await area(page, 'reference');
-    await page.locator(`[data-evidence-id="${visual.event_id}"]`).getByRole('button', { name: /^Correct / }).click();
+    await correctEvidence(page, visual, corrected.events);
     await page.locator(`[data-evidence-id="${visual.event_id}"]`).getByText('Correct subjects, actions or product labels', { exact: true }).click();
     await expect(page.getByLabel(subjectLabel, { exact: true }).first()).toHaveValue('蓝色 LumaCup 杯子');
     await page.getByLabel(subjectLabel, { exact: true }).first().fill('蓝色 LumaCup 杯子（再次核对）');
@@ -181,15 +220,21 @@ test('partial and legacy structured coverage stays visible without editable extr
   await page.addInitScript((id) => localStorage.setItem('video-anatomy-task', id), taskId);
   await page.goto('/');
   await area(page, 'reference');
-  for (const summary of await page.getByText('Observed details & source', { exact: true }).all()) await summary.click();
+  await selectEvidence(page, visual, analysis.events);
+  await page.getByText('Observed details & source', { exact: true }).click();
   await expect(page.getByText('Subject extraction failed in this UI fixture.', { exact: true })).toBeVisible();
   await expect(page.getByText('Not analyzed', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Checked; none found', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Structured visual details were not analyzed for this observation.', { exact: true }).first()).toBeVisible();
+  const legacy = analysis.events.find((event) => event.kind === 'visual_action' && event.event_id !== visual.event_id && !event.visual_details)!;
+  expect(legacy).toBeTruthy();
+  await selectEvidence(page, legacy, analysis.events);
+  await page.getByText('Observed details & source', { exact: true }).click();
+  await expect(page.getByText('Structured visual details were not analyzed for this observation.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeDisabled();
   await area(page, 'directions');
   await expect(page.getByRole('button', { name: 'Generate two sample directions', exact: true })).toBeDisabled();
   await area(page, 'reference');
+  await selectEvidence(page, visual, analysis.events);
   await expect(page.getByLabel(`Structured visual details · ${visual.event_id}`, { exact: true }).getByRole('combobox')).toHaveCount(0);
 });
 
