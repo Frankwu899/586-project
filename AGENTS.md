@@ -4,6 +4,13 @@ Every coding agent must read this file and the relevant interface documents befo
 
 ## Read first
 
+For the current UI/UX redesign discussion, start with
+`docs/handoff/workspace-redesign-review.md` and its linked design review. The owner
+requested product-flow review before implementation and selected UI UX Pro Max
+as the new design source, with a Glassmorphism preference. Proposed dependency
+changes are not confirmed merely because they appear in the prototype. All future
+installer/launcher text, package documentation and handoffs must be English.
+
 1. `docs/project-brief.md`
 2. `docs/architecture.md`
 3. `docs/interfaces.md` and `contracts/v0.5.task-state.schema.json` when touching shared data (v0.1/v0.2/v0.3/v0.4 artifacts are historical snapshots)
