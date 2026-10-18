@@ -19,6 +19,13 @@ valid.
 
 ## Where to continue
 
+For the subsequent Structure module interview and latest scope, read
+`structure-grill.md` and `../design/workspace-redesign/STRUCTURE_MODULE.md`.
+S1-S11 are confirmed, including automatic focused background research, low
+manual intervention and no deeper-research action after a run limit. These later
+decisions supersede conflicting earlier proposals for that module, without
+authorizing implementation or paid calls.
+
 Read [the design review](../design/workspace-redesign/README.md), then its
 specification and standalone clickable concept. All new workspaces and relaxed
 prerequisites in that concept are proposals, not implemented application features.

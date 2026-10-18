@@ -2,6 +2,12 @@
 
 Status: **Design proposal for discussion. Not an application update.**
 
+The later [Structure module proposal](STRUCTURE_MODULE.md) consolidates the
+owner's S1-S11 interview decisions. For that module it supersedes earlier
+suggestions of a manual graph editor, separately triggered background research,
+or a continue-research action after the run limit. The existing HTML concept has
+not been updated to implement these later decisions.
+
 This review responds to the owner's hands-on macOS test: the product behaves like
 a rigid four-step form, recording chrome pollutes evidence, processing feedback
 is easy to miss, and the analysis layout does not support working with time.
