@@ -14,8 +14,9 @@ Mac validation report.
   automatic older-model fallback runs when a project lacks GPT-6 access.
 - GPT-6 models do **not** accept audio or direct video inputs. Frames are image
   inputs. Timed audio transcription is a distinct capability; using Whisper is
-  not a GPT-6 upgrade. Normal environment profiles default to speech disabled,
-  because an exception has not been approved. Saved transcripts remain readable.
+  not a GPT-6 upgrade. In v0.7.4 the owner approved the dedicated speech exception:
+  normal profiles use `whisper-1` with segment timestamps. Other capabilities keep
+  their GPT-6 defaults. See [the speech update](speech-exception-v074.md).
 - Responses explicitly request standard service and low reasoning effort.
   The bounded output limit includes reasoning tokens. This is a latency and
   cost choice, not evidence of improved analysis quality.

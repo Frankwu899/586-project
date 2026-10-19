@@ -9,7 +9,7 @@ export function incompleteChannels(analysis: AnalysisResult) {
   return researchChannels.filter((kind) => ['failed', 'not_analyzed'].includes(analysis.coverage[kind]) || analysis.extraction_failures?.[kind]);
 }
 export function retryableChannels(analysis: AnalysisResult) {
-  return incompleteChannels(analysis).filter((kind) => kind !== 'speech' || analysis.coverage.speech !== 'not_analyzed' || analysis.extraction_failures?.speech);
+  return incompleteChannels(analysis);
 }
 
 export function EmptyChannel({ analysis, kind }: { analysis: AnalysisResult; kind: EvidenceEvent['kind'] }) {
@@ -17,7 +17,7 @@ export function EmptyChannel({ analysis, kind }: { analysis: AnalysisResult; kin
   const state = analysis.coverage[kind];
   const failure = analysis.extraction_failures?.[kind as typeof researchChannels[number]];
   return <span className={`timeline-channel-state ${state}`} title={failure?.message}>
-    {t(failure || state === 'failed' ? 'Failed to extract' : state === 'not_analyzed' ? kind === 'speech' ? 'Speech was not analyzed. Transcription is currently disabled.' : 'Not checked' : state === 'none_found' ? 'No observations detected' : 'Some results are available; extraction is incomplete.')}
+    {t(failure || state === 'failed' ? 'Failed to extract' : state === 'not_analyzed' ? kind === 'speech' ? 'Speech has not been transcribed for this analysis.' : 'Not checked' : state === 'none_found' ? 'No observations detected' : 'Some results are available; extraction is incomplete.')}
   </span>;
 }
 
@@ -29,7 +29,7 @@ export default function AnalysisCoverage({ analysis, onRetry, busy }: { analysis
     <p>{t('Partial analysis. Check the channel status below.')}</p>
     <ul>{incomplete.map((kind) => <li key={kind}>
       <strong>{t(channelLabels[kind])}</strong>
-      <span>{analysis.extraction_failures?.[kind]?.message ?? t(analysis.coverage[kind] === 'failed' ? 'Extraction failed' : kind === 'speech' ? 'Speech was not analyzed. Transcription is currently disabled.' : 'Not analyzed')}</span>
+      <span>{analysis.extraction_failures?.[kind]?.message ?? t(analysis.coverage[kind] === 'failed' ? 'Extraction failed' : kind === 'speech' ? 'Speech has not been transcribed for this analysis.' : 'Not analyzed')}</span>
     </li>)}</ul>
     <ConnectionHelp message={incomplete.map((kind) => analysis.extraction_failures?.[kind]?.message ?? '').join(' ')} />
     {onRetry && retryableChannels(analysis).length > 0 && <><button type="button" className="secondary" disabled={busy} onClick={onRetry}>{t('Retry missing analysis')}</button><small>{t('Completed channels are reused when the source and settings match.')}</small></>}

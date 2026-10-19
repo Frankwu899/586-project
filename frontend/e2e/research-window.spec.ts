@@ -1,6 +1,29 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import type { TaskState } from '../src/generated/contracts';
 
+test('an old untranscribed analysis offers speech recovery without claiming transcription is disabled', async ({ page, request }) => {
+  const state = await sample(request);
+  const previous = structuredClone(state);
+  previous.analyses[0].coverage.speech = 'not_analyzed';
+  let retried = false;
+  await page.route('**/api/tasks', async (route) => {
+    const response = await route.fetch(); const saved: TaskState[] = await response.json();
+    await route.fulfill({ response, json: saved.map((item) => item.task.task_id === state.task.task_id ? previous : item) });
+  });
+  await page.route(`**/api/tasks/${state.task.task_id}`, async (route) => route.fulfill({ json: retried ? state : previous }));
+  await page.route(`**/api/tasks/${state.task.task_id}/operations`, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    expect(route.request().postDataJSON().operation).toBe('recognize');
+    retried = true;
+    await route.fulfill({ json: { operation_id: 'speech-recovery-fixture', status: 'succeeded', error: null, result: state } });
+  });
+  await open(page, previous);
+  await expect(page.locator('.analysis-channel-status')).toContainText('Speech has not been transcribed for this analysis.');
+  await expect(page.locator('.analysis-channel-status')).not.toContainText('currently disabled');
+  await page.locator('.reference-toolbar').getByRole('button', { name: 'Retry missing analysis', exact: true }).click();
+  await expect.poll(() => retried).toBe(true);
+});
+
 async function sample(api: APIRequestContext) {
   let state: TaskState = await (await api.post('/api/tasks', { data: { title: 'Research window regression' } })).json();
   for (const path of ['/sample', '/recognize']) {

@@ -105,10 +105,10 @@ does not establish billing availability or model access.
 
 The current baseline is `gpt-6.1-sol` for visual analysis, Structure synthesis,
 Ideas, Production and input assistance, with `gpt-6-luna` for bounded background
-retrieval. GPT-6 models do not accept audio input. New speech transcription is
-disabled under the owner's GPT-6-only policy pending approval for a dedicated
-audio-model exception; existing saved speech is retained. No older model is
-silently selected. The launcher defaults to zero automatic retries. Provider
+retrieval. The owner-approved audio exception uses `whisper-1` for transcription
+with segment timestamps. Speech is enabled in v0.7.4; no other capability falls
+back to an older model. Existing speech and compatible caches are retained.
+The launcher defaults to zero automatic retries. Provider
 configuration is backend-only. A shared persistent experiment
 ledger reserves estimated request costs before sending requests and enforces the
 owner-authorized maximum of USD 3. Keep the same ledger for the entire experiment;

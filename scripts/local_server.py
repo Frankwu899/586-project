@@ -60,9 +60,9 @@ def local_settings(data_dir: Path, api_key: str, *, allow_empty=False) -> Provid
         # A failed first experiment must not silently start another paid attempt.
         max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "0")),
         analysis_language=read_preferences(data_dir / "app-preferences.json").language,
-        # Old launcher environments may still contain whisper-1. The current
-        # owner policy permits GPT-6+ only; no audio exception is approved yet.
-        transcription_model="disabled",
+        # The owner approved dedicated timestamped speech. Restore it even if
+        # an older launch environment still carries the v0.7.3 disabled value.
+        transcription_model="whisper-1",
     )
     if not settings.api_key and not allow_empty:
         raise ValueError("Live mode requires a backend API key.")

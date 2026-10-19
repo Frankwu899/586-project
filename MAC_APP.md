@@ -87,9 +87,11 @@ toggle and internal scrolling instead of stretching the entire page.
 
 Visual analysis, Structure synthesis, Ideas, Production and input assistance use
 GPT-6.1 Sol. Bounded background research uses GPT-6 Luna. These models do not accept
-audio. Under the requested GPT-6-only policy, new speech transcription is disabled
-pending approval for a dedicated speech-model exception. Existing saved speech
-is retained; changing model names cannot add audio support.
+audio. The owner-approved speech exception uses Whisper (`whisper-1`) for
+transcription with segment timestamps. New speech analysis is enabled in v0.7.4;
+all other inference keeps the GPT-6 models above. Existing speech, source wording
+and compatible caches are retained. The key needs Audio Transcriptions access in
+addition to Responses access.
 
 Visuals and visible text are extracted in small batches. If one fails, completed
 batches remain usable; **Retry missing analysis** reuses validated cached results.

@@ -139,6 +139,20 @@ def test_disabled_speech_does_not_call_transcription_or_claim_audio_absence(reco
     assert repeated.coverage.speech == 'not_analyzed' and speech.calls == 0
 
 
+def test_reenabling_speech_does_not_reuse_an_empty_disabled_result(recognition_input, tmp_path):
+    request, adapter, _, speech = batched_adapter(recognition_input, tmp_path)
+    speech.model = 'disabled'
+    assert adapter.analyze(request).coverage.speech == 'not_analyzed'
+    assert speech.calls == 0
+    speech.model = 'whisper-1'
+    restored = adapter.analyze(request)
+    assert restored.coverage.speech == 'observations'
+    assert any(event.kind == 'speech' for event in restored.events)
+    assert speech.calls == 1
+    assert adapter.analyze(request).coverage.speech == 'observations'
+    assert speech.calls == 1
+
+
 def test_disabled_speech_with_known_no_audio_keeps_intake_absence(recognition_input, tmp_path):
     request, adapter, _, speech = batched_adapter(recognition_input, tmp_path)
     speech.model = 'disabled'

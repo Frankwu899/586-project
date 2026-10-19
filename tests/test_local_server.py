@@ -19,6 +19,17 @@ def built_ui(tmp_path, monkeypatch):
     return root
 
 
+def test_speech_exception_restores_old_disabled_launchers_without_downgrading_other_models(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENAI_TRANSCRIPTION_MODEL", "disabled")
+    for capability in ("VISION", "CREATIVE", "M2", "STRUCTURE", "RESEARCH"):
+        monkeypatch.setenv(f"OPENAI_{capability}_MODEL", "gpt-4.1-mini")
+    settings = local_server.local_settings(tmp_path, "", allow_empty=True)
+    assert settings.transcription_model == "whisper-1"
+    assert settings.vision_model == settings.creative_model == settings.m2_model == settings.structure_model == "gpt-6.1-sol"
+    assert settings.research_model == "gpt-6-luna"
+    assert settings.budget_path == tmp_path / "provider-budget.sqlite3"
+
+
 def test_prompt_key_stays_out_of_environment_and_output(monkeypatch, capsys):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     secret = "sk-test-not-a-real-credential"
@@ -66,7 +77,7 @@ def test_live_app_uses_key_without_exposing_or_persisting_it(built_ui, tmp_path,
     settings = local_server.local_settings(data, secret)
     assert settings.max_retries == 0
     assert settings.analysis_language == "English"
-    assert settings.transcription_model == "disabled"
+    assert settings.transcription_model == "whisper-1"
     assert settings.cache_dir == data / "provider-cache"
     assert settings.budget_path == data / "provider-budget.sqlite3"
     assert secret not in repr(settings)

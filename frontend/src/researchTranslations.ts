@@ -78,7 +78,7 @@ registerTranslations({
   'Limited evidence: {channels} are incomplete. Interpretations may miss visual context.': '依据有限：{channels} 尚未完成，解读可能缺少画面背景。',
   'Review missing evidence': '查看缺失依据', 'Saved output is in {language}. New analysis uses the app language.': '已保存结果使用{language}。新分析将跟随应用语言。',
   'English': '英文', 'Chinese': '中文', 'Generate in {language}': '使用{language}重新生成',
-  'Speech was not analyzed. Transcription is currently disabled.': '语音尚未分析。当前已停用语音转写。',
+  'Speech has not been transcribed for this analysis.': '此分析尚未完成语音转写。',
   '{count} recorded corrections · Revision {revision}. Original observations remain in history.': '{count} 条修正 · 第 {revision} 版。原始观察保留在历史记录中。',
   'saved legacy timing': '此前保存的时间', 'legacy': '旧版',
   '{size} MiB / {duration}s maximum.': '最多 {size} MiB / {duration} 秒。',

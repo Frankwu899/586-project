@@ -22,7 +22,7 @@ def test_new_profiles_and_legacy_environment_defaults_use_reviewed_gpt6_models(m
     settings = ProviderSettings.from_env()
     assert settings.vision_model == settings.creative_model == settings.m2_model == settings.structure_model == MODEL
     assert settings.research_model == "gpt-6-luna"
-    assert settings.transcription_model == "disabled"
+    assert settings.transcription_model == "whisper-1"
 
 
 def test_preflight_counts_images_and_reserves_only_bounded_request_before_generation(tmp_path):

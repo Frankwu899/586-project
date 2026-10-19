@@ -67,9 +67,9 @@ class ProviderSettings:
             creative_provider=os.getenv("VIDEO_CREATIVE_PROVIDER", "openai"),
             m2_provider=os.getenv("VIDEO_M2_PROVIDER", "openai"),
             vision_model=current_model(os.getenv("OPENAI_VISION_MODEL")),
-            # GPT-6 cannot transcribe audio. Normal profiles do not silently
-            # invoke an older speech model under a GPT-6-only model policy.
-            transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "disabled"),
+            # Dedicated timestamped speech is the owner-approved exception;
+            # reasoning, vision and retrieval remain on the GPT-6 defaults.
+            transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "whisper-1"),
             creative_model=current_model(os.getenv("OPENAI_CREATIVE_MODEL")),
             m2_model=current_model(os.getenv("OPENAI_M2_MODEL")),
             structure_model=current_model(os.getenv("OPENAI_STRUCTURE_MODEL")),
