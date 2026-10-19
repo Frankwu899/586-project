@@ -42,7 +42,14 @@ def test_legacy_bytes_preserved_and_both_supplied_examples_validate():
 def test_migration_keeps_synthetic_origin_unknown_metrics_and_missing_media():
     original, revised = legacy()
     state = migrate_legacy_examples(original, revised)
-    assert state == TaskState.model_validate_json((ROOT / "examples/v0.6.legacy-migrated.json").read_text())
+    # New explicit imports use the current record version; retain and compare
+    # every historical fixture field rather than rewriting the v0.6 example.
+    expected = json.loads((ROOT / "examples/v0.6.legacy-migrated.json").read_text())
+    expected["task"]["schema_version"] = "0.7.0"
+    for name in ("briefs", "videos", "analyses", "directions", "feedback", "production_briefs", "storyboards", "jobs"):
+        for record in expected[name]:
+            record["schema_version"] = "0.7.0"
+    assert state == TaskState.model_validate(expected)
     assert state.task.task_id == original["project_id"]
     assert state.task.mode == "sample"
     video = state.videos[0]

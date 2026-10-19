@@ -44,7 +44,7 @@ class ContractModel(BaseModel):
 
 
 class Record(ContractModel):
-    schema_version: Literal["0.6.0"] = "0.6.0"
+    schema_version: Literal["0.6.0", "0.7.0"] = "0.7.0"
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
@@ -604,6 +604,8 @@ class AnalysisResult(Record):
     review: ReviewState = Field(default_factory=ReviewState)
     corrections: list[Correction] = Field(default_factory=list)
     error: ErrorInfo | None = None
+    extraction_failures: dict[Literal["visual_action", "on_screen_text", "speech"], ErrorInfo] = Field(default_factory=dict)
+    output_language: Literal["English", "Chinese"] | None = None
     empty_result_reason: str | None = None
 
     @model_validator(mode="after")
@@ -652,7 +654,7 @@ class AnalysisResult(Record):
             has_events = any(event.kind == kind for event in self.events)
             if has_events != (coverage == "observations"):
                 raise ValueError(f"{kind} coverage must agree with canonical observations")
-        failed_extraction = "failed" in self.coverage.model_dump().values() or any(
+        failed_extraction = bool(self.extraction_failures) or "failed" in self.coverage.model_dump().values() or any(
             event.visual_details is not None and event.visual_details.has_failures() for event in self.events
         )
         if self.status == "succeeded" and failed_extraction:
@@ -675,7 +677,8 @@ class CreativeDirection(Record):
     revision: Revision = 1
     task_id: ID
     brief_ref: VersionRef
-    analysis_ref: VersionRef
+    analysis_ref: VersionRef | None = None
+    structure_handoff_id: ID | None = None
     feedback_refs: list[VersionRef] = Field(default_factory=list)
     core_message: Nonempty
     hook: Nonempty
@@ -713,7 +716,7 @@ class CreativeFeedback(Record):
     instruction: Nonempty
     target_direction: VersionRef
     brief_ref: VersionRef
-    analysis_ref: VersionRef
+    analysis_ref: VersionRef | None = None
     status: Literal["pending", "applied", "not_interpreted"] = "pending"
     resulting_direction: VersionRef | None = None
     explanation: str | None = None
@@ -734,7 +737,7 @@ class ProductionOutput(Record):
     task_id: ID
     direction_ref: VersionRef
     brief_ref: VersionRef
-    analysis_ref: VersionRef
+    analysis_ref: VersionRef | None = None
     feedback_refs: list[VersionRef] = Field(default_factory=list)
     origin: Origin
     currentness: Literal["current", "outdated"] = "current"
@@ -857,7 +860,11 @@ def _validate_references(state: TaskState) -> None:
             raise ValueError(f"{collection}: dangling or wrong-revision reference")
         return result
 
-    def citations(items: list[EvidenceReference], analysis: AnalysisResult):
+    def citations(items: list[EvidenceReference], analysis: AnalysisResult | None):
+        if analysis is None:
+            if items:
+                raise ValueError("original creative work cannot contain invented reference evidence")
+            return
         valid_ids = {event.event_id for event in analysis.events}
         for item in items:
             if (item.analysis_id, item.analysis_revision, item.video_id) != (analysis.analysis_id, analysis.revision, analysis.video_id) or item.event_id not in valid_ids:
@@ -865,14 +872,17 @@ def _validate_references(state: TaskState) -> None:
 
     def inputs(record):
         brief = resolve("briefs", record.brief_ref)
-        analysis = resolve("analyses", record.analysis_ref)
+        analysis = resolve("analyses", record.analysis_ref) if record.analysis_ref else None
         if record.currentness == "current":
-            if record.brief_ref != task.current_brief or record.analysis_ref != task.current_analysis or analysis.video_id != task.current_video_id:
+            if record.brief_ref != task.current_brief:
                 raise ValueError("current creative records must use exact current task inputs")
-            if analysis.status != "succeeded" or not analysis.review.user_confirmed:
-                raise ValueError("current creative records require reviewed successful analysis")
-            if analysis.frame_count is None:
-                raise ValueError("current creative records require available reference frame timing")
+            if analysis is not None:
+                if record.analysis_ref != task.current_analysis or analysis.video_id != task.current_video_id:
+                    raise ValueError("current creative records must use exact current task inputs")
+                if analysis.status != "succeeded" or not analysis.review.user_confirmed:
+                    raise ValueError("current creative records require reviewed successful analysis")
+                if analysis.frame_count is None:
+                    raise ValueError("current creative records require available reference frame timing")
         for ref in record.feedback_refs:
             feedback = resolve("feedback", ref)
             if feedback.brief_ref != record.brief_ref or feedback.analysis_ref != record.analysis_ref:
@@ -897,7 +907,7 @@ def _validate_references(state: TaskState) -> None:
                            key=lambda item: item.revision)
             if analysis.corrections[:len(previous.corrections)] != previous.corrections:
                 raise ValueError("analysis corrections must preserve all earlier correction history")
-            for field in ("status", "coverage", "error", "empty_result_reason"):
+            for field in ("status", "coverage", "error", "extraction_failures", "output_language", "empty_result_reason"):
                 if getattr(analysis, field) != getattr(original, field):
                     raise ValueError("analysis corrections cannot change extraction status or coverage")
             old_events = {event.event_id: event for event in original.events}
@@ -992,7 +1002,7 @@ def validate_state(state: TaskState | dict) -> TaskState:
     return TaskState.model_validate(state.model_dump(mode="python") if isinstance(state, TaskState) else state)
 
 
-EditorScope = Annotated[str, StringConstraints(pattern=r"^(analysis|production|direction-[A-Za-z][A-Za-z0-9_-]{1,63})$")]
+EditorScope = Annotated[str, StringConstraints(pattern=r"^(idea|analysis|production|direction-[A-Za-z][A-Za-z0-9_-]{1,63})$")]
 
 
 class EditorDraft(ContractModel):

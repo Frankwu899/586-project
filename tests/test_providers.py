@@ -158,10 +158,40 @@ def test_cache_is_version_model_source_and_settings_scoped(recognition_input, tm
     assert adapter.records[-1]["cache_status"] == "hit"
     vision.model = "fixture-v2"
     adapter.analyze(recognition_input[0])
-    assert vision.calls == speech.calls == 2
+    assert vision.calls == 2 and speech.calls == 1
+    speech.model = "fixture-speech-v2"
+    adapter.analyze(recognition_input[0])
+    assert speech.calls == 2
     diagnostic = (tmp_path / "cache" / "runs.jsonl").read_text()
     assert "job_real" in diagnostic and "input_tokens" not in diagnostic
     assert "Luma杯" not in diagnostic  # no recognized private text in run records
+
+
+@pytest.mark.parametrize("configuration", ["environment", "local_launcher"])
+def test_runtime_budget_path_allows_recognition_and_cache_reuse(recognition_input, tmp_path, monkeypatch, configuration):
+    """Use deployed settings: bare ProviderSettings() omits the ledger Path."""
+    monkeypatch.setenv("VIDEO_ANATOMY_DATA_DIR", str(tmp_path / "library"))
+    monkeypatch.setenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(tmp_path / "ledger.sqlite3"))
+    if configuration == "local_launcher":
+        from scripts.local_server import local_settings
+        settings = local_settings(tmp_path / "library", "offline-fake-key")
+    else:
+        settings = ProviderSettings.from_env()
+    vision, speech = AlternateVision(), AlternateSpeech()
+    request, prepared = recognition_input
+    adapter = ProviderRecognitionAdapter(settings, vision_provider=vision,
+        transcription_provider=speech, prepare=lambda *_: prepared)
+    first = adapter.analyze(request)
+    assert first.status == "succeeded" and first.events
+    # Relocating an accounting file must not invalidate already paid evidence.
+    adapter.settings = replace(settings, budget_path=tmp_path / "relocated-ledger.sqlite3")
+    second = adapter.analyze(request)
+    assert second.status == "succeeded"
+    assert vision.calls == speech.calls == 1
+    # Output-affecting settings still invalidate the visual cache.
+    adapter.settings = replace(adapter.settings, analysis_language="French")
+    assert adapter.analyze(request).status == "succeeded"
+    assert vision.calls == 2 and speech.calls == 1
 
 
 def test_changed_source_hash_fails_before_any_provider(recognition_input):
@@ -229,6 +259,7 @@ def test_timeout_transient_retries_are_bounded_and_budgeted():
 
 
 @pytest.mark.parametrize("status,code,expected", [(401, "invalid_api_key", "provider_authentication"),
+    (403, "insufficient_permissions", "provider_permission"), (404, "model_not_found", "provider_model_access"),
     (429, "insufficient_quota", "provider_quota"), (400, "invalid_request", "provider_request_rejected")])
 def test_auth_quota_and_bad_requests_are_never_retried(status, code, expected):
     transport = transport_with(lambda _: httpx.Response(status, json={"error": {"code": code, "message": "secret raw body"}}))
@@ -279,10 +310,14 @@ def test_unbounded_settings_rejected(settings):
 def test_corrupt_cache_is_revalidated_and_recomputed(recognition_input, tmp_path):
     adapter, vision, speech = adapter_for(recognition_input, cache_dir=tmp_path / "cache")
     adapter.analyze(recognition_input[0])
-    cache = next((tmp_path / "cache").glob("*.json"))
+    cache = next(path for path in (tmp_path / "cache").glob("*.json") if not path.name.startswith("speech-"))
     cache.write_text('{"vision": {"frames": []}, "speech": []}')
+    # Both aggregate and per-batch caches are untrusted local inputs. A valid
+    # independent batch would correctly avoid a duplicate paid extraction.
+    for batch in (tmp_path / "cache" / "visual-batches").glob("*.json"):
+        batch.write_text('{"frames": []}')
     result = adapter.analyze(recognition_input[0])
-    assert result.status == "succeeded" and vision.calls == speech.calls == 2
+    assert result.status == "succeeded" and vision.calls == 2 and speech.calls == 1
 
 
 def test_openai_responses_and_audio_normalize_end_to_end_offline(recognition_input):

@@ -18,8 +18,8 @@ function structuralSchema(value) {
 }
 
 export async function generateContracts() {
-  const schema = JSON.parse(await readFile('../contracts/v0.6.m2.schema.json', 'utf8'));
-  const editors = JSON.parse(await readFile('../contracts/v0.6.editors.schema.json', 'utf8'));
+  const schema = JSON.parse(await readFile('../contracts/v0.7.m2.schema.json', 'utf8'));
+  const editors = JSON.parse(await readFile('../contracts/v0.7.editors.schema.json', 'utf8'));
   schema.$defs = { ...schema.$defs, ...editors.$defs };
   for (const [name, property] of Object.entries(editors.properties)) {
     schema.properties[`editor_${name}`] = property;

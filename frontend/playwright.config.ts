@@ -28,7 +28,7 @@ export default defineConfig({
       command: '.venv/bin/python -m uvicorn backend.app.api:app --host 127.0.0.1 --port 8011',
       cwd: root,
       url: 'http://127.0.0.1:8011/api/health',
-      env: { VIDEO_ANATOMY_DATA_DIR: dataDirectory },
+      env: { VIDEO_ANATOMY_DATA_DIR: dataDirectory, OPENAI_API_KEY: '', RUN_LIVE_MODEL_TESTS: '0' },
       timeout: 30_000,
       reuseExistingServer: false,
     },

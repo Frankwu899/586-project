@@ -19,6 +19,17 @@ def built_ui(tmp_path, monkeypatch):
     return root
 
 
+def test_speech_exception_restores_old_disabled_launchers_without_downgrading_other_models(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENAI_TRANSCRIPTION_MODEL", "disabled")
+    for capability in ("VISION", "CREATIVE", "M2", "STRUCTURE", "RESEARCH"):
+        monkeypatch.setenv(f"OPENAI_{capability}_MODEL", "gpt-4.1-mini")
+    settings = local_server.local_settings(tmp_path, "", allow_empty=True)
+    assert settings.transcription_model == "whisper-1"
+    assert settings.vision_model == settings.creative_model == settings.m2_model == settings.structure_model == "gpt-6.1-sol"
+    assert settings.research_model == "gpt-6-luna"
+    assert settings.budget_path == tmp_path / "provider-budget.sqlite3"
+
+
 def test_prompt_key_stays_out_of_environment_and_output(monkeypatch, capsys):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     secret = "sk-test-not-a-real-credential"
@@ -65,8 +76,10 @@ def test_live_app_uses_key_without_exposing_or_persisting_it(built_ui, tmp_path,
     data = tmp_path / "saved"
     settings = local_server.local_settings(data, secret)
     assert settings.max_retries == 0
-    assert settings.analysis_language == "Chinese"
+    assert settings.analysis_language == "English"
+    assert settings.transcription_model == "whisper-1"
     assert settings.cache_dir == data / "provider-cache"
+    assert settings.budget_path == data / "provider-budget.sqlite3"
     assert secret not in repr(settings)
     client = TestClient(local_server.local_app(data, settings))
     assert client.get("/").status_code == 200
@@ -105,5 +118,31 @@ def test_reference_import_is_real_unanalyzed_and_respects_deleted_media(built_ui
 
 def test_unsupported_model_fails_before_serving(built_ui, tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_VISION_MODEL", "not-reviewed-for-this-adapter")
-    with pytest.raises(ValueError, match="模型"):
+    with pytest.raises(ValueError, match="model"):
         local_server.local_settings(tmp_path / "data", "sk-test")
+
+
+def test_desktop_token_protects_ui_and_api_without_disclosing_key(built_ui, tmp_path):
+    settings = local_server.local_settings(tmp_path / "saved", "sk-private-memory")
+    token = "session-only-token-" * 4
+    app = local_server.local_app(tmp_path / "saved", settings, session_token=token, address="http://127.0.0.1:43210")
+    client = TestClient(app, base_url="http://127.0.0.1:43210")
+    for endpoint in ("/", "/api/health", "/api/local/runtime"):
+        assert client.get(endpoint).status_code == 401
+        result = client.get(endpoint, headers={"x-video-anatomy-token": token})
+        assert result.status_code == 200
+        assert token not in result.text
+        assert settings.api_key not in result.text
+    assert client.post("/api/tasks", json={"title": "blocked"}, headers={"x-video-anatomy-token": token, "Origin": "https://example.com"}).status_code == 403
+    assert client.get("/api/health", headers={"x-video-anatomy-token": token, "Host": "attacker.example"}).status_code == 403
+
+
+def test_desktop_credentials_use_private_stdin_and_no_environment(monkeypatch):
+    import io
+    import json
+    token = "a" * 64
+    monkeypatch.setattr(local_server.sys, "stdin", io.StringIO(json.dumps({"api_key": "sk-private", "session_token": token}) + "\n"))
+    assert local_server.desktop_credentials() == ("sk-private", token)
+    monkeypatch.setattr(local_server.sys, "stdin", io.StringIO('{"session_token": "short"}'))
+    with pytest.raises(ValueError, match="private session"):
+        local_server.desktop_credentials()

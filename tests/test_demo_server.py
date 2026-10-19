@@ -27,7 +27,7 @@ def test_demo_ignores_inherited_credentials_and_serves_ui_beside_api(tmp_path, m
     assert client.get('/assets/workspace.js').status_code == 200
     health = client.get('/api/health')
     assert health.status_code == 200
-    assert health.json()['schema_version'] == '0.6.0'
+    assert health.json()['schema_version'] == '0.7.0'
     assert health.json()['real_analysis'] == 'unconfigured'
     assert health.json()['creative_generation'] == 'unconfigured_for_real_tasks'
     assert health.json()['sample_workflow'] == 'available_offline'

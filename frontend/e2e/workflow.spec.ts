@@ -4,12 +4,9 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { TaskState } from '../src/generated/contracts';
-import { applyInputs, draftSaved, editBrand, fillInputs } from './m2-helpers';
+import { savedMutation } from './operation-helpers';
+import { area, applyInputs, draftSaved, editBrand, fillInputs } from './m2-helpers';
 
-async function area(page: Page, id: 'inputs' | 'reference' | 'directions' | 'production') {
-  await page.locator(`#tab-${id}`).click();
-  await expect(page.locator(`#area-${id}`)).toBeVisible();
-}
 
 async function fullDirection(page: Page) {
   const first = page.locator('article.direction').first();
@@ -19,12 +16,11 @@ async function fullDirection(page: Page) {
 }
 
 async function mutation(page: Page, name: string, route: string, within = page.locator('body'), allowAlert = false): Promise<TaskState> {
-  const pending = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(route));
+  const pending = savedMutation(page, route);
   await within.getByRole('button', { name, exact: true }).click();
-  const response = await pending;
-  expect(response.ok(), await response.text()).toBeTruthy();
+  const saved = await pending;
   if (!allowAlert) await expect(page.getByRole('alert')).toHaveCount(0);
-  return response.json();
+  return saved;
 }
 
 test('complete connected sample workflow, playable evidence, edits, exports and outdated history', async ({ page }) => {
@@ -50,8 +46,8 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await editBrand(page);
   await expect(page.getByLabel('Product', { exact: true })).toHaveValue('LumaCup');
   await area(page, 'reference');
-  await page.getByText('Media details and source', { exact: true }).click();
-  await expect(page.getByTestId('source-frame-rate')).toHaveText('Reference: 20 fps · 200 frames · Constant frame rate');
+  await page.getByText('File details and history', { exact: true }).click();
+  await expect(page.getByTestId('source-frame-rate')).toHaveText('20 fps · 200 source frames · constant rate');
   await expect(page.getByRole('button', { name: 'Previous frame', exact: true })).toBeDisabled();
 
   const video = page.locator('video');
@@ -65,24 +61,28 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   const sampleVideoId = state.task.current_video_id!;
   expect(state.videos[0].frame_timing?.fps_numerator).toBe(20);
   expect(state.analyses.at(-1)?.events.find((item) => item.event_id === 'event_intro_text')?.start_frame).toBe(0);
-  await page.locator('[data-evidence-id="event_lid_shape"]').getByRole('button', { name: /^Play / }).click();
+  await page.locator('.timeline-mark.visual_action').nth(1).click();
+  await expect(page.locator('[data-evidence-id="event_lid_shape"]')).toBeVisible();
   await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeCloseTo(3, 1);
-  await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:03:00 · frame 60 / 199');
+  await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:03:00 · 60 / 199');
+  await page.locator('.timeline-mark.sfx').first().click();
   const shortChime = page.locator('[data-evidence-id="event_chime_1"]').getByRole('button', { name: /^Play / });
   await expect(shortChime).toHaveAttribute('title', '00:00:03:00–00:00:03:05 · frames [60, 65)');
   await shortChime.click();
   await page.getByRole('button', { name: 'Next frame', exact: true }).click();
   await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeCloseTo(3.05, 2);
-  await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:03:01 · frame 61 / 199');
+  await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:03:01 · 61 / 199');
   await page.getByRole('button', { name: 'Previous frame', exact: true }).click();
   await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeCloseTo(3, 2);
-  await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:03:00 · frame 60 / 199');
-  await expect(page.getByText('Sound effect', { exact: true }).last()).toBeVisible();
+  await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:03:00 · 60 / 199');
+  await expect(page.locator('[data-evidence-id="event_chime_1"]').getByText('Sound effect', { exact: true })).toBeVisible();
+  await page.locator('.timeline-mark.on_screen_text').first().click();
+  const visibleText = page.getByLabel('Visible text at selected sample');
+  if (await visibleText.isVisible()) await visibleText.selectOption('event_intro_text');
   await page.locator('[data-evidence-id="event_intro_text"]').getByRole('button', { name: /^Correct visible text/ }).click();
-  await page.getByText('Content role interpretations ·', { exact: false }).click();
-  await page.getByText('Section 1 ·', { exact: false }).click();
+  await page.locator('.m5-role-sections').first().locator('summary').first().click();
   await page.getByLabel('Recognized text · event_intro_text', { exact: true }).fill('LUMACUP — FICTIONAL SAMPLE (reviewed)');
-  await page.getByRole('group', { name: 'Section 1 roles', exact: true }).getByLabel('Product presentation/demo', { exact: true }).check();
+  await page.getByRole('group', { name: 'Content role interpretation', exact: true }).getByLabel('Product presentation/demo', { exact: true }).check();
   await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeDisabled();
   state = await mutation(page, 'Save analysis corrections', '/analysis/correct');
   expect(state.analyses).toHaveLength(2);
@@ -90,6 +90,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   expect(state.analyses[1].review.user_confirmed).toBe(false);
   await mutation(page, 'Use this reviewed analysis', '/analysis/confirm');
   await area(page, 'directions');
+  await page.getByRole('checkbox', { name: 'Use reviewed reference evidence', exact: true }).check();
   await page.getByLabel('Generation language', { exact: true }).selectOption('English');
   await mutation(page, 'Save generation language', '/language');
   state = await mutation(page, 'Generate two sample directions', '/directions/generate');
@@ -125,6 +126,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await area(page, 'production');
   await expect(page.getByRole('button', { name: 'Generate production materials', exact: true })).toBeDisabled();
   await area(page, 'directions');
+  first = await fullDirection(page);
   await first.getByLabel('Refinement instruction', { exact: true }).fill('Keep the orange title card as a production note');
   state = await mutation(page, 'Apply instruction', '/refine', first);
   expect(state.feedback.at(-1)?.status).toBe('not_interpreted');
@@ -186,8 +188,10 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await expect(page.getByRole('button', { name: 'Regenerate production materials', exact: true })).toBeDisabled();
   await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('Morning production plan — reviewed');
   await area(page, 'reference');
-  await page.getByText('Analysis history · 2 saved revisions', { exact: true }).click();
-  await page.getByText('Original analysis · revision 1', { exact: false }).click();
+  await page.getByRole('button', { name: 'Source media', exact: true }).click();
+  const mediaHistory = page.locator('.media-details');
+  if (!await mediaHistory.evaluate((element) => element.hasAttribute('open'))) await mediaHistory.locator('summary').first().click();
+  await mediaHistory.getByText('Analysis original · succeeded', { exact: true }).click();
   await expect(page.locator('pre').filter({ hasText: 'LUMACUP\\nFICTIONAL SAMPLE' }).first()).toBeVisible();
 
   await area(page, 'production');
@@ -223,7 +227,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   expect(state.analyses.at(-1)?.status).toBe('failed');
   expect(state.analyses.at(-1)?.events).toHaveLength(0);
   await expect(page.getByRole('alert').first()).toContainText(/real.*not configured/i);
-  await expect(page.getByText('No recognized words to display.', { exact: false })).toBeVisible();
+  await expect(page.getByText('No observations available. Check extraction coverage.', { exact: true })).toBeVisible();
   expect(clientErrors).toEqual([]);
 });
 
@@ -240,20 +244,20 @@ test('uploaded video with a nonzero source timestamp steps through zero-based fr
     const state = await mutation(page, 'Upload reference', '/video');
     expect(state.videos[0].frame_timing?.media_start_seconds).toBe(2);
     expect(state.videos[0].duration_seconds).toBeCloseTo(0.5);
-    await page.getByText('Media details and source', { exact: true }).click();
-    await expect(page.getByTestId('source-frame-rate')).toHaveText('Reference: 24 fps · 12 frames · Constant frame rate');
+    await page.getByText('File details and history', { exact: true }).click();
+    await expect(page.getByTestId('source-frame-rate')).toHaveText('24 fps · 12 source frames · constant rate');
     const video = page.locator('video');
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.readyState)).toBeGreaterThanOrEqual(2);
-    await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:00:00 · frame 0 / 11');
+    await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:00:00 · 0 / 11');
     await expect(page.getByRole('button', { name: 'Previous frame', exact: true })).toBeDisabled();
     for (let frame = 1; frame <= 6; frame += 1) {
       await page.getByRole('button', { name: 'Next frame', exact: true }).click();
-      await expect(page.getByTestId('reference-frame-position')).toHaveText(`00:00:00:0${frame} · frame ${frame} / 11`);
+      await expect(page.getByTestId('reference-frame-position')).toHaveText(`00:00:00:0${frame} · ${frame} / 11`);
     }
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeCloseTo(2.25, 2);
     await page.getByRole('button', { name: 'Previous frame', exact: true }).click();
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeCloseTo(2 + 5 / 24, 2);
-    await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:00:05 · frame 5 / 11');
+    await expect(page.getByTestId('reference-frame-position')).toHaveText('00:00:00:05 · 5 / 11');
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

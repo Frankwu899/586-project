@@ -2,6 +2,13 @@ import { expect, type Page } from '@playwright/test';
 import type { TaskState } from '../src/generated/contracts';
 
 export async function area(page: Page, name: 'inputs' | 'reference' | 'directions' | 'production') {
+  const context = page.getByRole('dialog', { name: 'Project context', exact: true });
+  if (name === 'inputs') {
+    if (!await context.isVisible()) await page.getByRole('button', { name: /^Project context/ }).click();
+    await expect(context).toBeVisible();
+    return;
+  }
+  if (await context.isVisible()) await page.getByRole('button', { name: 'Close context', exact: true }).click();
   if (!await page.locator(`#area-${name}`).isVisible()) await page.locator(`#tab-${name}`).click();
   await expect(page.locator(`#area-${name}`)).toBeVisible();
 }

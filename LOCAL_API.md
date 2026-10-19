@@ -1,100 +1,145 @@
-# Run the interactive app with your OpenAI API key
+# Run Video Anatomy locally
 
-This entrypoint serves the built React workspace and persistent backend together
-on your own computer. It enables real providers. The existing `start-demo`
-launcher continues to disable paid providers.
+For the Finder app with saved Keychain credentials and repeat-open behavior, use
+[MAC_APP.md](MAC_APP.md). This browser launcher serves the built workspace and backend on your own computer.
+The native Mac application has a separate build path in [desktop/README.md](desktop/README.md).
+A source ZIP is not a DMG. All installation and launcher messages are English;
+the app defaults to English and can switch to Chinese. New Research explanations
+follow the app language. Verbatim evidence keeps its source language; Ideas has
+an independent generation language.
 
-## macOS
+## Start on macOS
 
-1. Extract the local API bundle to a new folder. Keep the folder together; do not
-   replace an older folder containing saved tasks.
-2. Double-click **Start Video Anatomy.command**. Alternatively, in Terminal run
-   `bash scripts/start-local.sh` from the extracted folder. On macOS, right-click
-   the launcher and select **Open** if Finder requires an explicit opening.
-3. The launcher needs Python 3.12 and FFmpeg/ffprobe. If Homebrew is already
-   installed, it installs missing prerequisites automatically. Otherwise install
-   [Homebrew](https://brew.sh/) and run `brew install python@3.12 ffmpeg`, then
-   launch again. The first run installs pinned Python dependencies over the
-   internet. The bundle already includes the built frontend; Node is unnecessary.
-4. Paste the complete key at the **API Key:** prompt and press Return. No dots or
-   characters are echoed. The launcher retains it only in backend process memory;
-   it does not write it to a file or send it to the browser. Existing
-   `OPENAI_API_KEY` environment configuration also works. `.env.local` is not
-   automatically sourced. Never send the key through chat or commit it to Git.
-5. The browser opens **http://127.0.0.1:8000**. Leave Terminal open. Stop the server
-   with Ctrl+C. Reopen the same launcher/folder to resume saved tasks; enter the
-   key again if it was not supplied by the environment.
+1. Extract the new bundle. Keep your previous bundle until any saved library has
+   been copied and verified.
+2. Double-click **Start Video Anatomy.command**, or run
+   `bash scripts/start-local.sh` from the extracted folder. If Finder requires it,
+   right-click the launcher and choose **Open**.
+3. This browser launcher requires Python 3.12 and FFmpeg/ffprobe. If Homebrew is
+   installed, missing prerequisites are installed on the first run. Otherwise
+   install [Homebrew](https://brew.sh/), then run `brew install python@3.12 ffmpeg`.
+   The first run installs pinned Python packages. The bundle contains the built
+   frontend; Node is needed only when building from source.
+4. Configure your key in **API connection** in the workspace. On macOS, Remember
+   on this Mac stores it in the login Keychain. Otherwise it stays in server
+   memory for this session. It is never returned to the page or written to task
+   storage. An existing `OPENAI_API_KEY` environment variable works for the
+   Terminal launcher; the Finder app ignores inherited keys. Use `--prompt-key`
+   only if you specifically want the older hidden Terminal prompt.
+5. The browser opens `http://127.0.0.1:8000`. Keep Terminal open. Stop with Ctrl+C.
 
-If port 8000 is occupied, stop the old demo or run
-`bash scripts/start-local.sh --port 8001`. The launcher stops before asking for a
-key when its requested port is occupied. Data remains under `.local-data/live`;
-offline-demo data remains under `.local-data/demo`. Back up the entire data folder
-to preserve SQLite records, originals, derivatives and provider caches.
+To open saved work without any paid provider, run:
 
-On Windows, install Python 3.12 (including `py`) and FFmpeg/ffprobe on PATH, then
-double-click **Start Video Anatomy.cmd**. On Linux use `bash scripts/start-local.sh`
-after installing the same prerequisites. macOS and Windows execution still need
-verification on those actual operating systems; Linux checks are recorded in the
-handoff.
+```bash
+bash scripts/start-local.sh --offline
+```
 
-## First supplied-video experiment
+If port 8000 is occupied, close the old server or add `--port 8001`. Only one server
+may open a given library at a time, including when different ports are used.
 
-The private local bundle may contain `samples/guandan-reference.mp4`, the clip
-supplied by the owner. Startup imports it as a real task named
-**掼蛋视频 · 真实识别实验** once, by content hash. It neither analyzes it nor
-creates a brand brief, invents product facts, or confirms/approves anything.
-Repeated startup respects previously deleted media. The video is excluded from
-Git and must not be treated as a redistributable repository fixture.
+Windows: install Python 3.12 with `py`, plus FFmpeg/ffprobe on PATH, then open
+**Start Video Anatomy.cmd**. Linux: use `bash scripts/start-local.sh` after
+installing the same dependencies. Native macOS/Windows execution must be verified
+on those operating systems; Linux tests do not establish Mac compatibility.
 
-1. Select the experiment task and open **Reference**. Confirm playback first.
-2. Click **Start analysis** once. This sends bounded sampled frames and audio
-   to OpenAI and can incur charges. Wait for the result; inspect the job/analysis
-   status as well as any visible error. Key configuration at startup is not proof
-   of accepted credentials, available model permissions or billing balance.
-3. Check Chinese subtitles/speech, scene observations, hook/product/CTA roles,
-   and the separation between visible evidence and interpretation. Correct the
-   result before **Use this reviewed analysis**; the launcher never confirms it.
-4. To evaluate new creative directions, enter the actual target brand/task and
-   approved claims in **Inputs**, then Apply. Reference-video product facts and
-   audience assumptions are not automatically facts about the new target brand.
-   Choose Chinese or English in **Directions**, generate, review and explicitly
-   approve a direction before generating **Production** materials.
+## Your files survive app upgrades
 
-Use the owner's commentary as a separate human evaluation reference for the
-first pass. A second pass can compare the same task with explicit contextual
-notes. This distinguishes visible evidence, background knowledge and hypotheses
-instead of presenting supplied commentary as independently discovered research.
-See [the case checklist](docs/evaluation/guandan-context-case.md).
+The default persistent library is outside the installation folder:
 
-## Models, costs and API failures
+| System | Library |
+| --- | --- |
+| macOS | `~/Library/Application Support/Video Anatomy/` |
+| Windows | `%LOCALAPPDATA%/Video Anatomy/` |
+| Linux | `${XDG_DATA_HOME:-~/.local/share}/video-anatomy/` |
 
-The current compatibility baseline is `gpt-4.1-mini` for visual analysis, M2 and
-creative generation, and `whisper-1` for segment-timestamped speech. These are the
-models supported by the existing adapter, not a claim that they are the latest
-model families. Newer families require adapter/format validation; changing an
-arbitrary model name alone is insufficient. Provider IDs remain configurable as
-documented in [README_SETUP.md](README_SETUP.md).
+`tasks.sqlite3` retains projects, histories and saved editor drafts. `media/`
+contains copied uploads and their current playback derivatives. `provider-cache/`
+retains reusable paid results and sanitized usage records;
+`provider-budget.sqlite3` retains the historical Cloud experiment ledger without
+limiting local requests. Despite the historical name, **provider-cache is persistent
+project data, not a disposable preview cache**. Back up the whole library after
+closing the app. Moving the original upload does not break its managed copy.
 
-The local launcher defaults to Chinese analysis, 12 sampled frames, a 90-second
-timeout per request and **zero automatic retries**. Separate recognition
-capabilities may still make multiple requests. Startup and media import make no
-model requests. The dedicated fictional sample still uses deterministic sample
-adapters. Ordinary real-task analysis and AI assistance/generation use the API
-when explicitly triggered in the UI.
+A separate derived-cache location is reserved under
+`~/Library/Caches/Video Anatomy/` on macOS. Existing originals and playback files
+have not been moved out of the persistent library. This release does not expose a
+bulk cache-delete button that could remove paid results or user media.
 
-This app does not impose a cumulative dollar cap. Track actual project spending
-in [OpenAI Usage](https://platform.openai.com/usage); a project budget is an alert,
-not a hard stop. Keep auto refill off for the owner's $20 project balance and
-begin with one short clip. The default-off automated live harness has its own
-budget controls; it has not been run by this launcher.
+The launcher prints both locations. `/api/local/runtime` reports the active paths,
+retained size and import outcome to the local application. `--data-dir PATH` or
+`VIDEO_ANATOMY_DATA_DIR` selects an explicit library; `--cache-dir PATH` or
+`VIDEO_ANATOMY_CACHE_DIR` selects a derived-cache location.
 
-- Authentication/permission failure: check the key's project and access to
-  Responses and Audio Transcriptions. Restart to supply a corrected key.
-- Credit/quota failure: check billing for the same organization/project.
-- Request/model rejection: check model availability and supported configuration.
-- Connection failure: the local computer must reach `api.openai.com`; a managed
-  cloud run additionally needs that domain allowed in its environment settings.
+## Preserve an earlier local test
 
-Do not put a real key in a command argument, screenshot, browser field or error
-report. Share the application's safe error code and model names when diagnosing
-an unsuccessful run. Automatic web research is not included in this version.
+Stop the old application before importing. If the new launcher is in the same
+folder as an earlier `.local-data/live` and the stable destination does not yet
+exist, it copies the old library automatically. SQLite backup includes committed
+WAL content; every other retained file is checked by SHA-256. The new folder is
+activated only after verification. The old folder is left in place.
+
+When the old bundle is elsewhere, import it explicitly on the first launch:
+
+```bash
+bash scripts/start-local.sh --migrate-from "$HOME/Desktop/video-anatomy-local/.local-data/live"
+```
+
+If the destination already exists, explicit import stops instead of merging or
+overwriting projects. To examine another library safely, choose an absent path:
+
+```bash
+bash scripts/start-local.sh --data-dir "$HOME/Library/Application Support/Video Anatomy Imported" --migrate-from "/path/to/old/.local-data/live"
+```
+
+Use that same `--data-dir` on later launches. If import fails, its temporary copy is
+removed and the original remains. A `library-import-*.json` receipt records source,
+verification hashes and date after success. Going back to the untouched old
+bundle is possible, but new edits made in the imported library are not copied back.
+No silent merge or destructive rollback is performed.
+
+## API usage and experiments
+
+Starting the app, importing media and opening saved work do not call models.
+Real analysis, Structure research and AI generation can incur charges when
+requested. A fictional sample remains deterministic. Credentials being configured
+does not establish billing availability or model access.
+
+The current baseline is `gpt-6.1-sol` for visual analysis, Structure synthesis,
+Ideas, Production and input assistance, with `gpt-6-luna` for bounded background
+retrieval. The owner-approved audio exception uses `whisper-1` for transcription
+with segment timestamps. Speech is enabled; no other capability falls
+back to an older model. Existing speech and compatible caches are retained.
+The launcher defaults to zero automatic retries. Provider
+configuration is backend-only. Since v0.7.5, local launchers disable experiment
+budget enforcement. There is no client-side spending ceiling, reservation gate,
+accounting pause or budget token precheck. Old ledger files remain untouched;
+upgrading does not require clearing data or replacing your key. Separately invoked
+Cloud experiments retain their authorized USD 3 shared limit. OpenAI billing and
+provider rate/access limits still apply. The provider's billing page remains the
+source for actual billed totals. A local build or simulated test is not a live
+API result.
+
+Delivery bundles contain no owner-supplied videos or preloaded case projects.
+Import the video you choose after opening the app.
+
+API connection shows **API usage**, recorded estimates and attempts without a
+known cost. **Refresh usage** reads existing records without making a model call.
+Incomplete or unavailable estimates do not block generation. The old experiment
+ledger, reservations and accounting pause are not shown as client restrictions.
+
+## Troubleshooting
+
+- **Key or quota failure:** verify the key's project, model permissions and balance.
+  Use API connection to replace the key. Do not share the key in chat.
+- **Connection failure:** the local machine must reach the configured provider.
+  Managed cloud environments also need explicit network access to that domain.
+- **Missing media:** use the original-file repair control to choose the identical
+  uploaded file. Its SHA-256 must match; another edit/export must be uploaded as a
+  new reference. A missing HEVC playback copy can be rebuilt if the stored frame
+  mapping is reproduced exactly. Deliberately deleted references are not restored
+  by relinking. Restore a full library backup if the original is unavailable.
+- **Existing library/import conflict:** close the old app and use the import steps
+  above. The launcher intentionally refuses to replace a populated library.
+
+Share safe error codes and model names for support, not API keys or full private
+logs. Saved work remains in the library when the application closes.

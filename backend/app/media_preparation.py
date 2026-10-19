@@ -19,7 +19,7 @@ import wave
 from .media import MediaError, MediaSettings, _run_media
 from .models import FrameTiming, VideoAsset
 
-PREPARATION_VERSION = "source-jpeg-pcm-v1"
+PREPARATION_VERSION = "source-jpeg-pcm-region-v2"
 
 
 @dataclass(frozen=True)
@@ -62,6 +62,7 @@ class PreparedMedia:
     audio_chunks: tuple[AudioChunk, ...]
     source_sha256: str
     preparation_version: str = PREPARATION_VERSION
+    content_region_fingerprint: str | None = None
 
 
 def sample_frame_indices(timing: FrameTiming, maximum: int) -> tuple[int, ...]:
@@ -144,7 +145,7 @@ def _prepare_audio(path: Path, video: VideoAsset, directory: Path,
 
 @contextmanager
 def prepare_media(media_path: Path, video: VideoAsset, settings: PreparationSettings | None = None,
-                  media_settings: MediaSettings | None = None):
+                  media_settings: MediaSettings | None = None, content_region=None):
     settings = settings or PreparationSettings()
     media_settings = media_settings or MediaSettings.from_env()
     path = Path(media_path)
@@ -157,15 +158,22 @@ def prepare_media(media_path: Path, video: VideoAsset, settings: PreparationSett
         raise MediaError("missing_media", "The saved original media is missing; upload it again.") from exc
     if video.content_sha256 is None or digest != video.content_sha256:
         raise MediaError("source_media_mismatch", "The saved original media no longer matches its intake hash; upload it again.")
+    from .content_region import ContentRegion, region_filters
+    region = ContentRegion.model_validate(content_region) if content_region is not None else ContentRegion(source_sha256=digest)
+    if region.source_sha256 != digest:
+        raise MediaError("region_source_changed", "The content area belongs to different source bytes.")
     indices = sample_frame_indices(video.frame_timing, settings.max_frames)
     with tempfile.TemporaryDirectory(prefix="video-anatomy-prepared-") as temporary:
         directory = Path(temporary)
         select = "+".join(f"eq(n\\,{index})" for index in indices)
         dimension = settings.max_image_dimension
+        transformations = region_filters(region)
+        frame_filter = ",".join([f"select={select}", *transformations,
+            f"scale=w='min({dimension},iw)':h='min({dimension},ih)':force_original_aspect_ratio=decrease"])
         _run_media([
             media_settings.ffmpeg, "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe",
             "-i", str(path), "-map", "0:v:0", "-an", "-sn", "-dn",
-            "-vf", f"select={select},scale=w='min({dimension},iw)':h='min({dimension},ih)':force_original_aspect_ratio=decrease",
+            "-vf", frame_filter,
             "-fps_mode", "passthrough", "-frames:v", str(len(indices)), "-q:v", "2",
             str(directory / "frame-%03d.jpg"),
         ], media_settings.decode_timeout_seconds)
@@ -175,4 +183,4 @@ def prepare_media(media_path: Path, video: VideoAsset, settings: PreparationSett
         frames = tuple(PreparedFrame(index, video.frame_timing.frame_boundaries_seconds[index], image,
                                      *_jpeg_dimensions(image)) for index, image in zip(indices, images))
         chunks = _prepare_audio(path, video, directory, settings, media_settings)
-        yield PreparedMedia(frames, chunks, digest)
+        yield PreparedMedia(frames, chunks, digest, content_region_fingerprint=region.fingerprint)

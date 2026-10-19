@@ -136,13 +136,18 @@ class OpenAIM2AssistanceAdapter:
             "suggest_task_field: give at most three options only for requested_field; label every option "
             "suggested with null source_excerpt. These are possibilities requiring user acceptance, "
             "not product facts. Never propose claims in suggestion mode. List any unresolved matters "
-            "briefly without inventing answers. Return only the bounded schema.\nINPUT_JSON:\n"
+            "briefly without inventing answers. "
+            f"Write suggested values and unresolved_notes in {self.settings.analysis_language}, the application language. "
+            "This language rule never translates extracted values, complete claim statements, fixed "
+            "approved wording, proper names or source_excerpt: preserve those verbatim from source_notes. "
+            "Do not use the source language or the separate Ideas generation language to choose the "
+            "language of suggestions and explanatory notes. Return only the bounded schema.\nINPUT_JSON:\n"
             + serialized_context
         )
         content = self.transport.json_response(
             model=self.settings.m2_model, prompt=prompt,
             schema=AssistanceContent.model_json_schema(), schema_name="m2_assistance",
-            metadata={"capability": "m2_assistance", "prompt_version": "m2-v2"},
+            metadata={"capability": "m2_assistance", "prompt_version": "m2-v3-application-language"},
         )
         return validate_response(content, request, draft, provider_mode="real")
 

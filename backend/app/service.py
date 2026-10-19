@@ -51,6 +51,12 @@ def invalidate(state, direction_id=None):
             output.currentness = "outdated"
 
 
+def invalidate_references(state):
+    """Reference changes do not invalidate ideas made without a reference."""
+    for direction_id in {d.direction_id for d in state.directions if d.analysis_ref is not None}:
+        invalidate(state, direction_id)
+
+
 def _fail_job(state, job, error):
     """Close a failed operation and its saved, uninterpreted refinement request."""
     job.status, job.error = "failed", error
@@ -90,16 +96,29 @@ class WorkflowService:
         adapter = self.creative if context["task_mode"] == "sample" else self.real_creative
         if hasattr(adapter, "for_language"):
             adapter = adapter.for_language(context["generation_language"])
+        if hasattr(adapter, "with_context"):
+            adapter = adapter.with_context(context.get("structure_handoff"))
         if hasattr(adapter, "diagnostics_context"):
             adapter.diagnostics_context = {"job_id": job_id, "source_sha256": context["source_sha256"],
-                                           "analysis_id": context["analysis"].analysis_id,
-                                           "analysis_revision": context["analysis"].revision}
+                                           "analysis_id": context["analysis"].analysis_id if context["analysis"] else None,
+                                           "analysis_revision": context["analysis"].revision if context["analysis"] else None}
         args = [context["brief"], context["analysis"]]
         if operation != "generate_directions":
             args.append(context["direction"])
         if operation == "refine_direction":
             args.append(context["feedback"])
         return getattr(adapter, operation)(*args)
+
+    def _saved_structure_context(self, task_id, direction_ref):
+        """Carry the direction's original research selection into subsequent work."""
+        direction = find(self.store.get(task_id).directions, direction_ref)
+        if not direction.structure_handoff_id:
+            return None
+        from .structure_store import StructureStore
+        handoff = StructureStore(self.store.path).get_handoff(direction.structure_handoff_id)
+        if handoff is None or handoff.task_id != task_id:
+            raise WorkflowError("invalid_research_context", "The saved research selection does not belong to this task.", 422)
+        return handoff.model_dump(mode="json")
 
     def _record_job_outcome(self, state, job_id):
         """Associate attempts with authoritative committed references, including regeneration.
@@ -158,7 +177,7 @@ class WorkflowService:
             invalidate(state)
             if state.task.current_analysis:
                 state.task.progress = "directions"
-        return self._update(task_id, version, change, require_editors_clear=("*",))
+        return self._update(task_id, version, change)
 
     def _remove_media_files(self, video):
         """Only storage-generated basenames under the media root are eligible."""
@@ -180,13 +199,13 @@ class WorkflowService:
                 return False
             video.deleted_at = video.updated_at = now()
             analysis_ids = {item.analysis_id for item in state.analyses if item.video_id == video_id}
-            for direction_id in {item.direction_id for item in state.directions if item.analysis_ref.id in analysis_ids}:
+            for direction_id in {item.direction_id for item in state.directions if item.analysis_ref and item.analysis_ref.id in analysis_ids}:
                 invalidate(state, direction_id)
             if state.task.current_video_id == video_id:
                 state.task.current_video_id = None
                 state.task.current_analysis = None
                 state.task.progress = "analysis"
-        state = self._update(task_id, version, change, require_editors_clear=("*",))
+        state = self._update(task_id, version, change, require_editors_clear=("analysis",))
         # The tombstone is committed first, so media becomes inaccessible even
         # if disk cleanup is interrupted. A repeated delete retries cleanup.
         self._remove_media_files(deleted[0])
@@ -256,17 +275,19 @@ class WorkflowService:
             state.task.current_analysis = None
             state.task.mode = "real"
             state.task.progress = "analysis"
-            invalidate(state)
+            invalidate_references(state)
         try:
-            return self._update(task_id, version, change, require_editors_clear=("*",))
+            return self._update(task_id, version, change)
         except Exception:
             self._remove_media_files(video)
             raise
 
     def _inputs(self, state, brief_ref, analysis_ref):
-        if state.task.current_brief != brief_ref or state.task.current_analysis != analysis_ref:
+        if state.task.current_brief != brief_ref or (analysis_ref is not None and state.task.current_analysis != analysis_ref):
             raise WorkflowError("outdated_inputs", "Use this task's current brief and analysis revisions.")
         brief = find(state.briefs, brief_ref)
+        if analysis_ref is None:
+            return brief, None
         analysis = find(state.analyses, analysis_ref)
         if analysis.task_id != state.task.task_id or analysis.video_id != state.task.current_video_id:
             raise WorkflowError("mismatched_analysis", "The analysis does not match this task's current video.")
@@ -288,7 +309,7 @@ class WorkflowService:
         return brief, analysis, direction
 
     def _run(self, task_id, version, operation, prepare, execute, finish, *, editor_scopes=("analysis",)):
-        """Persist every job transition and reject results after any intervening write."""
+        """Persist transitions and reject changes to this job's exact inputs."""
         context = {}
         editor_versions = {}
         job_id = uid("job")
@@ -300,19 +321,11 @@ class WorkflowService:
             context["task_mode"] = state.task.mode
             video = next((v for v in state.videos if v.video_id == state.task.current_video_id), None)
             context["source_sha256"] = video.content_sha256 if video else None
-            state.jobs.append(m.ProcessingJob(job_id=job_id, task_id=task_id, operation=operation, status="pending", input_refs=context.get("input_refs", {}), video_id=state.task.current_video_id, attempt=1 + sum(j.operation == operation for j in state.jobs)))
-        queued = self._update(task_id, version, pending, require_m2_ready=operation != "analyze", require_editors_clear=editor_scopes, capture_editor_versions=editor_versions)
+            state.jobs.append(m.ProcessingJob(job_id=job_id, task_id=task_id, operation=operation, status="pending", input_refs={key: value for key, value in context.get("input_refs", {}).items() if value is not None}, video_id=state.task.current_video_id, attempt=1 + sum(j.operation == operation for j in state.jobs)))
+        self._update(task_id, version, pending, require_m2_ready=operation != "analyze", require_editors_clear=editor_scopes, capture_editor_versions=editor_versions)
         def running(state):
             next(j for j in state.jobs if j.job_id == job_id).status = "running"
-        try:
-            active = self._update(task_id, queued.task.version, running)
-        except WorkflowError as conflict:
-            if conflict.code != "version_conflict":
-                raise
-            def canceled(state):
-                job = next(j for j in state.jobs if j.job_id == job_id)
-                _fail_job(state, job, m.ErrorInfo(code="stale_result", message="This task changed before the job could start. Saved edits were preserved; retry the operation.", retryable=True))
-            return self._update(task_id, None, canceled)
+        self._update(task_id, None, running)
         result, error = None, None
         try:
             result = execute(context, job_id)
@@ -322,7 +335,20 @@ class WorkflowService:
         def complete(state):
             job = next(j for j in state.jobs if j.job_id == job_id)
             job.updated_at = now()
-            if state.task.version != active.task.version:
+            refs = context.get("input_refs", {})
+            video_changed = operation == "analyze" and state.task.current_video_id != context["video"].video_id
+            brief_changed = refs.get("brief") is not None and state.task.current_brief != refs["brief"]
+            analysis_changed = refs.get("analysis") is not None and state.task.current_analysis != refs["analysis"]
+            language_changed = operation != "analyze" and state.task.generation_language != context["generation_language"]
+            direction_changed = False
+            if refs.get("direction") is not None:
+                direction = find(state.directions, refs["direction"])
+                direction_changed = direction.currentness != "current" or (operation == "production" and state.task.selected_direction != refs["direction"])
+            region_changed = False
+            if operation == "analyze":
+                from .content_region import region_from_database
+                region_changed = region_from_database(self.store, task_id, context["video"]).fingerprint != context["region_fingerprint"]
+            if video_changed or brief_changed or analysis_changed or language_changed or direction_changed or region_changed:
                 _fail_job(state, job, m.ErrorInfo(code="stale_result", message="Inputs changed while this job ran. Its result was discarded; saved edits were preserved.", retryable=True))
                 return
             if error:
@@ -345,6 +371,10 @@ class WorkflowService:
 
     def recognize(self, task_id, version, video_id=None):
         from .adapters import RecognitionRequest
+        from .content_region import get_content_region
+        initial = self.store.get(task_id)
+        video_snapshot = next((v for v in initial.videos if v.video_id == initial.task.current_video_id), None)
+        region = get_content_region(self.store, task_id, video_snapshot) if video_snapshot else None
         def prepare(state):
             if video_id is not None and video_id != state.task.current_video_id:
                 raise WorkflowError("mismatched_video", "Recognition must use this task's current video.")
@@ -352,10 +382,12 @@ class WorkflowService:
             if video is None or video.deleted_at is not None or video.intake_status != "ready":
                 raise WorkflowError("video_unavailable", "Upload a valid video or load the dedicated sample first.")
             self.media.path_for(video)
-            return {"video": video, "task_mode": state.task.mode}
+            return {"video": video, "task_mode": state.task.mode,
+                    "content_region": region.model_dump(mode="json") if region else None,
+                    "region_fingerprint": region.fingerprint if region else None}
         def execute(context, job_id):
             adapter = self.sample_recognition if context["task_mode"] == "sample" else self.real_recognition
-            return adapter.analyze(RecognitionRequest(task_id=task_id, video=context["video"], job_id=job_id, task_mode=context["task_mode"], media_path=self.media.path_for(context["video"])))
+            return adapter.analyze(RecognitionRequest(task_id=task_id, video=context["video"], job_id=job_id, task_mode=context["task_mode"], media_path=self.media.path_for(context["video"]), content_region=context["content_region"]))
         def finish(state, analysis, context, job):
             analysis = m.AnalysisResult.model_validate(analysis.model_dump())
             if analysis.revision != 1 or analysis.original_revision != 1 or analysis.review.user_confirmed or analysis.corrections or any(a.analysis_id == analysis.analysis_id for a in state.analyses):
@@ -367,13 +399,13 @@ class WorkflowService:
             state.analyses.append(analysis)
             state.task.current_analysis = ref(analysis)
             state.task.progress = "review"
-            invalidate(state)
+            invalidate_references(state)
             if analysis.status == "failed":
                 job.status, job.error = "failed", analysis.error
             else:
                 job.result_ref, job.result_type = ref(analysis), "analysis"
                 job.partial_coverage = analysis.status == "partial"
-        return self._run(task_id, version, "analyze", prepare, execute, finish, editor_scopes=("*",))
+        return self._run(task_id, version, "analyze", prepare, execute, finish, editor_scopes=("analysis",))
 
     def correct_analysis(self, task_id, version, analysis_ref, event_edits, segment_edits, expected_editor_version=None):
         def change(state):
@@ -424,7 +456,7 @@ class WorkflowService:
             state.analyses.append(edited)
             state.task.current_analysis = ref(edited)
             state.task.progress = "review"
-            invalidate(state)
+            invalidate_references(state)
         return self._update(task_id, version, change, editor_checkpoint=("analysis", expected_editor_version))
 
     def confirm_analysis(self, task_id, version, analysis_ref):
@@ -443,21 +475,45 @@ class WorkflowService:
             state.task.progress = "directions"
         return self._update(task_id, version, change, require_editors_clear=("analysis",))
 
-    def generate_directions(self, task_id, version, brief_ref, analysis_ref):
+    def generate_directions(self, task_id, version, brief_ref, analysis_ref, *, use_reference=True):
+        from .structure_store import StructureStore
+        handoff = StructureStore(self.store.path).latest_handoff(task_id)
         def prepare(state):
+            if use_reference and analysis_ref is None:
+                raise WorkflowError("analysis_required", "Choose a reviewed reference or explicitly start without a reference.", 422)
+            if not use_reference and analysis_ref is not None:
+                raise WorkflowError("reference_mode_conflict", "Original directions must not include a reference analysis.", 422)
             brief, analysis = self._inputs(state, brief_ref, analysis_ref)
-            return {"brief": brief, "analysis": analysis, "input_refs": {"brief": brief_ref, "analysis": analysis_ref}}
+            source = next((v for v in state.videos if handoff and v.video_id == handoff.video_id), None)
+            usable_handoff = handoff if handoff and handoff.analysis_ref == state.task.current_analysis and source and source.deleted_at is None else None
+            return {"brief": brief, "analysis": analysis, "structure_handoff": usable_handoff.model_dump(mode="json") if usable_handoff else None,
+                    "input_refs": {"brief": brief_ref, "analysis": analysis_ref}}
         def finish(state, directions, context, job):
             if len(directions) != 2 or len({d.direction_id for d in directions}) != 2:
                 raise ValueError("Exactly two distinct directions are required")
             for direction in directions:
                 if (direction.task_id != task_id or direction.revision != 1 or direction.approval_status != "draft" or direction.approved_at is not None or direction.currentness != "current" or direction.feedback_refs or direction.brief_ref != context["input_refs"]["brief"] or direction.analysis_ref != context["input_refs"]["analysis"] or any(d.direction_id == direction.direction_id for d in state.directions)):
                     raise ValueError("Generated directions must be new current unapproved drafts tied to saved inputs")
+                direction.structure_handoff_id = context["structure_handoff"]["handoff_id"] if context.get("structure_handoff") else None
             invalidate(state)
             state.directions.extend(directions)
             state.task.progress = "directions"
             job.result_ref, job.result_type = ref(directions[0]), "direction"
-        return self._run(task_id, version, "directions", prepare, lambda c, job_id: self._creative_execute(c, job_id, "generate_directions"), finish, editor_scopes=("*",))
+        return self._run(task_id, version, "directions", prepare, lambda c, job_id: self._creative_execute(c, job_id, "generate_directions"), finish, editor_scopes=("analysis",) if analysis_ref else ())
+
+    def create_manual_direction(self, task_id, version, brief_ref, fields):
+        def change(state):
+            self._inputs(state, brief_ref, None)
+            if set(fields) != {"core_message", "hook", "narrative", "cta"}:
+                raise WorkflowError("invalid_direction", "Supply the idea, opening, narrative and call to action.", 422)
+            direction = m.CreativeDirection(direction_id=uid("direction"), task_id=task_id,
+                brief_ref=brief_ref, analysis_ref=None, **fields,
+                rationale="User-authored idea; no reference-video evidence or effectiveness claim.",
+                origin=m.Origin(kind="manual", description="User-authored direction, awaiting explicit production approval."))
+            state.directions.append(direction)
+            state.task.chosen_direction = ref(direction)
+            state.task.progress = "directions"
+        return self._update(task_id, version, change, require_m2_ready=True)
 
     def edit_direction(self, task_id, version, direction_id, revision, fields, expected_editor_version=None):
         def change(state):
@@ -482,11 +538,12 @@ class WorkflowService:
         return self._update(task_id, version, change, editor_checkpoint=("direction-" + direction_id, expected_editor_version))
 
     def refine_direction(self, task_id, version, direction_id, revision, brief_ref, analysis_ref, instruction):
+        research_context = self._saved_structure_context(task_id, m.VersionRef(id=direction_id, revision=revision))
         def prepare(state):
             brief, analysis, direction = self._direction(state, m.VersionRef(id=direction_id, revision=revision), brief_ref, analysis_ref)
             feedback = m.CreativeFeedback(feedback_id=uid("feedback"), task_id=task_id, instruction=instruction, target_direction=ref(direction), brief_ref=brief_ref, analysis_ref=analysis_ref, status="pending")
             state.feedback.append(feedback)
-            return {"brief": brief, "analysis": analysis, "direction": direction, "feedback": feedback, "input_refs": {"brief": brief_ref, "analysis": analysis_ref, "direction": ref(direction), "feedback": ref(feedback)}}
+            return {"brief": brief, "analysis": analysis, "direction": direction, "feedback": feedback, "structure_handoff": research_context, "input_refs": {"brief": brief_ref, "analysis": analysis_ref, "direction": ref(direction), "feedback": ref(feedback)}}
         def finish(state, direction, context, job):
             feedback = find(state.feedback, ref(context["feedback"]))
             if direction is None:
@@ -496,18 +553,20 @@ class WorkflowService:
                 return
             if (direction.direction_id != direction_id or direction.task_id != task_id or direction.revision != revision + 1 or direction.approval_status != "draft" or direction.approved_at is not None or direction.currentness != "current" or direction.brief_ref != brief_ref or direction.analysis_ref != analysis_ref or direction.feedback_refs != [*context["direction"].feedback_refs, ref(feedback)]):
                 raise ValueError("Refinement must produce the next unapproved draft")
+            direction.structure_handoff_id = context["direction"].structure_handoff_id
             invalidate(state, direction_id)
             state.directions.append(direction)
             state.task.chosen_direction = ref(direction)
             feedback.status, feedback.resulting_direction = "applied", ref(direction)
             feedback.explanation = "The saved instruction produced a new draft. Review and explicitly approve this revision."
             job.result_ref, job.result_type = ref(direction), "direction"
-        return self._run(task_id, version, "refine", prepare, lambda c, job_id: self._creative_execute(c, job_id, "refine_direction"), finish, editor_scopes=("analysis", "direction-" + direction_id))
+        return self._run(task_id, version, "refine", prepare, lambda c, job_id: self._creative_execute(c, job_id, "refine_direction"), finish, editor_scopes=(*(("analysis",) if analysis_ref else ()), "direction-" + direction_id))
 
     def choose_direction(self, task_id, version, direction_id, revision):
         def change(state):
             chosen = m.VersionRef(id=direction_id, revision=revision)
-            self._direction(state, chosen, state.task.current_brief, state.task.current_analysis)
+            candidate = find(state.directions, chosen)
+            self._direction(state, chosen, candidate.brief_ref, candidate.analysis_ref)
             if state.task.selected_direction is not None and state.task.selected_direction != chosen:
                 state.task.selected_direction = None
                 for direction in state.directions:
@@ -535,12 +594,13 @@ class WorkflowService:
             state.task.selected_direction = selected
             state.task.chosen_direction = selected
             state.task.progress = "production"
-        return self._update(task_id, version, change, require_m2_ready=True, require_editors_clear=("analysis", "direction-" + direction_id))
+        return self._update(task_id, version, change, require_m2_ready=True, require_editors_clear=(*(("analysis",) if analysis_ref else ()), "direction-" + direction_id))
 
     def generate_outputs(self, task_id, version, direction_ref, brief_ref, analysis_ref):
+        research_context = self._saved_structure_context(task_id, direction_ref)
         def prepare(state):
             brief, analysis, direction = self._direction(state, direction_ref, brief_ref, analysis_ref, approved=True)
-            return {"brief": brief, "analysis": analysis, "direction": direction, "input_refs": {"brief": brief_ref, "analysis": analysis_ref, "direction": direction_ref}}
+            return {"brief": brief, "analysis": analysis, "direction": direction, "structure_handoff": research_context, "input_refs": {"brief": brief_ref, "analysis": analysis_ref, "direction": direction_ref}}
         def finish(state, outputs, context, job):
             production, storyboard = outputs
             bundle_id = uid("bundle")
@@ -558,7 +618,7 @@ class WorkflowService:
                 history.append(output)
             state.task.current_production_brief, state.task.current_storyboard = ref(production), ref(storyboard)
             job.result_ref, job.result_type = ref(production), "production_brief"
-        return self._run(task_id, version, "production", prepare, lambda c, job_id: self._creative_execute(c, job_id, "generate_production"), finish, editor_scopes=("analysis", "direction-" + direction_ref.id, "production"))
+        return self._run(task_id, version, "production", prepare, lambda c, job_id: self._creative_execute(c, job_id, "generate_production"), finish, editor_scopes=(*(("analysis",) if analysis_ref else ()), "direction-" + direction_ref.id, "production"))
 
     def edit_outputs(self, task_id, version, production_brief_ref, storyboard_ref, brief_fields, rows, expected_editor_version=None):
         def change(state):
@@ -631,7 +691,8 @@ class WorkflowService:
 
 
 def context_line(output):
-    return f"Task {output.task_id}; brief {output.brief_ref.id}@{output.brief_ref.revision}; analysis {output.analysis_ref.id}@{output.analysis_ref.revision}; direction {output.direction_ref.id}@{output.direction_ref.revision}; feedback " + ", ".join(f"{f.id}@{f.revision}" for f in output.feedback_refs)
+    analysis_label = f"{output.analysis_ref.id}@{output.analysis_ref.revision}" if output.analysis_ref else "none (original idea)"
+    return f"Task {output.task_id}; brief {output.brief_ref.id}@{output.brief_ref.revision}; analysis {analysis_label}; direction {output.direction_ref.id}@{output.direction_ref.revision}; feedback " + ", ".join(f"{f.id}@{f.revision}" for f in output.feedback_refs)
 
 
 def csv_safe(value):

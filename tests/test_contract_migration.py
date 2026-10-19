@@ -43,12 +43,15 @@ def test_v03_upgrade_preserves_all_content_review_history_and_citations(legacy):
     assert converted["task"].pop("generation_language") is None
     for direction in converted["directions"]:
         assert direction.pop("auxiliary_status") == "current"
+        assert direction.pop("structure_handoff_id") is None
     for output in [*converted["production_briefs"], *converted["storyboards"]]:
         assert output.pop("bundle_id") is None
     for video in converted["videos"]:
         assert video.pop("deleted_at") is None
         assert video.pop("playback") is None
     for analysis in converted["analyses"]:
+        assert analysis.pop("extraction_failures") == {}
+        assert analysis.pop("output_language") is None
         for event in analysis["events"]:
             assert event.pop("visual_details") is None
     assert converted == untouched

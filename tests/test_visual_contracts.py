@@ -30,7 +30,9 @@ def test_synthetic_example_preserves_bilingual_words_and_schema(analysis):
     assert parsed.events[2].text == "这款 DemoCup，take it anywhere。"
     assert parsed.origin.kind == "sample" and "No media" in parsed.origin.description
     schema = json.loads((ROOT / "contracts/v0.6.analysis.schema.json").read_text())
-    Draft202012Validator(schema).validate(parsed.model_dump(mode="json"))
+    Draft202012Validator(schema).validate(analysis)
+    current_schema = json.loads((ROOT / "contracts/v0.7.analysis.schema.json").read_text())
+    Draft202012Validator(current_schema).validate(parsed.model_dump(mode="json"))
     assert AnalysisResult.model_validate_json(parsed.model_dump_json()) == parsed
 
 

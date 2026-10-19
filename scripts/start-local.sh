@@ -14,12 +14,12 @@ done
 
 if [ -z "$local_python" ] || ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
   if [ "$(uname -s)" = Darwin ] && command -v brew >/dev/null; then
-    echo '正在安装本地运行依赖 Python 3.12 和 FFmpeg（首次运行可能需要几分钟）…'
+    echo 'Installing Python 3.12 and FFmpeg. The first run may take a few minutes...'
     brew install python@3.12 ffmpeg
     local_python="$(brew --prefix python@3.12)/bin/python3.12"
   else
-    echo '需要 Python 3.12 和 FFmpeg。macOS 可安装 Homebrew 后运行：brew install python@3.12 ffmpeg'
-    echo 'Homebrew: https://brew.sh/ 。安装后重新打开此启动程序。Linux 请使用系统包管理器。'
+    echo 'Python 3.12 and FFmpeg are required. On macOS, install Homebrew, then run: brew install python@3.12 ffmpeg'
+    echo 'Homebrew: https://brew.sh/ . Reopen this launcher after installation. On Linux, use your package manager.'
     exit 1
   fi
 fi

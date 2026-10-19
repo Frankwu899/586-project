@@ -1,4 +1,4 @@
-"""Boundary tests for authoritative v0.6 timing, references and lineage."""
+"""Boundary tests for authoritative v0.7 timing, references and lineage."""
 import copy
 import json
 import subprocess
@@ -86,7 +86,7 @@ def creative_state():
 
 def test_current_contract_and_generated_json_schema_agree():
     state = creative_state()
-    schema = json.loads((ROOT / "contracts/v0.6.task-state.schema.json").read_text())
+    schema = json.loads((ROOT / "contracts/v0.7.task-state.schema.json").read_text())
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(state.model_dump(mode="json"))
     assert TaskState.model_validate_json(state.model_dump_json()) == state
@@ -214,7 +214,7 @@ def test_complete_sample_fixture_validates_at_real_runtime_boundary():
     assert state.feedback[0].status == "applied"
     assert state.production_briefs and state.storyboards
     assert state.analyses[0].origin.kind == "sample"
-    schema = json.loads((ROOT / "contracts/v0.6.task-state.schema.json").read_text())
+    schema = json.loads((ROOT / "contracts/v0.7.task-state.schema.json").read_text())
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(state.model_dump(mode="json"))
 
 

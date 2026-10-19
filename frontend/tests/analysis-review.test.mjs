@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('../src/analysisReviewModel.ts', import.meta.url), 'utf8');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } });
-const { analysisCorrections, evidenceLanes } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+const { analysisCorrections, evidenceLanes, repeatedTextGroups } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 const event = (event_id, kind, start_frame, extra = {}) => ({ event_id, kind, start_frame, end_frame: start_frame + 1, text: null, description: 'Observed action', visual_details: null, ...extra });
 
 test('every speech/text event remains in chronological reading order without section membership', () => {
@@ -37,4 +37,14 @@ test('unchanged drafts and noneditable music descriptions do not create correcti
   assert.deepEqual(analysisCorrections(original, structuredClone(original)), { event_edits: [], segment_edits: [] });
   const edited = { events: [{ ...original.events[0], description: 'This is not an allowed field' }], segments: [] };
   assert.deepEqual(analysisCorrections(original, edited), { event_edits: [], segment_edits: [] });
+});
+
+
+test('repeated OCR groups retain every sampled point without discarding stationary price content', () => {
+  const records = [event('price-a', 'on_screen_text', 10, { text: '$49' }), event('speech', 'speech', 12, { text: '$49' }), event('price-b', 'on_screen_text', 20, { text: '$49' }), event('price-different', 'on_screen_text', 30, { text: '$59' })];
+  const original = structuredClone(records);
+  const groups = repeatedTextGroups(records);
+  assert.equal(groups.size, 2);
+  assert.deepEqual(groups.get('$49').map((item) => [item.event_id, item.start_frame, item.end_frame]), [['price-a', 10, 11], ['price-b', 20, 21]]);
+  assert.deepEqual(records, original);
 });

@@ -1,190 +1,329 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import type { M2Draft, TaskState } from './generated/contracts';
-import { ApiError, request } from './api';
+import { operationErrorMessage, request } from './api';
+import ApiConnection, { ApiConnectionButton, ConnectionHelp } from './ApiConnection';
 import BriefEditor, { type M2EditorStatus } from './BriefEditor';
 import Directions from './Directions';
 import Production from './Production';
 import ReferenceWorkspace, { type WorkspaceConfig } from './ReferenceWorkspace';
-import { Badge, Field, type Mutate } from './ui';
+import StructureWorkspace from './StructureWorkspace';
+import ProjectSidebar from './ProjectSidebar';
+import { structureApi } from './structureApi';
+import { type Mutate } from './ui';
 import { flushEditorDrafts } from './useEditorDraft';
+import { registerTranslations, useI18n } from './i18n';
 
-const areas = [
-  { id: 'inputs', title: 'Brand & task', number: '01' },
-  { id: 'reference', title: 'Reference analysis', number: '02' },
-  { id: 'directions', title: 'Creative directions', number: '03' },
-  { id: 'production', title: 'Production & export', number: '04' },
-] as const;
+registerTranslations({
+  'Research': '研究', 'Ideas': '创意', 'Production': '制作', 'Timeline': '时间线', 'Structure': '结构',
+  'Project context': '项目背景', 'Close context': '关闭项目背景', 'Workspaces': '工作区',
+  'Research view': '研究视图', 'Fictional sample · ': '虚构示例 · ', 'Saved · v{version}': '已保存 · v{version}',
+  ' · Saving': ' · 保存中', ' · Draft': ' · 草稿',
+  '{activity}… You can keep working in another area.': '{activity}… 你可以继续使用其他模块。',
+  'Add brand facts when you are ready to generate.': '准备生成时可补充品牌信息。',
+  'Open project context': '打开项目背景', 'Context history · {count} revisions': '背景历史 · {count} 个版本',
+  'Context revision {revision}': '背景版本 {revision}',
+  'Analyzing video': '正在分析视频', 'Importing video': '正在导入视频', 'Preparing production': '正在准备制作内容',
+  'Generating ideas': '正在生成创意', 'Refining idea': '正在优化创意', 'Approving idea': '正在批准创意',
+  'Saving changes': '正在保存更改', 'Analyzing Structure': '正在分析结构',
+  'Local workspace': '本地工作区', 'Application language': '应用语言', 'Activity': '活动',
+  ' · {count} running': ' · {count} 项进行中', ' · {count} needs attention': ' · {count} 项需处理',
+  'Start with a video. Or an idea.': '从视频或创意开始。',
+  'Create a project to research a reference, explore ideas, or prepare a production.': '新建项目，研究参考视频、探索创意或准备制作内容。',
+  'Explore the sample workspace': '探索示例工作区', 'Fictional sample · no API calls': '虚构示例 · 无需 API 调用',
+  'Ready': '就绪', 'Video Anatomy · Local preview': 'Video Anatomy · 本地预览',
+  '{count} operation running': '{count} 项操作进行中', '{count} operations running': '{count} 项操作进行中',
+  'Activity center': '活动中心', ' · Complete': ' · 已完成', 'No operations yet.': '暂无操作。',
+  'Wait for the current project operation to finish before changing this project.': '请等待当前项目操作完成后再修改项目。',
+  'Draft save failed. Your text is retained.': '草稿保存失败，文本已保留。',
+  'Could not connect to the backend.': '无法连接本地服务。', 'Could not reopen project.': '无法重新打开项目。',
+  'Could not create project.': '无法创建项目。', 'Could not close project.': '无法关闭项目。',
+  'Could not update application language.': '无法更新应用语言。', 'Could not load Trash.': '无法加载废纸篓。',
+});
+
+const areas = [{ id: 'reference', title: 'Research' }, { id: 'directions', title: 'Ideas' }, { id: 'production', title: 'Production' }] as const;
 type Area = typeof areas[number]['id'];
-function remember(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* Saved tasks remain available on the server. */ } }
+type Activity = { taskId: string; title: string; path: string; label: string; running: boolean; error?: string; started: number; operationId?: string };
+type OperationTicket = { operation_id: string; task_id: string; operation: 'recognize' | 'directions' | 'refine' | 'production'; status: 'queued' | 'running' | 'succeeded' | 'failed'; result: TaskState | null; error: { code: string; message: string } | null; created_at: string };
+function scopeOf(path: string) { return path.includes('directions') || path === '/language' ? 'creative' : path.includes('outputs') ? 'production' : path === '/structure' ? 'structure' : 'reference'; }
+const activityKey = (taskId: string, path: string) => `${taskId}:${scopeOf(path)}`;
+const operationPaths = { recognize: '/recognize', directions: '/directions/generate', refine: '/directions/refine', production: '/outputs/generate' };
+function remember(key: string, value: string) { try { localStorage.setItem(key, value); } catch { /* Server-backed drafts remain available. */ } }
 function recalled(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
-function lastArea(taskId: string): Area {
-  const saved = recalled(`video-anatomy-area:${taskId}`);
-  return areas.find((area) => area.id === saved)?.id ?? 'inputs';
+function lastArea(taskId: string): Area { return areas.find((area) => area.id === recalled(`video-anatomy-area:${taskId}`))?.id ?? 'reference'; }
+function actionLabel(path: string) {
+  if (path === '/recognize') return 'Analyzing video';
+  if (path === '/video') return 'Importing video';
+  if (path.includes('/generate')) return path.includes('outputs') ? 'Preparing production' : 'Generating ideas';
+  if (path.includes('/refine')) return 'Refining idea';
+  if (path.includes('/approve')) return 'Approving idea';
+  return 'Saving changes';
 }
-function taskProgress(state: TaskState) {
-  const output = state.production_briefs.find((item) => item.output_id === state.task.current_production_brief?.id && item.revision === state.task.current_production_brief.revision);
-  if (output) return output.currentness === 'current' ? 'Production ready' : 'Production needs updating';
-  if (state.task.selected_direction) return 'Direction approved';
-  if (state.directions.length) return 'Comparing directions';
-  const analysis = state.analyses.find((item) => item.analysis_id === state.task.current_analysis?.id && item.revision === state.task.current_analysis.revision);
-  if (analysis) return analysis.status === 'failed' ? 'Analysis needs attention' : analysis.review.user_confirmed ? 'Reference reviewed' : 'Reviewing reference';
-  return state.task.current_video_id ? 'Reference uploaded' : state.task.current_brief ? 'Inputs applied' : 'Work in progress';
-}
-function savedDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(value));
+function ContextDrawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  const { t } = useI18n();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    if (!open) { dialog.current?.close(); return; }
+    dialog.current?.show();
+    dialog.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); } };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, [open]);
+  return <dialog ref={dialog} className="context-drawer" onCancel={onClose} aria-labelledby="context-title"><div className="drawer-toolbar"><h2 id="context-title">{t('Project context')}</h2><button className="secondary" type="button" onClick={onClose}>{t('Close context')}</button></div><div className="drawer-content">{children}</div></dialog>;
 }
 
-function Workspace({ state, config, mutate, busy, onApplied, flushRef, m2Status, onStatusChange, flush, onError }: {
-  state: TaskState; config: WorkspaceConfig | null; mutate: Mutate; busy: boolean;
+function Workspace({ state, config, mutate, activities, onApplied, flushRef, m2Status, onStatusChange, flush, onError, onStructureActivity }: {
+  state: TaskState; config: WorkspaceConfig | null; mutate: Mutate; activities: Activity[];
   onApplied: (state: TaskState) => void; flushRef: RefObject<(() => Promise<M2Draft>) | null>;
   m2Status: M2EditorStatus; onStatusChange: (status: M2EditorStatus) => void;
   flush: () => Promise<void>; onError: (message: string) => void;
+  onStructureActivity: (running: boolean, label: string, error?: string) => void;
 }) {
+  const { t } = useI18n();
   const [area, setArea] = useState<Area>(() => lastArea(state.task.task_id));
+  const [researchTab, setResearchTab] = useState<'timeline' | 'structure'>(() => recalled(`video-anatomy-research:${state.task.task_id}`) === 'structure' ? 'structure' : 'timeline');
+  const [contextOpen, setContextOpen] = useState(false);
   const [analysisPending, setAnalysisPending] = useState(false);
   const seekRef = useRef<((frame: number) => void) | null>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
   const brief = state.briefs.find((item) => item.brief_id === state.task.current_brief?.id && item.revision === state.task.current_brief.revision);
-  const analysis = state.analyses.find((item) => item.analysis_id === state.task.current_analysis?.id && item.revision === state.task.current_analysis.revision);
   const m2Blocked = m2Status.loading || m2Status.pending || m2Status.unsaved || m2Status.legacyReviewRequired || !brief;
-  const analysisBlocked = analysisPending || !analysis || analysis.status !== 'succeeded' || !analysis.review.user_confirmed;
-  const selected = state.directions.find((item) => item.direction_id === state.task.selected_direction?.id && item.revision === state.task.selected_direction.revision);
-  const statuses: Record<Area, string> = {
-    inputs: m2Status.loading ? 'Restoring draft' : m2Status.unsaved ? 'Saving draft' : m2Status.pending ? 'Changes to apply' : brief ? 'Applied' : 'Add what you know',
-    reference: analysisPending ? 'Corrections to apply' : !state.task.current_video_id ? 'Add a reference' : !analysis ? 'Ready to analyze' : analysis.status === 'failed' ? 'Needs attention' : analysis.review.user_confirmed ? 'Reviewed' : 'Review evidence',
-    directions: selected?.approval_status === 'approved' && selected.currentness === 'current' ? 'Approved' : state.directions.length ? 'Compare & approve' : m2Blocked || analysisBlocked ? 'Waiting for inputs' : 'Ready to explore',
-    production: state.task.current_production_brief ? taskProgress(state) : selected ? 'Ready to create' : 'After approval',
+  const referenceBusy = activities.some((item) => item.running && scopeOf(item.path) === 'reference');
+  const creativeBusy = activities.some((item) => item.running && scopeOf(item.path) === 'creative');
+  const productionBusy = activities.some((item) => item.running && scopeOf(item.path) === 'production');
+  const referenceError = activities.find((item) => scopeOf(item.path) === 'reference' && item.error)?.error;
+  const approvedDirection = state.directions.find((item) => item.direction_id === state.task.selected_direction?.id && item.revision === state.task.selected_direction.revision);
+  const navigate = (next: Area) => {
+    setContextOpen(false); setArea(next); remember(`video-anatomy-area:${state.task.task_id}`, next);
+    void flush().catch((failure: unknown) => onError(failure instanceof Error ? failure.message : 'Draft save failed. Your text is retained.'));
   };
-  const navigate = (next: Area, focus = false) => {
-    // Areas stay mounted. Let users reach an editor's recovery controls even
-    // when that editor has a conflict or its autosave is temporarily failing.
-    setArea(next); remember(`video-anatomy-area:${state.task.task_id}`, next);
-    if (focus) window.setTimeout(() => heading.current?.focus(), 0);
-    void flush().catch((failure: unknown) => onError(failure instanceof Error ? failure.message : 'Your draft could not be saved. Your text is retained; open its work area to retry.'));
-  };
+  const selectResearchTab = (next: 'timeline' | 'structure') => { setResearchTab(next); remember(`video-anatomy-research:${state.task.task_id}`, next); };
   useEffect(() => {
     const handleLink = (event: MouseEvent) => {
-      const target = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null;
-      const href = target?.getAttribute('href');
+      const href = (event.target instanceof Element ? event.target.closest('a[href^="#"]') : null)?.getAttribute('href');
+      if (href === '#inputs' || href === '#inputs-heading') { event.preventDefault(); setContextOpen(true); return; }
       const next = areas.find((item) => `#${item.id}` === href || `#${item.id}-heading` === href)?.id;
       if (!next) return;
-      event.preventDefault();
-      setArea(next); remember(`video-anatomy-area:${state.task.task_id}`, next);
-      void flush().catch((failure: unknown) => onError(failure instanceof Error ? failure.message : 'Could not save your draft. Your text is retained.'));
+      event.preventDefault(); setContextOpen(false); setArea(next); remember(`video-anatomy-area:${state.task.task_id}`, next);
     };
     document.addEventListener('click', handleLink);
     return () => document.removeEventListener('click', handleLink);
-  }, [state.task.task_id, flush, onError]);
+  }, [state.task.task_id]);
   const seekEvidence = (frame: number) => {
-    navigate('reference');
+    navigate('reference'); selectResearchTab('timeline');
     window.requestAnimationFrame(() => seekRef.current?.(frame));
   };
-  const next = m2Blocked ? { area: 'inputs' as Area, label: 'Review and apply your brand inputs' }
-    : !state.task.current_video_id || analysisBlocked ? { area: 'reference' as Area, label: 'Review and confirm your reference' }
-      : !state.task.selected_direction ? { area: 'directions' as Area, label: 'Compare and approve a creative direction' }
-        : { area: 'production' as Area, label: 'Prepare your production materials' };
+  const areaScope = area === 'directions' ? 'creative' : area === 'production' ? 'production' : researchTab === 'structure' ? 'structure' : 'reference';
+  // Research panels display actionable errors beside their own controls.
+  // Keep them in Activity history without stacking a second global warning.
+  const visibleActivity = activities.filter((item) => (scopeOf(item.path) === areaScope || (areaScope === 'structure' && item.path === '/recognize')) && (item.running || (item.error && areaScope !== 'reference' && areaScope !== 'structure')));
   return <>
-    <section className="task-heading" aria-label="Current task"><div><p className="eyebrow">Your creative workspace</p><h1 ref={heading} tabIndex={-1}>{state.task.title}</h1><p className="task-state"><Badge warning={state.task.mode === 'sample'}>{state.task.mode === 'sample' ? 'Fictional sample task' : 'Your task'}</Badge><span>{taskProgress(state)}</span><span className="task-version">Saved version {state.task.version}</span></p></div><div className="next-step"><span className="eyebrow">Next in this task</span><button type="button" className="text-button" disabled={busy} onClick={() => navigate(next.area)}>{next.label}<span aria-hidden="true"> ↗</span></button></div></section>
-    <nav className="workspace-tabs" aria-label="Workflow">{areas.map((item) => <button key={item.id} id={`tab-${item.id}`} type="button" aria-current={area === item.id ? 'page' : undefined} aria-controls={`area-${item.id}`} onClick={() => navigate(item.id)}><span className="tab-number">{item.number}</span><span><strong>{item.title}</strong><small>{statuses[item.id]}</small></span></button>)}</nav>
-    <div id="area-inputs" className="workspace-area" hidden={area !== 'inputs'} aria-labelledby="tab-inputs"><BriefEditor state={state} onApplied={onApplied} flushRef={flushRef} onStatusChange={onStatusChange} busy={busy} />{state.briefs.length > 0 && <details className="history-drawer"><summary>Input history · {state.briefs.length} saved {state.briefs.length === 1 ? 'revision' : 'revisions'}</summary>{state.briefs.map((item) => <details key={`${item.brief_id}:${item.revision}`}><summary>Brand & task · revision {item.revision}</summary><pre>{JSON.stringify(item, null, 2)}</pre></details>)}</details>}</div>
-    <div id="area-reference" className="workspace-area" hidden={area !== 'reference'} aria-labelledby="tab-reference"><ReferenceWorkspace state={state} config={config} mutate={mutate} busy={busy} seekRef={seekRef} onPendingChange={setAnalysisPending} /></div>
-    <div id="area-directions" className="workspace-area" hidden={area !== 'directions'} aria-labelledby="tab-directions">{m2Blocked && <p className="notice">Creative actions need complete, applied brand inputs. <button className="text-button" type="button" onClick={() => navigate('inputs')}>Review your inputs</button></p>}{analysisPending && <p className="notice">Reference corrections are saved as a draft. Apply and confirm them, or discard them, before new creative work.</p>}<Directions state={state} mutate={mutate} busy={busy} m2Blocked={m2Blocked || analysisPending} onSeekEvidence={seekEvidence} /></div>
-    <div id="area-production" className="workspace-area" hidden={area !== 'production'} aria-labelledby="tab-production">{(m2Blocked || analysisPending) && <p className="notice">Pending input or reference changes need review before generating new production materials. Existing work remains available.</p>}<Production state={state} mutate={mutate} busy={busy} m2Blocked={m2Blocked || analysisPending} /></div>
+    <div className="workspace-heading"><div><h1>{state.task.title}</h1><span className="saved-state">{state.task.mode === 'sample' ? t('Fictional sample · ') : ''}{t('Saved · v{version}', { version: state.task.version })}</span></div><button className="secondary context-toggle" type="button" onClick={() => setContextOpen(true)}>{t('Project context')}{m2Status.unsaved ? t(' · Saving') : m2Status.pending ? t(' · Draft') : ''}</button></div>
+    <nav className="workspace-tabs" aria-label={t('Workspaces')}>{areas.map((item) => <button key={item.id} id={`tab-${item.id}`} type="button" aria-current={area === item.id ? 'page' : undefined} aria-controls={`area-${item.id}`} onClick={() => navigate(item.id)}>{t(item.title)}</button>)}</nav>
+    {visibleActivity.map((activity) => <div key={`${activity.path}:${activity.started}`} className={`workspace-feedback ${activity.error ? 'error' : 'notice'}`} role={activity.error ? 'alert' : 'status'}>{activity.running && <span className="spinner" aria-hidden="true" />}{activity.error ? t(activity.error) : t('{activity}… You can keep working in another area.', { activity: t(activity.label) })}<ConnectionHelp message={activity.error} /></div>)}
+    <div className="workspace-body">
+      <div id="area-reference" className="workspace-area research-area" hidden={area !== 'reference'} aria-labelledby="tab-reference"><div className="research-tabs" role="tablist" aria-label={t('Research view')} onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); const next = researchTab === 'timeline' ? 'structure' : 'timeline'; selectResearchTab(next); document.getElementById(`${next}-tab`)?.focus(); }}><button type="button" role="tab" id="timeline-tab" tabIndex={researchTab === 'timeline' ? 0 : -1} aria-selected={researchTab === 'timeline'} aria-controls="timeline-panel" onClick={() => selectResearchTab('timeline')}>{t('Timeline')}</button><button type="button" role="tab" id="structure-tab" tabIndex={researchTab === 'structure' ? 0 : -1} aria-selected={researchTab === 'structure'} aria-controls="structure-panel" onClick={() => selectResearchTab('structure')}>{t('Structure')}</button></div><div id="timeline-panel" role="tabpanel" aria-labelledby="timeline-tab" className="research-panel" hidden={researchTab !== 'timeline'}><ReferenceWorkspace state={state} config={config} mutate={mutate} busy={referenceBusy} actionError={referenceError} seekRef={seekRef} onPendingChange={setAnalysisPending} /></div><div id="structure-panel" role="tabpanel" aria-labelledby="structure-tab" className="research-panel" hidden={researchTab !== 'structure'}><StructureWorkspace state={state} mutate={mutate} onSeekEvidence={seekEvidence} onUseInIdeas={() => navigate('directions')} onActivity={onStructureActivity} /></div></div>
+      <div id="area-directions" className="workspace-area scroll-workspace" hidden={area !== 'directions'} aria-labelledby="tab-directions">{m2Blocked && <p className="context-hint">{t('Add brand facts when you are ready to generate.')} <button className="text-button" type="button" onClick={() => setContextOpen(true)}>{t('Open project context')}</button></p>}<Directions state={state} mutate={mutate} busy={creativeBusy} m2Blocked={m2Blocked} analysisBlocked={analysisPending} onSeekEvidence={seekEvidence} /></div>
+      <div id="area-production" className="workspace-area scroll-workspace" hidden={area !== 'production'} aria-labelledby="tab-production"><Production state={state} mutate={mutate} busy={productionBusy} m2Blocked={m2Blocked || (Boolean(approvedDirection?.analysis_ref) && analysisPending)} /></div>
+    </div>
+    <ContextDrawer open={contextOpen} onClose={() => setContextOpen(false)}><BriefEditor state={state} onApplied={onApplied} flushRef={flushRef} onStatusChange={onStatusChange} busy={false} />{state.briefs.length > 0 && <details className="history-drawer"><summary>{t('Context history · {count} revisions', { count: state.briefs.length })}</summary>{state.briefs.map((item) => <details key={`${item.brief_id}:${item.revision}`}><summary>{t('Context revision {revision}', { revision: item.revision })}</summary><pre>{JSON.stringify(item, null, 2)}</pre></details>)}</details>}</ContextDrawer>
   </>;
 }
 
 export default function App() {
+  const { t, language, setLanguage } = useI18n();
   const [tasks, setTasks] = useState<TaskState[]>([]);
+  const [trashed, setTrashed] = useState<TaskState[]>([]);
   const [active, setActive] = useState<TaskState | null>(null);
   const [config, setConfig] = useState<WorkspaceConfig | null>(null);
   const [title, setTitle] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [activities, setActivities] = useState<Record<string, Activity>>({});
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [languagePending, setLanguagePending] = useState(false);
   const activeId = useRef<string | null>(null);
+  const activitiesRef = useRef(activities);
+  useEffect(() => { activitiesRef.current = activities; }, [activities]);
+  const pendingTasks = useRef(new Set<string>());
   const flushRef = useRef<(() => Promise<M2Draft>) | null>(null);
   const [m2Status, setM2Status] = useState<M2EditorStatus>({ pending: false, unsaved: false, loading: true, legacyReviewRequired: false, missing: [] });
+  const storeTask = (state: TaskState) => {
+    setTasks((previous) => [previous.find((item) => item.task.task_id === state.task.task_id && item.task.version > state.task.version) ?? state, ...previous.filter((item) => item.task.task_id !== state.task.task_id)]);
+    if (activeId.current === state.task.task_id) setActive((previous) => previous?.task.task_id === state.task.task_id && previous.task.version > state.task.version ? previous : state);
+  };
   const activate = (state: TaskState) => {
     if (activeId.current !== state.task.task_id) setM2Status({ pending: false, unsaved: false, loading: true, legacyReviewRequired: false, missing: [] });
-    activeId.current = state.task.task_id;
-    remember('video-anatomy-task', state.task.task_id);
-    setActive((previous) => previous?.task.task_id === state.task.task_id && previous.task.version > state.task.version ? previous : state);
-    setTasks((previous) => {
-      const newer = previous.find((item) => item.task.task_id === state.task.task_id && item.task.version > state.task.version);
-      return [newer ?? state, ...previous.filter((item) => item.task.task_id !== state.task.task_id)];
-    });
+    activeId.current = state.task.task_id; remember('video-anatomy-task', state.task.task_id); setActive((previous) => previous?.task.task_id === state.task.task_id && previous.task.version > state.task.version ? previous : state); storeTask(state); setSidebarOpen(false);
   };
-  const acceptApplied = (state: TaskState) => { if (activeId.current === state.task.task_id) activate(state); };
-  const flush = async () => {
-    await flushRef.current?.();
-    if (activeId.current) await flushEditorDrafts(activeId.current);
-  };
+  const flush = async () => { const id = activeId.current; const saveContext = flushRef.current; if (!m2Status.loading) await saveContext?.(); if (id) await flushEditorDrafts(id); };
   useEffect(() => {
     let cancelled = false;
     Promise.all([request<TaskState[]>('/tasks'), request<WorkspaceConfig>('/config')]).then(([saved, settings]) => {
       if (cancelled) return;
       setTasks(saved); setConfig(settings);
+      // Restore server jobs without restarting any provider operation.
+      for (const item of saved) {
+        void request<{ operations: OperationTicket[] }>(`/tasks/${item.task.task_id}/operations`).then(({ operations }) => {
+          if (cancelled) return;
+          for (const ticket of operations.filter((job) => ['queued', 'running'].includes(job.status))) { const path = operationPaths[ticket.operation]; const key = activityKey(item.task.task_id, path); pendingTasks.current.add(key); setActivities((previous) => ({ ...previous, [ticket.operation_id]: { taskId: item.task.task_id, title: item.task.title, path, label: actionLabel(path), running: true, started: Date.parse(ticket.created_at), operationId: ticket.operation_id } })); }
+        }).catch(() => { /* Opening projects stays available if job recovery is offline. */ });
+        void structureApi.get(item.task.task_id).then((structure) => {
+          if (cancelled || !structure || !(['analyzing', 'researching'].includes(structure.status) || structure.feedback_status === 'running')) return;
+          setActivities((previous) => ({ ...previous, [`structure:${item.task.task_id}`]: { taskId: item.task.task_id, title: item.task.title, path: '/structure', label: 'Analyzing Structure', running: true, started: Date.parse(structure.created_at) } }));
+        }).catch(() => { /* Structure's own panel displays connection problems. */ });
+      }
       const remembered = saved.find((item) => item.task.task_id === recalled('video-anatomy-task'));
       if (remembered) activate(remembered);
     }).catch((failure: unknown) => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Could not connect to the backend.'); }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
+    // Workspace restoration is deliberately performed once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    let stopped = false; let checking = false;
+    const timer = window.setInterval(async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        await Promise.all(Object.entries(activitiesRef.current).filter(([, item]) => item.running && (item.operationId || item.path === '/structure')).map(async ([key, item]) => {
+          try {
+            if (item.operationId) {
+              const ticket = await request<OperationTicket>(`/tasks/${item.taskId}/operations/${item.operationId}`);
+              if (stopped || ticket.status === 'queued' || ticket.status === 'running') return;
+              if (!Object.entries(activitiesRef.current).some(([otherKey, other]) => otherKey !== key && other.running && activityKey(other.taskId, other.path) === activityKey(item.taskId, item.path))) pendingTasks.current.delete(activityKey(item.taskId, item.path));
+              if (ticket.result) storeTask(ticket.result);
+              setActivities((previous) => ({ ...previous, [key]: { ...item, running: false, error: ticket.error?.message } }));
+            } else {
+              const structure = await structureApi.get(item.taskId);
+              if (stopped || !structure) return;
+              const isRunning = ['analyzing', 'researching'].includes(structure.status) || structure.feedback_status === 'running';
+              if (!isRunning) setActivities((previous) => ({ ...previous, [key]: { ...item, running: false, error: structure.error?.message } }));
+            }
+          } catch { /* Leave the resumable job visible; a future poll can recover. */ }
+        }));
+      } finally { checking = false; }
+    }, 2000);
+    return () => { stopped = true; window.clearInterval(timer); };
+    // Poll stable IDs and refs; changing project must not interrupt pending jobs.
   }, []);
   const openTask = async (id: string) => {
-    setBusy(true); setError(''); setNotice('');
+    setNavigating(true); setError('');
+    try { await flush(); const saved = await request<TaskState>(`/tasks/${id}`); await flush(); activate(saved); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not reopen project.'); } finally { setNavigating(false); }
+  };
+  const clearActive = () => {
+    activeId.current = null; flushRef.current = null; remember('video-anatomy-task', ''); setActive(null);
+    setM2Status({ pending: false, unsaved: false, loading: true, legacyReviewRequired: false, missing: [] });
+  };
+  const requireIdle = (id: string) => {
+    if (Object.values(activitiesRef.current).some((item) => item.taskId === id && item.running) || [...pendingTasks.current].some((key) => key.startsWith(`${id}:`))) {
+      throw new Error('Wait for the current project operation to finish before changing this project.');
+    }
+  };
+  const closeTask = async () => {
+    if (!activeId.current || navigating) return;
+    setNavigating(true); setError('');
+    try { requireIdle(activeId.current); await flush(); requireIdle(activeId.current); clearActive(); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not close project.'); }
+    finally { setNavigating(false); }
+  };
+  const loadTrash = async () => {
+    try { setTrashed(await request<TaskState[]>('/trash/tasks')); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not load Trash.'); }
+  };
+  const projectCommand = async (id: string, command: 'rename' | 'trash' | 'restore', newTitle?: string) => {
+    setNavigating(true); setError('');
     try {
-      await flush();
-      const saved = await request<TaskState>(`/tasks/${id}`);
-      // Editing stays available while loading; save any text typed during that request.
-      await flush();
-      activate(saved);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not reopen task.'); } finally { setBusy(false); }
+      requireIdle(id);
+      // Saving the active editor can advance its task version. Fetch only after
+      // drafts are durable so a rename or Trash action never drops recent input.
+      if (activeId.current === id || command === 'restore') await flush();
+      requireIdle(id);
+      const latest = command === 'restore'
+        ? (await request<TaskState[]>('/trash/tasks')).find((item) => item.task.task_id === id)
+        : await request<TaskState>(`/tasks/${id}`);
+      if (!latest) throw new Error('Could not update project.');
+      const saved = await request<TaskState>(`/tasks/${id}/${command}`, { expected_version: latest.task.version, ...(command === 'rename' ? { title: newTitle } : {}) });
+      if (command === 'trash') {
+        setTasks((previous) => previous.filter((item) => item.task.task_id !== id));
+        setTrashed((previous) => [saved, ...previous.filter((item) => item.task.task_id !== id)]);
+        setActivities((previous) => Object.fromEntries(Object.entries(previous).filter(([, item]) => item.taskId !== id)));
+        if (activeId.current === id) clearActive();
+      } else {
+        storeTask(saved);
+        if (command === 'restore') {
+          setTrashed((previous) => previous.filter((item) => item.task.task_id !== id));
+          // Restoring may take time; preserve text typed in the current project
+          // while the restore request was in flight before opening the result.
+          await flush(); activate(saved);
+        }
+        else setActivities((previous) => Object.fromEntries(Object.entries(previous).map(([key, item]) => [key, item.taskId === id ? { ...item, title: saved.task.title } : item])));
+      }
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not update project.'); throw failure; }
+    finally { setNavigating(false); }
+  };
+  const changeLanguage = async (next: 'English' | 'Chinese') => {
+    setLanguagePending(true); setError('');
+    try { await setLanguage(next); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not update application language.'); }
+    finally { setLanguagePending(false); }
   };
   const mutate: Mutate = async (path, payload = {}) => {
-    if (!active || busy) return false;
-    const taskId = active.task.task_id;
-    setBusy(true); setError(''); setNotice('');
-    if (payload instanceof FormData) payload.set('expected_version', String(active.task.version));
-    const body = payload instanceof FormData ? payload : { ...payload, expected_version: active.task.version };
+    if (!active) return false;
+    const snapshot = active; const taskId = snapshot.task.task_id; const key = activityKey(taskId, path);
+    if (pendingTasks.current.has(key)) return false;
+    pendingTasks.current.add(key);
+    const operation: Activity = { taskId, title: snapshot.task.title, path, label: actionLabel(path), running: true, started: Date.now() };
+    setActivities((previous) => ({ ...previous, [key]: operation }));
+    let failureMessage: string | undefined;
     try {
       await flush();
+      // Independent jobs may have advanced the project version. Exact input refs
+      // remain in the request so changed creative evidence still fails validation.
+      const latest = await request<TaskState>(`/tasks/${taskId}`);
+      storeTask(latest);
+      if (payload instanceof FormData) payload.set('expected_version', String(latest.task.version));
+      const body = payload instanceof FormData ? payload : { ...payload, expected_version: latest.task.version };
       const saved = await request<TaskState>(`/tasks/${taskId}${path}`, body);
-      if (activeId.current === taskId) activate(saved);
-      const failedJob = saved.jobs.find((job) => job.status === 'failed' && !active.jobs.some((previous) => previous.job_id === job.job_id && previous.status === 'failed'));
-      if (failedJob?.error) { setError(failedJob.error.message); return false; }
-      setNotice('Saved. You can reopen this task and continue where you left off.');
+      storeTask(saved);
+      const jobOperation = path === '/recognize' ? 'analyze' : path === '/directions/generate' ? 'directions' : path.endsWith('/refine') ? 'refine' : path === '/outputs/generate' ? 'production' : null;
+      const failedJob = saved.jobs.find((job) => job.operation === jobOperation && job.status === 'failed' && !latest.jobs.some((old) => old.job_id === job.job_id && old.status === 'failed'));
+      if (failedJob?.error) { failureMessage = failedJob.error.message; return false; }
       return saved;
     } catch (failure) {
-      setError(`${failure instanceof Error ? failure.message : 'The operation failed.'}${failure instanceof ApiError && failure.status === 409 ? ' A saved version changed. Your local draft is retained; reopen the task to review the conflict.' : ''}`);
+      failureMessage = operationErrorMessage(failure);
+      try { storeTask(await request<TaskState>(`/tasks/${taskId}`)); } catch { /* Retain the visible draft while offline. */ }
       return false;
-    } finally { setBusy(false); }
+    } finally {
+      pendingTasks.current.delete(key);
+      setActivities((previous) => ({ ...previous, [key]: { ...operation, running: false, error: failureMessage } }));
+    }
   };
   const create = async (sample = false) => {
-    setBusy(true); setError(''); setNotice('');
+    setNavigating(true); setError('');
     try {
       await flush();
-      let created = await request<TaskState>('/tasks', { title: sample ? 'LumaCup · everyday moments' : title });
+      let created = await request<TaskState>('/tasks', { title: sample ? 'LumaCup · sample research' : title.trim() });
       if (sample) created = await request<TaskState>(`/tasks/${created.task.task_id}/sample`, { expected_version: created.task.version });
-      await flush();
-      if (sample) remember(`video-anatomy-area:${created.task.task_id}`, 'reference');
-      activate(created); setTitle('');
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not create task.'); } finally { setBusy(false); }
+      await flush(); activate(created); setTitle('');
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not create project.'); } finally { setNavigating(false); }
   };
   const createTask = (event: FormEvent) => { event.preventDefault(); void create(); };
-  return <>
-    <header className="app-header"><a className="wordmark" href="#" onClick={(event) => event.preventDefault()} aria-label="Video Anatomy">video anatomy<span>.</span></a><p>Observe. Consider. Create.</p><span className="header-label">Creative studio</span></header>
+  const running = Object.values(activities).filter((item) => item.running);
+  const failed = Object.values(activities).filter((item) => item.error);
+  return <ApiConnection><div className={`desktop-app${sidebarOpen ? ' sidebar-open' : ''}`}>
+    <header className="app-header"><button type="button" className="secondary sidebar-toggle" aria-label={t('Projects')} aria-expanded={sidebarOpen} aria-controls="project-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button><a className="wordmark" href="#" onClick={(event) => event.preventDefault()} aria-label="Video Anatomy"><span className="brand-symbol" aria-hidden="true">◈</span> Video Anatomy</a><span className="header-label">{t('Local workspace')}</span><label className="app-language"><span>{t('Application language')}</span><select aria-label={t('Application language')} value={language} disabled={languagePending} onChange={(event) => { void changeLanguage(event.target.value as 'English' | 'Chinese'); }}><option value="English">English</option><option value="Chinese">中文</option></select></label><button type="button" className={`activity-toggle secondary ${running.length ? 'has-running' : ''}`} aria-expanded={activityOpen} onClick={() => setActivityOpen(!activityOpen)}>{running.length > 0 && <span className="spinner" aria-hidden="true" />}{t('Activity')}{running.length ? t(' · {count} running', { count: running.length }) : failed.length ? t(' · {count} needs attention', { count: failed.length }) : ''}</button><ApiConnectionButton /></header>
     <main className="app-layout">
-      <aside className="task-sidebar" aria-label="Saved tasks"><div className="sidebar-heading"><h2>Your tasks</h2><span>{tasks.length.toString().padStart(2, '0')}</span></div><p className="muted sidebar-intro">A place for each idea.<br />Pick up where you left off.</p><form onSubmit={createTask}><Field label="New task title"><input required placeholder="Name your next project" value={title} onChange={(event) => setTitle(event.target.value)} disabled={busy || loading} /></Field><button type="submit" aria-label="Create task" disabled={busy || loading || !title.trim()}>＋ Create task</button></form>
-        {loading ? <p role="status" className="muted">Restoring your workspace…</p> : <ul className="task-list">{tasks.map((item) => <li key={item.task.task_id}><button type="button" aria-current={active?.task.task_id === item.task.task_id ? 'page' : undefined} onClick={() => openTask(item.task.task_id)} disabled={busy}><strong>{item.task.title}</strong><small>{taskProgress(item)}</small><span className="task-date">{savedDate(item.task.updated_at)}{item.task.mode === 'sample' ? ' · Sample' : ''}</span></button></li>)}</ul>}
-        {active && <button type="button" className="text-button reopen-task" disabled={busy} onClick={() => openTask(active.task.task_id)}>↻ Reopen saved task</button>}
-        <div className="sidebar-note"><span className="status-dot" aria-hidden="true" /><span>Saved on this server.<br />Your tasks stay here between visits.</span></div>
-      </aside>
-      <div className="workspace" aria-busy={busy}>
-        {error && <p role="alert" className="error">{error}</p>}
-        {busy && <p role="status" className="notice global-status">Saving or processing… Your work stays in this task.</p>}
-        {notice && !busy && <p role="status" className="success global-status">{notice}</p>}
-        {active ? <Workspace key={active.task.task_id} state={active} config={config} mutate={mutate} busy={busy} onApplied={acceptApplied} flushRef={flushRef} m2Status={m2Status} onStatusChange={setM2Status} flush={flush} onError={setError} /> : <section className="studio-welcome"><p className="eyebrow">From reference to a considered production plan</p><h1>Great ideas start<br />with a closer look.</h1><p className="welcome-description">Bring a brand, a question, and a video worth studying. Turn what you notice into a creative direction — and a plan your team can make.</p><div className="actions"><button type="button" disabled={busy || loading} onClick={() => create(true)}>Explore the sample workspace <span aria-hidden="true">↗</span></button><span className="muted">No API key needed</span></div><div className="welcome-story"><div className="story-frame"><span className="eyebrow">A starting point</span><svg viewBox="0 0 360 240" role="img" aria-label="Abstract storyboard illustration of a cup on a sunlit table"><rect x="0" y="0" width="360" height="240" fill="#e9ded0"/><path d="M0 174 360 123v117H0z" fill="#c99e82"/><path d="m40 0 46 0 110 160-45 8zM148 0h52l116 138-45 9z" fill="#f9f0d7"/><ellipse cx="186" cy="191" rx="78" ry="14" fill="#ae7e63"/><path d="m143 71 12 111q29 19 56 0l12-111z" fill="#9d4d35"/><ellipse cx="183" cy="71" rx="40" ry="12" fill="#442e27"/><ellipse cx="183" cy="68" rx="36" ry="8" fill="#c4825c"/><path d="m166 100 6 60" stroke="#c88463" strokeWidth="5" strokeLinecap="round"/><rect x="19" y="18" width="322" height="204" fill="none" stroke="#fff8ea" strokeWidth="1"/><path d="M26 34V26h8m292 0h8v8M26 206v8h8m292 0h8v-8" fill="none" stroke="#fff8ea" strokeWidth="2"/></svg><p>One reference. Your next idea.</p></div><ol className="welcome-steps"><li><span>01</span><div><h3>Give it a purpose.</h3><p>Shape your brand and task inputs.</p></div></li><li><span>02</span><div><h3>Find the useful details.</h3><p>Review evidence, with room to correct.</p></div></li><li><span>03</span><div><h3>Make a creative choice.</h3><p>Compare two directions and approve one.</p></div></li><li><span>04</span><div><h3>Take it into production.</h3><p>Edit a brief and storyboard. Share the plan.</p></div></li></ol></div><p className="sample-disclosure">The sample uses an authored illustrated clip and fictional results. Uploaded videos require a configured provider; the sample does not establish recognition or creative quality.</p></section>}
+      <ProjectSidebar tasks={tasks} trashed={trashed} active={active} title={title} onTitle={setTitle} loading={loading} navigating={navigating} error={error} busyIds={new Set(running.map((item) => item.taskId))} onOpen={openTask} onClose={closeTask} onCreate={createTask} onLoadTrash={loadTrash} onRename={(id, nextTitle) => projectCommand(id, 'rename', nextTitle)} onTrash={(id) => projectCommand(id, 'trash')} onRestore={(id) => projectCommand(id, 'restore')} />
+      <div className="workspace">
+        {active ? <Workspace key={active.task.task_id} state={active} config={config} mutate={mutate} activities={Object.values(activities).filter((item) => item.taskId === active.task.task_id)} onApplied={storeTask} flushRef={flushRef} m2Status={m2Status} onStatusChange={setM2Status} flush={flush} onError={setError} onStructureActivity={(isRunning, label, failure) => { const taskId = active.task.task_id; setActivities((previous) => { const key = `structure:${taskId}`; const old = previous[key]; if (old?.running === isRunning && old.label === label && old.error === failure) return previous; return { ...previous, [key]: { taskId, title: active.task.title, path: '/structure', label, running: isRunning, error: failure, started: old?.started ?? Date.now() } }; }); }} /> : <section className="studio-welcome"><div className="welcome-mark" aria-hidden="true">◈</div><h1>{t('Start with a video. Or an idea.')}</h1><p>{t('Create a project to research a reference, explore ideas, or prepare a production.')}</p><button type="button" className="secondary" disabled={navigating || loading} onClick={() => create(true)}>{t('Explore the sample workspace')}</button><small>{t('Fictional sample · no API calls')}</small></section>}
       </div>
-    </main><footer>Video Anatomy <span aria-hidden="true">/</span> A workspace for thoughtful video making <span aria-hidden="true">/</span> Single-user team demo</footer>
-  </>;
+    </main>
+    <footer className="app-status"><span>{running.length ? t(running.length === 1 ? '{count} operation running' : '{count} operations running', { count: running.length }) : t('Ready')}</span><span>{t('Video Anatomy · Local preview')}</span></footer>
+    {activityOpen && <section className="activity-panel" aria-label={t('Activity center')}><div className="drawer-toolbar"><h2>{t('Activity')}</h2><button className="text-button" type="button" onClick={() => setActivityOpen(false)}>{t('Close')}</button></div>{Object.values(activities).length ? <ul>{Object.values(activities).map((item, index) => <li key={`${item.taskId}:${item.path}:${index}`}><strong>{item.title}</strong><p>{item.running ? <span className="spinner" aria-hidden="true" /> : null}{item.error ? t(item.error) : `${t(item.label)}${item.running ? '…' : t(' · Complete')}`}</p><button type="button" className="text-button" onClick={() => { void openTask(item.taskId); setActivityOpen(false); }}>{t('Open project')}</button></li>)}</ul> : <p className="muted">{t('No operations yet.')}</p>}</section>}
+  </div></ApiConnection>;
 }

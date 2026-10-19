@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Run from any directory. Browser tests start isolated local application servers.
 set -euo pipefail
+# This suite verifies offline and mocked behavior. Live evaluation has a separate
+# explicit entrypoint and a single retained experiment ledger.
+unset OPENAI_API_KEY
+export RUN_LIVE_MODEL_TESTS=0
 cd "$(dirname "$0")/.."
 .venv/bin/python -m pip check
 .venv/bin/python scripts/export_contracts.py --check

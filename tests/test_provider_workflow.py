@@ -108,6 +108,27 @@ def test_mocked_upload_to_corrected_review_and_approved_production(uploaded, tmp
     assert find(restored.analyses, restored.task.current_analysis).revision == 3
 
 
+def test_local_launcher_settings_reach_structure_ready_observations(uploaded, tmp_path, monkeypatch):
+    from backend.app.structure_service import StructureService
+    from scripts.local_server import local_settings
+
+    service, client, state = uploaded
+    monkeypatch.setenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(tmp_path / "budget.sqlite3"))
+    # Keep explicit fake providers, but use the actual launcher's configuration.
+    # This still exercises real FFmpeg preparation and the HTTP workflow.
+    service.real_recognition.settings = local_settings(tmp_path / "library", "offline-fake-key")
+    state = mutate(client, state, "recognize")
+    assert state["analyses"][-1]["status"] == "succeeded"
+    structure = StructureService(service)
+    try:
+        analysis, video, _, sample = structure._source(state["task"]["task_id"])
+        assert analysis.events and analysis.video_id == video.video_id
+        assert sample is False
+        assert analysis.review.user_confirmed is False
+    finally:
+        structure.executor.shutdown(wait=True)
+
+
 def test_structured_api_edit_rejects_relationship_shape_status_and_stale_changes(uploaded):
     _, client, state = uploaded
     state = recognize(client, state)
