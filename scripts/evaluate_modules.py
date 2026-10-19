@@ -1,4 +1,4 @@
-"""Local module evaluation with one persisted USD 3 budget, never training by default.
+"""Explicit experiment harness with one persisted USD 3 budget, never training by default.
 
 Default is preflight: it validates permitted media without making network requests.
 Live mode additionally requires --live, RUN_LIVE_MODEL_TESTS=1 and OPENAI_API_KEY.

@@ -19,6 +19,7 @@ from backend.app.adapters import UnconfiguredRecognitionAdapter
 from backend.app.providers.auth import check_openai_connection, normalize_api_key
 from backend.app.providers.base import ProviderError
 from backend.app.providers.budget import ExperimentBudget
+from backend.app.providers.local_usage import local_usage_summary
 from backend.app.providers.creative import OpenAICreativeAdapter
 from backend.app.providers.m2 import build_m2_assistance
 from backend.app.providers.recognition import ProviderRecognitionAdapter
@@ -256,10 +257,14 @@ def install_connection_api(app, *, keychain=None, key_source="none", remembered=
 
     @app.get("/api/local/budget")
     def budget_status():
+        if not connection.service.provider_settings.experiment_budget_enabled:
+            return local_usage_summary(connection.service.provider_settings.cache_dir)
         return budget().summary()
 
     @app.post("/api/local/budget/reconcile")
     def reconcile_budget():
+        if not connection.service.provider_settings.experiment_budget_enabled:
+            return {**budget_status(), "reconciled_attempts": 0, "released_usd": "0"}
         ledger = budget()
         result = ledger.reconcile_rejected_attempts()
         return {**ledger.summary(), **result}

@@ -1,5 +1,32 @@
 import { expect, test, type Page } from '@playwright/test';
 
+test('local client shows usage without a cap, pause, reservation recovery or budget writes', async ({ page }) => {
+  const methods: string[] = [];
+  await page.route('**/api/local/connection', (route) => route.fulfill({ json: {
+    available: true, configured: true, key_source: 'keychain', can_remember: true, remembered: true, last_check: null,
+  } }));
+  await page.route('**/api/local/budget**', (route) => {
+    methods.push(route.request().method());
+    return route.fulfill({ json: {
+      mode: 'usage_only', enforced: false, blocked: false,
+      maximum_usd: null, remaining_usd: null, known_estimated_cost_usd: '0.160',
+      attempts: 8, unknown_attempts: 1, usage_records_available: true, unreadable_records: 0,
+    } });
+  });
+  await page.goto('/');
+  await page.locator('.connection-toggle').click();
+  const panel = page.getByRole('region', { name: 'API usage', exact: true });
+  await expect(panel.getByText('No client-side spending cap', { exact: true })).toBeVisible();
+  await expect(panel).toContainText('$0.160');
+  await expect(panel).not.toContainText('Remaining');
+  await expect(panel).not.toContainText('reservations');
+  await expect(panel.getByRole('alert')).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: /Release rejected/ })).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Refresh usage', exact: true }).click();
+  expect(methods.length).toBeGreaterThanOrEqual(2);
+  expect(methods.every((method) => method === 'GET')).toBe(true);
+});
+
 type Budget = {
   maximum_usd: string; remaining_usd: string; known_estimated_cost_usd: string;
   unresolved_reserved_usd: string; recoverable_rejected_attempts: number; blocked: boolean;

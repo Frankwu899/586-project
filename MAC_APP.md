@@ -39,8 +39,8 @@ brew install python@3.12 ffmpeg
 
 No case video is preloaded. Import the video you choose. Existing tasks and media
 remain in `~/Library/Application Support/Video Anatomy/`, shared with v0.7.
-Keep the `provider-budget.sqlite3` ledger; upgrading or changing a key does not
-reset the experiment budget. Launcher/runtime logs are under
+The historical `provider-budget.sqlite3` ledger is preserved but no longer
+limits client requests. No ledger reset or key replacement is needed. Launcher/runtime logs are under
 `~/Library/Caches/Video Anatomy/` and contain no API key.
 
 ## If the connection fails
@@ -83,12 +83,12 @@ speech and visible text remain verbatim. Ideas' **Generation language** remains
 independent. Panels adapt to window size; narrower windows use the Projects
 toggle and internal scrolling instead of stretching the entire page.
 
-## Models, missing analysis and budget
+## Models, missing analysis and usage
 
 Visual analysis, Structure synthesis, Ideas, Production and input assistance use
 GPT-6.1 Sol. Bounded background research uses GPT-6 Luna. These models do not accept
 audio. The owner-approved speech exception uses Whisper (`whisper-1`) for
-transcription with segment timestamps. New speech analysis is enabled in v0.7.4;
+transcription with segment timestamps. Speech analysis is enabled;
 all other inference keeps the GPT-6 models above. Existing speech, source wording
 and compatible caches are retained. The key needs Audio Transcriptions access in
 addition to Responses access.
@@ -98,9 +98,12 @@ batches remain usable; **Retry missing analysis** reuses validated cached result
 It creates a new analysis revision rather than overwriting reviewed history.
 Structure displays a limitation when its source analysis is incomplete.
 
-**API connection** also shows the shared local USD 3 test budget. It is separate
-from OpenAI credit. **Release rejected requests**, when available, removes only
-reservations for explicit authentication/permission refusals. Unknown charges
-stay reserved, and the ceiling is not increased. If the ledger shows an accounting
-pause, this action does not clear that pause. No paid call runs merely by opening
-the app, switching languages or reading a saved project.
+**API connection** shows **API usage** and **No client-side spending cap** in
+v0.7.5. The USD 3 allowance applies only to separately run Cloud experiments.
+Local generation does not reserve experiment funds, require budget token
+prechecks, or stop because of an old accounting pause or unresolved reservation.
+Recorded estimates are informational and may be incomplete; they are not an
+invoice or your OpenAI account balance. OpenAI's own billing, rate limits and
+permissions still apply. No paid call runs merely by opening the app, switching
+languages or reading a saved project. After upgrading, retry a failed operation
+explicitly; the app does not automatically repeat previously interrupted calls.

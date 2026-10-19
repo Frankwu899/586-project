@@ -54,8 +54,9 @@ The default persistent library is outside the installation folder:
 
 `tasks.sqlite3` retains projects, histories and saved editor drafts. `media/`
 contains copied uploads and their current playback derivatives. `provider-cache/`
-retains reusable paid results; `provider-budget.sqlite3` retains the shared
-experiment ledger. Despite the historical name, **provider-cache is persistent
+retains reusable paid results and sanitized usage records;
+`provider-budget.sqlite3` retains the historical Cloud experiment ledger without
+limiting local requests. Despite the historical name, **provider-cache is persistent
 project data, not a disposable preview cache**. Back up the whole library after
 closing the app. Moving the original upload does not break its managed copy.
 
@@ -106,24 +107,25 @@ does not establish billing availability or model access.
 The current baseline is `gpt-6.1-sol` for visual analysis, Structure synthesis,
 Ideas, Production and input assistance, with `gpt-6-luna` for bounded background
 retrieval. The owner-approved audio exception uses `whisper-1` for transcription
-with segment timestamps. Speech is enabled in v0.7.4; no other capability falls
+with segment timestamps. Speech is enabled; no other capability falls
 back to an older model. Existing speech and compatible caches are retained.
 The launcher defaults to zero automatic retries. Provider
-configuration is backend-only. A shared persistent experiment
-ledger reserves estimated request costs before sending requests and enforces the
-owner-authorized maximum of USD 3. Keep the same ledger for the entire experiment;
-do not create new libraries to reset that allowance. The provider's billing page
-remains the source for actual billed totals. See the current evaluation report for
-which paid calls actually ran; a local build or sample test is not a live result.
+configuration is backend-only. Since v0.7.5, local launchers disable experiment
+budget enforcement. There is no client-side spending ceiling, reservation gate,
+accounting pause or budget token precheck. Old ledger files remain untouched;
+upgrading does not require clearing data or replacing your key. Separately invoked
+Cloud experiments retain their authorized USD 3 shared limit. OpenAI billing and
+provider rate/access limits still apply. The provider's billing page remains the
+source for actual billed totals. A local build or simulated test is not a live
+API result.
 
 Delivery bundles contain no owner-supplied videos or preloaded case projects.
 Import the video you choose after opening the app.
 
-API connection shows the local budget, estimated usage and unresolved reservations.
-**Release rejected requests** only releases historical, explicitly rejected
-authentication/permission attempts. It retains the audit trail, unknown charges,
-and the USD 3 ceiling. The OpenAI account balance is separate. A blocked accounting
-state stays paused for review; this action does not reset or unblock the ledger.
+API connection shows **API usage**, recorded estimates and attempts without a
+known cost. **Refresh usage** reads existing records without making a model call.
+Incomplete or unavailable estimates do not block generation. The old experiment
+ledger, reservations and accounting pause are not shown as client restrictions.
 
 ## Troubleshooting
 

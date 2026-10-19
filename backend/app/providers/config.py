@@ -26,6 +26,7 @@ class ProviderSettings:
     structure_max_seconds: float = 120
     budget_path: Path | None = None
     experiment_max_usd: str = "3"
+    experiment_budget_enabled: bool = True
     creative_language: str = "English"
     analysis_language: str = "English"
     timeout_seconds: float = 45
@@ -51,16 +52,17 @@ class ProviderSettings:
         if not math.isfinite(self.structure_max_seconds) or not 1 <= self.structure_max_seconds <= 180:
             raise ValueError("Structure run time must be bounded at 180 seconds")
         from .budget import MAXIMUM_USD, _number
-        if _number(self.experiment_max_usd) > MAXIMUM_USD:
+        if self.experiment_budget_enabled and _number(self.experiment_max_usd) > MAXIMUM_USD:
             raise ValueError("The authorized experiment budget cannot exceed USD 3")
         for name in ("vision_model", "transcription_model", "creative_model", "m2_model", "structure_model", "research_model", "analysis_language", "creative_language"):
             if not getattr(self, name).strip():
                 raise ValueError(f"{name} cannot be blank")
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls, *, experiment_budget_enabled=True):
         data_dir = Path(os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data"))
         return cls(
+            experiment_budget_enabled=experiment_budget_enabled,
             api_key=os.getenv("OPENAI_API_KEY", ""),
             vision_provider=os.getenv("VIDEO_VISION_PROVIDER", "openai"),
             transcription_provider=os.getenv("VIDEO_TRANSCRIPTION_PROVIDER", "openai"),

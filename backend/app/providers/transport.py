@@ -20,6 +20,7 @@ from .auth import normalize_api_key, provider_connection_error, provider_http_er
 from .config import ProviderSettings
 from .budget import ExperimentBudget, TEXT_MODELS, module_name
 from .catalog import GPT6_MODELS
+from .local_usage import estimate_local_attempt
 
 # Explicitly reviewed model families, not a claim that arbitrary GPT IDs share capabilities.
 STRUCTURED_VISION_MODELS = frozenset({"gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini",
@@ -75,6 +76,8 @@ class OpenAITransport:
         self._thread_record = threading.local()
 
     def _experiment_budget(self):
+        if not self.settings.experiment_budget_enabled:
+            return None
         path = self.settings.budget_path
         is_mock_http = isinstance(getattr(self.client, "_transport", None), httpx.MockTransport)
         if path is None and not is_mock_http:
@@ -234,7 +237,13 @@ class OpenAITransport:
                     error = exc
                 finally:
                     attempt_error = error if attempt_response is None else None
-                    if reservation_id is not None:
+                    if not self.settings.experiment_budget_enabled and request_sent:
+                        # Usage reporting is best effort. It never decides whether
+                        # a local client request may run or invalidates its result.
+                        record["attempt_records"].append(estimate_local_attempt(
+                            model, budget_payload, attempt_response,
+                            failure_code=attempt_error.code if attempt_error else None))
+                    elif reservation_id is not None:
                         try:
                             settled = budget.finish(reservation_id, model, budget_payload, attempt_response,
                                 elapsed_ms=round((time.monotonic() - attempt_started) * 1000),

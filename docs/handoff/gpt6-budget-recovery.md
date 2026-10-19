@@ -1,5 +1,7 @@
 # GPT-6 configuration and local budget recovery
 
+> Local-client budget behavior below is superseded by [v0.7.5](local-client-usage-v075.md). The USD 3 limit applies only to Cloud experiments.
+
 Date: 19 October 2026. Environment: managed Linux workspace. This is an offline
 implementation/verification record, not a completed real-model evaluation or a
 Mac validation report.

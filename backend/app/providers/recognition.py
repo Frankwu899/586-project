@@ -262,7 +262,7 @@ class ProviderRecognitionAdapter:
                     # the launcher's ledger Path cannot be JSON-serialized and
                     # must not invalidate evidence when the ledger is relocated.
                     "settings": {key: value for key, value in asdict(self.settings).items()
-                                 if key not in ("api_key", "cache_dir", "budget_path")},
+                                 if key not in ("api_key", "cache_dir", "budget_path", "experiment_budget_enabled")},
                     "timing": video.frame_timing.model_dump(), "has_audio": video.has_audio}
                 cache_key = hashlib.sha256(json.dumps(key_payload, sort_keys=True).encode()).hexdigest()
                 cache_path = self.settings.cache_dir / f"{cache_key}.json" if self.settings.cache_dir else None

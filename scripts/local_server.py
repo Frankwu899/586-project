@@ -54,7 +54,7 @@ def read_api_key() -> str:
 
 def local_settings(data_dir: Path, api_key: str, *, allow_empty=False) -> ProviderSettings:
     settings = replace(
-        ProviderSettings.from_env(), api_key=api_key, cache_dir=data_dir / "provider-cache",
+        ProviderSettings.from_env(experiment_budget_enabled=False), api_key=api_key, cache_dir=data_dir / "provider-cache",
         budget_path=Path(os.getenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(data_dir / "provider-budget.sqlite3"))),
         timeout_seconds=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "90")),
         # A failed first experiment must not silently start another paid attempt.
