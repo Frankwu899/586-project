@@ -11,7 +11,7 @@ from .models import VersionRef
 from .providers.base import ProviderError
 from .structure_models import (Answer, Graph, Handoff, Moment, Proposal, StructureError,
                                UserContext, Workspace)
-from .structure_provider import OpenAIStructureAgent, SampleStructureAgent
+from .structure_provider import OpenAIStructureAgent, SampleStructureAgent, PROMPT_VERSION
 from .structure_store import StructureStore
 from .workflow_errors import WorkflowError
 
@@ -86,13 +86,13 @@ class StructureService:
         if video is None or video.deleted_at is not None:
             raise WorkflowError("structure_source_deleted", "This source video was removed. Its saved Structure remains available.")
         sample = state.task.mode == "sample" and video.input_method == "sample" and analysis.origin.kind == "sample"
-        return analysis, video, state.task.generation_language or self.workflow.provider_settings.analysis_language, sample
+        return analysis, video, self.workflow.provider_settings.analysis_language, sample
 
     def analyze(self, task_id, request):
         analysis, video, language, sample = self._source(task_id, request.analysis_ref)
         workspace = Workspace(structure_id=uid("structure"), task_id=task_id, video_id=video.video_id,
                               analysis_ref=VersionRef(id=analysis.analysis_id, revision=analysis.revision),
-                              origin="sample" if sample else "provider")
+                              origin="sample" if sample else "provider", output_language=language)
         self.store.create(workspace)
         self.executor.submit(self._analyze, workspace.structure_id, analysis, video, language, sample)
         return self.get(task_id)
@@ -100,7 +100,7 @@ class StructureService:
     def _metadata(self, workspace):
         return {"capability": "structure", "structure_id": workspace.structure_id,
                 "task_id": workspace.task_id, "analysis_id": workspace.analysis_ref.id,
-                "analysis_revision": workspace.analysis_ref.revision, "prompt_version": "structure-v1-grounded-logic"}
+                "analysis_revision": workspace.analysis_ref.revision, "prompt_version": PROMPT_VERSION}
 
     def _analyze(self, structure_id, analysis, video, language, sample):
         started = time.monotonic()
@@ -168,6 +168,7 @@ class StructureService:
         if request.node_id not in {n.id for n in workspace.graph.nodes}:
             raise WorkflowError("structure_node_not_found", "This node does not belong to the saved graph.", 422)
         analysis, video, language, sample = self._source(task_id, workspace.analysis_ref)
+        language = workspace.output_language or language
         def begin(item):
             if item.feedback_status == "running":
                 raise WorkflowError("structure_feedback_busy", "A response is already being prepared for this graph.")

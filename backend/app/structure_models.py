@@ -149,6 +149,7 @@ class StructureError(StructureModel):
 
 class Workspace(StructureModel):
     structure_id: Key
+    output_language: Literal["English", "Chinese"] | None = None
     task_id: Key
     video_id: Key
     analysis_ref: VersionRef

@@ -239,6 +239,9 @@ def test_legacy_migration_preserves_all_history_and_has_separate_review_gate(tmp
         assert direction.pop("structure_handoff_id") is None
     for output in [*converted["production_briefs"], *converted["storyboards"]]:
         assert output.pop("bundle_id") is None
+    for analysis in converted["analyses"]:
+        assert analysis.pop("extraction_failures") == {}
+        assert analysis.pop("output_language") is None
     assert converted == original
     raw = json.dumps(payload, ensure_ascii=False, indent=3)
     with sqlite3.connect(tmp_path / "tasks.sqlite3") as db:

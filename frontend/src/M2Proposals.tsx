@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { useState } from 'react';
 import type { M2Draft, M2AssistanceResponse, M2Candidate } from './generated/contracts';
 import { request } from './api';
@@ -9,6 +10,7 @@ const names: Record<string, string> = { brand_company: 'Brand/company', product:
 const display = (value: unknown): string => value === null || value === undefined || value === '' ? 'Not provided' : Array.isArray(value) ? value.join('\n') || 'Not provided' : typeof value === 'object' && 'statement' in value ? String(value.statement) : String(value);
 
 export default function M2Proposals({ taskId, session, locked, onBusy }: Props) {
+  const { t } = useI18n();
   const [batch, setBatch] = useState<M2AssistanceResponse | null>(null);
   const [generation, setGeneration] = useState<number | null>(null);
   const [rows, setRows] = useState<M2Candidate[]>([]);
@@ -16,6 +18,8 @@ export default function M2Proposals({ taskId, session, locked, onBusy }: Props) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const extractionPrefix = 'Couldn’t extract details. You can continue editing.';
+  const displayError = error.startsWith(extractionPrefix) ? `${t(extractionPrefix)} ${t(error.slice(extractionPrefix.length).trim())}` : t(error);
   const stale = Boolean(batch && (generation !== session.generation || batch.source_draft_version !== session.current.draft_version));
   const assist = async (field: 'target_audience' | 'communication_goal' | null = null) => {
     setLoading(true); setError(''); setNotice(''); setBatch(null);
@@ -39,26 +43,26 @@ export default function M2Proposals({ taskId, session, locked, onBusy }: Props) 
   };
   const update = (candidateId: string, value: M2Candidate['value']) => setRows((previous) => previous.map((candidate) => candidate.candidate_id === candidateId ? { ...candidate, value } : candidate));
   return <div className="m2-assistance">
-    <div className="actions"><button type="button" className="secondary" disabled={loading || locked || !session.current.source_notes.trim()} onClick={() => void assist()}>{loading ? 'Extracting details…' : 'Extract details'}</button><button type="button" className="text-button" disabled={loading || locked} onClick={() => void assist('target_audience')}>Suggest an audience</button><button type="button" className="text-button" disabled={loading || locked} onClick={() => void assist('communication_goal')}>Suggest a communication goal</button></div>
-    {loading && <p role="status">Extracting details from your notes… You can keep editing.</p>}
-    {error && <p role="alert" className="error">{error} <button type="button" className="secondary" onClick={() => void assist()} disabled={loading || locked}>Try again</button></p>}
-    {notice && <p role="status" className="success">{notice}</p>}
-    {batch && <section className="m2-proposals" aria-label="Review proposed details"><h3>Review proposed details</h3>{batch.provider_mode === 'fake' && <p className="notice">Deterministic test assistance · not real AI extraction.</p>}<p>Choose the details to add. Edit the proposed wording before using it; existing values are shown for comparison.</p>{stale && <p role="alert" className="error">Your inputs changed. Run extraction again. Newer text has been kept.</p>}{batch.unresolved_notes.map((note, index) => <p className="muted" key={index}>{note}</p>)}
-      {!rows.length && <p>No supported details were found. Continue with manual editing.</p>}
+    <div className="actions"><button type="button" className="secondary" disabled={loading || locked || !session.current.source_notes.trim()} onClick={() => void assist()}>{loading ? t("Extracting details…") : t("Extract details")}</button><button type="button" className="text-button" disabled={loading || locked} onClick={() => void assist('target_audience')}>{t("Suggest an audience")}</button><button type="button" className="text-button" disabled={loading || locked} onClick={() => void assist('communication_goal')}>{t("Suggest a communication goal")}</button></div>
+    {loading && <p role="status">{t("Extracting details from your notes… You can keep editing.")}</p>}
+    {error && <p role="alert" className="error">{displayError} <button type="button" className="secondary" onClick={() => void assist()} disabled={loading || locked}>{t("Try again")}</button></p>}
+    {notice && <p role="status" className="success">{t(notice)}</p>}
+    {batch && <section className="m2-proposals" aria-label={t("Review proposed details")}><h3>{t("Review proposed details")}</h3>{batch.provider_mode === 'fake' && <p className="notice">{t("Deterministic test assistance · not real AI extraction.")}</p>}<p>{t("Choose the details to add. Edit the proposed wording before using it; existing values are shown for comparison.")}</p>{stale && <p role="alert" className="error">{t("Your inputs changed. Run extraction again. Newer text has been kept.")}</p>}{batch.unresolved_notes.map((note, index) => <p className="muted" key={index}>{note}</p>)}
+      {!rows.length && <p>{t("No supported details were found. Continue with manual editing.")}</p>}
       {rows.map((candidate, index) => {
-        const label = names[candidate.target] ?? candidate.target.replaceAll('_', ' ');
+        const label = t(names[candidate.target] ?? candidate.target.replaceAll('_', ' '));
         const claim = typeof candidate.value === 'object' && candidate.value !== null && !Array.isArray(candidate.value) ? candidate.value : null;
-        const oldValue = candidate.target === 'claim' ? 'New selling point — needs your confirmation' : session.current.fields[candidate.target as keyof M2Draft['fields']];
+        const oldValue = candidate.target === 'claim' ? t('New selling point — needs your confirmation') : session.current.fields[candidate.target as keyof M2Draft['fields']];
         return <article className="m2-proposal" key={candidate.candidate_id}>
-          <div className="m2-section-title"><label className="m2-confirm"><input type="checkbox" checked={selected.has(candidate.candidate_id)} disabled={stale || locked} onChange={(event) => setSelected((previous) => { const next = new Set(previous); if (event.target.checked) next.add(candidate.candidate_id); else next.delete(candidate.candidate_id); return next; })} />Select {label}<span className="sr-only"> proposal {index + 1}</span></label><button type="button" className="text-button" onClick={() => { setRows((previous) => previous.filter((row) => row.candidate_id !== candidate.candidate_id)); setSelected((previous) => { const next = new Set(previous); next.delete(candidate.candidate_id); return next; }); }} disabled={locked}>Dismiss<span className="sr-only"> {label} proposal {index + 1}</span></button></div>
-          <small>{candidate.origin === 'extracted' ? 'From your notes' : 'Suggested — confirm before use'}{claim ? ' · Needs your confirmation' : ''}</small>
-          {candidate.source_excerpt && <blockquote><span className="sr-only">Exact source excerpt: </span>{candidate.source_excerpt}</blockquote>}
-          <p className="m2-current"><strong>Current:</strong> {display(oldValue)}</p>
-          <Field label={`Proposed ${label} ${index + 1}`}><textarea disabled={stale || locked} value={display(candidate.value) === 'Not provided' ? '' : display(candidate.value)} onChange={(event) => update(candidate.candidate_id, claim ? { ...claim, statement: event.target.value } : typeof candidate.value === 'number' ? Number(event.target.value) : Array.isArray(candidate.value) ? event.target.value.split('\n').filter((line) => line.trim()) : event.target.value)} /></Field>
-          {claim && <><Field label={`Proposed qualification ${index + 1}`}><textarea disabled={stale || locked} value={claim.qualification ?? ''} onChange={(event) => update(candidate.candidate_id, { ...claim, qualification: event.target.value || null })} /></Field>{claim.supporting_notes && <p>Support supplied: {claim.supporting_notes}</p>}{claim.source_urls.length > 0 && <p>Source links: {claim.source_urls.join(', ')}</p>}</>}
+          <div className="m2-section-title"><label className="m2-confirm"><input type="checkbox" checked={selected.has(candidate.candidate_id)} disabled={stale || locked} onChange={(event) => setSelected((previous) => { const next = new Set(previous); if (event.target.checked) next.add(candidate.candidate_id); else next.delete(candidate.candidate_id); return next; })} />{t("Select")} {label}<span className="sr-only">  {t("proposal")} {index + 1}</span></label><button type="button" className="text-button" onClick={() => { setRows((previous) => previous.filter((row) => row.candidate_id !== candidate.candidate_id)); setSelected((previous) => { const next = new Set(previous); next.delete(candidate.candidate_id); return next; }); }} disabled={locked}>{t("Dismiss")}<span className="sr-only"> {label}  {t("proposal")} {index + 1}</span></button></div>
+          <small>{candidate.origin === 'extracted' ? t("From your notes") : t("Suggested — confirm before use")}{claim ? t(" · Needs your confirmation") : ''}</small>
+          {candidate.source_excerpt && <blockquote><span className="sr-only">{t("Exact source excerpt:")} </span>{candidate.source_excerpt}</blockquote>}
+          <p className="m2-current"><strong>{t("Current:")}</strong> {display(oldValue) === "Not provided" ? t("Not provided") : display(oldValue)}</p>
+          <Field label={t("Proposed {label} {index}", { label, index: index + 1 })}><textarea disabled={stale || locked} value={display(candidate.value) === 'Not provided' ? '' : display(candidate.value)} onChange={(event) => update(candidate.candidate_id, claim ? { ...claim, statement: event.target.value } : typeof candidate.value === 'number' ? Number(event.target.value) : Array.isArray(candidate.value) ? event.target.value.split('\n').filter((line) => line.trim()) : event.target.value)} /></Field>
+          {claim && <><Field label={t("Proposed qualification {index}", { index: index + 1 })}><textarea disabled={stale || locked} value={claim.qualification ?? ''} onChange={(event) => update(candidate.candidate_id, { ...claim, qualification: event.target.value || null })} /></Field>{claim.supporting_notes && <p>{t("Support supplied:")} {claim.supporting_notes}</p>}{claim.source_urls.length > 0 && <p>{t("Source links:")} {claim.source_urls.join(', ')}</p>}</>}
         </article>;
       })}
-      <div className="actions"><button type="button" disabled={locked || stale || !selected.size} onClick={() => void adopt()}>Use selected details</button>{stale && <button type="button" className="secondary" disabled={loading || locked} onClick={() => void assist()}>Run extraction again</button>}</div>
+      <div className="actions"><button type="button" disabled={locked || stale || !selected.size} onClick={() => void adopt()}>{t("Use selected details")}</button>{stale && <button type="button" className="secondary" disabled={loading || locked} onClick={() => void assist()}>{t("Run extraction again")}</button>}</div>
     </section>}
   </div>;
 }

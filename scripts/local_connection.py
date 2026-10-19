@@ -18,12 +18,14 @@ from pydantic import BaseModel, ConfigDict, SecretStr
 from backend.app.adapters import UnconfiguredRecognitionAdapter
 from backend.app.providers.auth import check_openai_connection, normalize_api_key
 from backend.app.providers.base import ProviderError
+from backend.app.providers.budget import ExperimentBudget
 from backend.app.providers.creative import OpenAICreativeAdapter
 from backend.app.providers.m2 import build_m2_assistance
 from backend.app.providers.recognition import ProviderRecognitionAdapter
 from backend.app.structure_provider import OpenAIStructureAgent
 from backend.app.workflow_errors import WorkflowError
 from scripts.mac_keychain import KeychainError, MacKeychain
+from scripts.app_preferences import AppPreferences, write_preferences
 
 
 class ConnectionInput(BaseModel):
@@ -106,10 +108,10 @@ class LocalConnection:
             self.last_check = result
         return result
 
-    def replacements(self, key):
+    def replacements(self, key, **preferences):
         # Reuse every configured model, cache and budget setting. Never recreate
         # WorkflowService: doing so would recover/interfere with existing jobs.
-        settings = replace(self.service.provider_settings, api_key=key)
+        settings = replace(self.service.provider_settings, api_key=key, **preferences)
         recognition = (ProviderRecognitionAdapter(settings, media_store=self.service.media)
                        if key else UnconfiguredRecognitionAdapter())
         return settings, recognition, OpenAICreativeAdapter(settings), build_m2_assistance(settings), OpenAIStructureAgent(settings)
@@ -181,14 +183,16 @@ class LocalConnection:
 
 def install_connection_api(app, *, keychain=None, key_source="none", remembered=False,
                            keychain_error=None, checker=check_openai_connection,
-                           control_token=None, shutdown=None, preference_path=None):
+                           control_token=None, shutdown=None, preference_path=None,
+                           app_preference_path=None):
     connection = LocalConnection(app, keychain=keychain, key_source=key_source,
                                  remembered=remembered, keychain_error=keychain_error, checker=checker,
                                  preference_path=preference_path)
     app.state.local_connection = connection
     gate = asyncio.Lock()
     active_writes, changing, closing = 0, False, False
-    exclusive = {"/api/local/connection", "/api/local/connection/forget", "/api/local/shutdown"}
+    exclusive = {"/api/local/connection", "/api/local/connection/forget", "/api/local/shutdown",
+                 "/api/local/preferences", "/api/local/budget/reconcile"}
 
     @app.middleware("http")
     async def credential_boundary(request: Request, call_next):
@@ -199,7 +203,7 @@ def install_connection_api(app, *, keychain=None, key_source="none", remembered=
         async with gate:
             if closing or changing or (is_change and (active_writes or running_work(connection.service))):
                 return JSONResponse(status_code=409, content={"error": {"code": "provider_connection_busy",
-                    "message": "Wait for current work to finish before changing the API connection or closing the app.", "retryable": True}})
+                    "message": "Wait for current work to finish before changing app settings or closing the app.", "retryable": True}})
             if is_change:
                 changing = True
             else:
@@ -231,6 +235,34 @@ def install_connection_api(app, *, keychain=None, key_source="none", remembered=
     @app.post("/api/local/connection/forget")
     def forget():
         return connection.forget()
+
+    @app.get("/api/local/preferences")
+    def preferences():
+        return AppPreferences(language=connection.service.provider_settings.analysis_language)
+
+    @app.post("/api/local/preferences")
+    def save_preferences(body: AppPreferences):
+        replacements = connection.replacements(connection.service.provider_settings.api_key,
+                                                analysis_language=body.language)
+        write_preferences(app_preference_path, body)
+        connection.apply(replacements)
+        return body
+
+    def budget():
+        settings = connection.service.provider_settings
+        if settings.budget_path is None:
+            raise WorkflowError("budget_unavailable", "Budget tracking is unavailable in this server.", 404)
+        return ExperimentBudget(settings.budget_path, maximum=settings.experiment_max_usd)
+
+    @app.get("/api/local/budget")
+    def budget_status():
+        return budget().summary()
+
+    @app.post("/api/local/budget/reconcile")
+    def reconcile_budget():
+        ledger = budget()
+        result = ledger.reconcile_rejected_attempts()
+        return {**ledger.summary(), **result}
 
     @app.post("/api/local/shutdown")
     def stop(request: Request):

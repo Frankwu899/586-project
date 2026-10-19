@@ -604,6 +604,8 @@ class AnalysisResult(Record):
     review: ReviewState = Field(default_factory=ReviewState)
     corrections: list[Correction] = Field(default_factory=list)
     error: ErrorInfo | None = None
+    extraction_failures: dict[Literal["visual_action", "on_screen_text", "speech"], ErrorInfo] = Field(default_factory=dict)
+    output_language: Literal["English", "Chinese"] | None = None
     empty_result_reason: str | None = None
 
     @model_validator(mode="after")
@@ -652,7 +654,7 @@ class AnalysisResult(Record):
             has_events = any(event.kind == kind for event in self.events)
             if has_events != (coverage == "observations"):
                 raise ValueError(f"{kind} coverage must agree with canonical observations")
-        failed_extraction = "failed" in self.coverage.model_dump().values() or any(
+        failed_extraction = bool(self.extraction_failures) or "failed" in self.coverage.model_dump().values() or any(
             event.visual_details is not None and event.visual_details.has_failures() for event in self.events
         )
         if self.status == "succeeded" and failed_extraction:
@@ -905,7 +907,7 @@ def _validate_references(state: TaskState) -> None:
                            key=lambda item: item.revision)
             if analysis.corrections[:len(previous.corrections)] != previous.corrections:
                 raise ValueError("analysis corrections must preserve all earlier correction history")
-            for field in ("status", "coverage", "error", "empty_result_reason"):
+            for field in ("status", "coverage", "error", "extraction_failures", "output_language", "empty_result_reason"):
                 if getattr(analysis, field) != getattr(original, field):
                     raise ValueError("analysis corrections cannot change extraction status or coverage")
             old_events = {event.event_id: event for event in original.events}

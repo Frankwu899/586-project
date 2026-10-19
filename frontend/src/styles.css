@@ -440,3 +440,77 @@ h1 { font-size: 19px; } h2 { font-size: 18px; } h3 { font-size: 16px; }
 .production-shot-index > span { font: 600 26px system-ui,sans-serif; }
 .context-drawer { z-index: 30; }
 .scroll-workspace aside { position: static; }
+
+/* Window-sized layout: each work area owns its scroll; navigation stays reachable. */
+.app-layout, .app-header, .workspace-body, .research-panel { min-width: 0; }
+.app-header { gap: 12px; }
+.app-header > * { min-width: 0; }
+.sidebar-toggle { display: none; font-size: 12px; padding: 6px 9px; }
+.app-language { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; font-size: 11px; }
+.app-language select { font-size: 12px; width: auto; padding: 5px 7px; }
+.app-header .connection-toggle { flex: 0 1 auto; }
+.workspace-heading > div:first-child { min-width: 0; }
+.workspace-heading h1 { max-height: 48px; overflow-y: auto; }
+.workspace-heading .actions { margin: 0; }
+.workspace-feedback { overflow-wrap: anywhere; flex-wrap: wrap; }
+.research-tabs { overflow-x: auto; }
+.scroll-workspace { overflow-x: hidden; }
+.app-status { gap: 10px; overflow: hidden; }
+.app-status span { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.task-sidebar .sidebar-views { display: flex; margin: 10px 0 0; gap: 4px; }
+.sidebar-views button { flex: 1; padding: 5px 7px; font-size: 11px; }
+.sidebar-views button[aria-current="page"] { background: var(--m2-tint); border-color: var(--m2-accent); color: var(--m2-accent); }
+.task-list .project-row { position: relative; display: grid; grid-template-columns: minmax(0,1fr) 28px; gap: 2px; align-items: start; }
+.task-list .project-open { min-width: 0; width: 100%; }
+.project-actions { border: 0; padding: 0; margin-top: 10px; }
+.project-actions[open] { margin-bottom: 130px; }
+.task-list .project-trashed { grid-template-columns: minmax(0,1fr); padding: 8px; }
+.task-list .project-trashed > button { min-height: 32px; padding: 5px; }
+.project-actions > summary { min-height: 32px; padding: 0; text-align: center; list-style: none; border-radius: 5px; }
+.project-actions > summary::-webkit-details-marker { display: none; }
+.project-actions > summary:hover { background: var(--m2-tint); }
+.project-action-menu { position: absolute; right: 3px; top: 40px; z-index: 15; width: 156px; padding: 5px; background: #fff; border: 1px solid var(--m2-line); box-shadow: 0 6px 20px #20332f26; border-radius: 8px; }
+.task-list .project-action-menu button { display: block; width: 100%; min-height: 34px; padding: 5px 8px; text-align: left; border: 0; font-size: 12px; background: transparent; }
+.task-list .project-action-menu button:hover { background: var(--m2-tint); }
+.project-dialog { width: min(460px,calc(100vw - 28px)); padding: 22px; color: var(--m2-ink); border: 1px solid var(--m2-line); border-radius: 12px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.project-dialog::backdrop { background: #10231c55; backdrop-filter: blur(3px); }
+.project-dialog h2 { margin-top: 0; }
+.project-dialog-actions { display: flex; gap: 8px; justify-content: end; flex-wrap: wrap; margin-top: 20px; }
+.project-dialog-error { color: var(--m2-error); }
+.close-project { font-size: 12px; }
+.studio-welcome { overflow-y: auto; max-height: 100%; }
+@media (max-width: 1250px) {
+  .app-header .header-label { display: none; }
+  .app-header { gap: 9px; }
+  .connection-indicator { display: none; }
+}
+@media (max-width: 1050px) {
+  .app-layout { grid-template-columns: minmax(0,1fr); position: relative; }
+  .sidebar-toggle { display: inline-block; }
+  .app-layout > .task-sidebar { display: none; }
+  .sidebar-open .app-layout > .task-sidebar { display: flex; position: absolute; z-index: 25; inset: 0 auto 0 0; width: min(285px,90vw); padding: 16px 12px; background: #f4f9f8fa; box-shadow: 12px 0 32px #20332f30; }
+  .sidebar-open .task-list { display: block; }
+}
+@media (max-width: 650px) {
+  .desktop-app { grid-template-rows: auto minmax(0,1fr) 24px; }
+  .app-header { flex-wrap: wrap; padding: 7px 10px; row-gap: 5px; }
+  .app-header .wordmark { flex: 1; font-size: 14px; }
+  .app-header .activity-toggle { margin-left: auto; font-size: 11px; }
+  .app-language > span { display: none; }
+  .app-header .connection-toggle { font-size: 11px; padding: 5px 8px; }
+  .workspace-heading { flex-wrap: wrap; gap: 6px; min-height: 60px; }
+  .workspace-heading .context-toggle, .workspace-heading .close-project { font-size: 11px; padding: 5px 7px; }
+  .workspace-tabs { overflow-x: auto; flex-wrap: nowrap; }
+  .workspace-tabs button { flex: 1; white-space: nowrap; padding: 8px 10px; }
+  .research-panel { padding: 0 5px 5px; }
+  .workspace-feedback { max-height: 72px; padding: 7px 10px; }
+  .drawer-toolbar, .drawer-content { padding: 12px; }
+  .drawer-toolbar { gap: 10px; }
+  .direction-grid, .production-layout { grid-template-columns: minmax(0,1fr); }
+  .app-status { padding: 0 8px; font-size: 9px; }
+}
+@media (max-height: 600px) and (min-width: 651px) {
+  .workspace-heading { min-height: 48px; padding-block: 6px; }
+  .research-tabs { padding-block: 4px; }
+  .research-panel { overflow-y: auto; }
+}

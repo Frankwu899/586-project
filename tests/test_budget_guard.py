@@ -16,7 +16,7 @@ from backend.app.providers.usage import summarize_usage
 
 
 def budget(tmp_path, maximum="3"):
-    return ExperimentBudget(tmp_path / "shared.sqlite3", maximum, today=date(2026, 10, 18))
+    return ExperimentBudget(tmp_path / "shared.sqlite3", maximum, today=date(2026, 10, 19))
 
 
 def response(**extra):

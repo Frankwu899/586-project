@@ -6,6 +6,8 @@ import math
 import os
 from pathlib import Path
 
+from .catalog import DEFAULT_REASONING_MODEL, DEFAULT_RESEARCH_MODEL, current_model
+
 
 @dataclass(frozen=True)
 class ProviderSettings:
@@ -14,12 +16,12 @@ class ProviderSettings:
     transcription_provider: str = "openai"
     creative_provider: str = "openai"
     m2_provider: str = "openai"
-    vision_model: str = "gpt-4.1-mini"
+    vision_model: str = DEFAULT_REASONING_MODEL
     transcription_model: str = "whisper-1"
-    creative_model: str = "gpt-4.1-mini"
-    m2_model: str = "gpt-4.1-mini"
-    structure_model: str = "gpt-4.1-mini"
-    research_model: str = "gpt-4.1-mini"
+    creative_model: str = DEFAULT_REASONING_MODEL
+    m2_model: str = DEFAULT_REASONING_MODEL
+    structure_model: str = DEFAULT_REASONING_MODEL
+    research_model: str = DEFAULT_RESEARCH_MODEL
     structure_research_max_calls: int = 2
     structure_max_seconds: float = 120
     budget_path: Path | None = None
@@ -64,12 +66,14 @@ class ProviderSettings:
             transcription_provider=os.getenv("VIDEO_TRANSCRIPTION_PROVIDER", "openai"),
             creative_provider=os.getenv("VIDEO_CREATIVE_PROVIDER", "openai"),
             m2_provider=os.getenv("VIDEO_M2_PROVIDER", "openai"),
-            vision_model=os.getenv("OPENAI_VISION_MODEL", "gpt-4.1-mini"),
-            transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "whisper-1"),
-            creative_model=os.getenv("OPENAI_CREATIVE_MODEL", "gpt-4.1-mini"),
-            m2_model=os.getenv("OPENAI_M2_MODEL", "gpt-4.1-mini"),
-            structure_model=os.getenv("OPENAI_STRUCTURE_MODEL", "gpt-4.1-mini"),
-            research_model=os.getenv("OPENAI_RESEARCH_MODEL", "gpt-4.1-mini"),
+            vision_model=current_model(os.getenv("OPENAI_VISION_MODEL")),
+            # GPT-6 cannot transcribe audio. Normal profiles do not silently
+            # invoke an older speech model under a GPT-6-only model policy.
+            transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "disabled"),
+            creative_model=current_model(os.getenv("OPENAI_CREATIVE_MODEL")),
+            m2_model=current_model(os.getenv("OPENAI_M2_MODEL")),
+            structure_model=current_model(os.getenv("OPENAI_STRUCTURE_MODEL")),
+            research_model=current_model(os.getenv("OPENAI_RESEARCH_MODEL"), DEFAULT_RESEARCH_MODEL),
             structure_research_max_calls=int(os.getenv("STRUCTURE_RESEARCH_MAX_CALLS", "2")),
             structure_max_seconds=float(os.getenv("STRUCTURE_MAX_SECONDS", "120")),
             budget_path=Path(os.getenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(data_dir / "provider-budget.sqlite3"))),

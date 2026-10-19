@@ -19,11 +19,12 @@ from .base import ProviderError
 from .auth import normalize_api_key, provider_connection_error, provider_http_error
 from .config import ProviderSettings
 from .budget import ExperimentBudget, TEXT_MODELS, module_name
+from .catalog import GPT6_MODELS
 
 # Explicitly reviewed model families, not a claim that arbitrary GPT IDs share capabilities.
 STRUCTURED_VISION_MODELS = frozenset({"gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini",
                                     "gpt-4.1-2025-04-14", "gpt-4.1-mini-2025-04-14", "gpt-4.1-nano-2025-04-14",
-                                    "gpt-4o-2024-08-06", "gpt-4o-mini-2024-07-18"})
+                                    "gpt-4o-2024-08-06", "gpt-4o-mini-2024-07-18"}) | GPT6_MODELS
 TIMESTAMP_MODELS = frozenset({"whisper-1"})
 _REQUEST_SLOTS = threading.BoundedSemaphore(2)
 
@@ -98,23 +99,64 @@ class OpenAITransport:
         except (OSError, ValueError):
             record["diagnostics_error"] = "usage_write_failed"
 
-    def _post(self, client, *args, **kwargs):
-        if not _REQUEST_SLOTS.acquire(timeout=self.settings.timeout_seconds):
+    def _remaining_timeout(self, deadline):
+        if deadline is None:
+            return self.settings.timeout_seconds
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ProviderError("structure_time_limit", "The run reached its time limit. Completed analysis is retained.")
+        return min(self.settings.timeout_seconds, remaining)
+
+    def _post(self, client, *args, deadline=None, before_send=None, **kwargs):
+        if not _REQUEST_SLOTS.acquire(timeout=self._remaining_timeout(deadline)):
+            self._remaining_timeout(deadline)
             raise ProviderError("provider_busy", "Provider request capacity is busy; retry later.", True)
         try:
+            # Waiting for another request and token preflight both consume the
+            # same absolute run budget; neither restarts the generation clock.
+            kwargs["timeout"] = self._remaining_timeout(deadline)
+            if before_send:
+                before_send()
             return client.post(*args, **kwargs)
         finally:
             _REQUEST_SLOTS.release()
 
+    def _input_token_bound(self, client, api_key, payload, *, deadline=None):
+        """Count supplied text/images without generating; schemas get a byte bound.
+
+        The count endpoint does not create a model response. Do not assume a
+        GPT-6 image multiplier from another model's sizing table. Count failure
+        stops before generation rather than guessing and risking the shared cap.
+        """
+        response = self._post(client, "https://api.openai.com/v1/responses/input_tokens",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"model": payload["model"], "input": payload["input"]},
+            deadline=deadline, follow_redirects=False)
+        if response.status_code >= 300:
+            raise provider_http_error(response)
+        try:
+            body = response.json()
+            count = body.get("input_tokens") if isinstance(body, dict) else None
+            if type(count) is not int or count < 0 or body.get("object") != "response.input_tokens":
+                raise ValueError("invalid count")
+        except ValueError:
+            raise ProviderError("provider_token_count_unavailable", "OpenAI did not return a usable input token count. No generation was sent; check API access and retry.") from None
+        # A byte per token upper bound includes the full schema and names, plus
+        # ample request-format overhead. This is deliberately not chars/4.
+        schema_bytes = len(json.dumps(payload.get("text", {}), ensure_ascii=False).encode("utf-8"))
+        return count + schema_bytes + 1024
+
     def _request(self, endpoint: str, model: str, payload: dict, *, metadata: dict | None = None,
                  audio_path: Path | None = None) -> dict:
         api_key = normalize_api_key(self.settings.api_key)
+        deadline = (metadata or {}).get("_deadline")
+        public_metadata = {key: value for key, value in (metadata or {}).items() if not key.startswith("_")}
         record = {"provider": "openai", "requested_model": model, "resolved_model": None,
                   "started_at": datetime.now(timezone.utc).isoformat(), "ended_at": None,
                   "elapsed_ms": None, "attempts": 0, "cache_status": "miss", "failure_code": None,
                   "usage": None, "usage_explanation": "Provider usage unavailable; cost is unknown, not zero.",
                   "cost_usd": None, "provider_billed_cost_usd": None,
-                  "module": module_name(metadata), "attempt_records": [], **(metadata or {})}
+                  "module": module_name(metadata), "attempt_records": [], **public_metadata}
         record["prepared_image_count"] = sum(item.get("type") == "input_image"
             for entry in payload.get("input", []) if isinstance(entry, dict)
             for item in entry.get("content", []) if isinstance(item, dict))
@@ -123,6 +165,7 @@ class OpenAITransport:
         start = time.monotonic()
         owned = self.client is None
         client = self.client or httpx.Client(timeout=self.settings.timeout_seconds, follow_redirects=False)
+        counted_bound = None
         try:
             for attempt in range(self.settings.max_retries + 1):
                 attempt_started = time.monotonic()
@@ -131,30 +174,44 @@ class OpenAITransport:
                 attempt_error = None
                 error = None
                 budget = None
+                request_sent = False
                 budget_payload = payload if audio_path is None else {
                     "capability": "timestamped_transcription", "model": model,
                     "audio_bytes": audio_path.stat().st_size,
                     "audio_seconds": (metadata or {}).get("audio_seconds"),
                 }
                 try:
-                    if self.before_attempt:
-                        self.before_attempt(model, budget_payload)
                     try:
+                        self._remaining_timeout(deadline)
                         budget = self._experiment_budget()
                         if budget is not None:
+                            if audio_path is None and model in GPT6_MODELS and not payload.get("tools"):
+                                if counted_bound is None:
+                                    counted_bound = self._input_token_bound(client, api_key, payload, deadline=deadline)
+                                    record["input_token_bound"] = counted_bound
+                                budget_payload = {**payload, "_input_tokens_bound": counted_bound}
+                            if self.before_attempt:
+                                self.before_attempt(model, budget_payload)
+                            self._remaining_timeout(deadline)
                             reservation_id = budget.reserve(model, budget_payload, metadata)
+                        elif self.before_attempt:
+                            self.before_attempt(model, budget_payload)
                     except (OSError, sqlite3.Error) as exc:
                         raise ProviderError("experiment_budget_unavailable", "The shared experiment ledger is unavailable; no paid request was sent.") from exc
-                    record["attempts"] += 1
+                    def mark_sent():
+                        nonlocal request_sent
+                        request_sent = True
+                        record["attempts"] += 1
                     headers = {"Authorization": f"Bearer {api_key}"}
                     if audio_path is None:
                         response = self._post(client, "https://api.openai.com/v1/" + endpoint,
-                                               headers=headers, json=payload, timeout=self.settings.timeout_seconds, follow_redirects=False)
+                                               headers=headers, json=payload, deadline=deadline,
+                                               before_send=mark_sent, follow_redirects=False)
                     else:
                         with audio_path.open("rb") as audio:
                             response = self._post(client, "https://api.openai.com/v1/" + endpoint, headers=headers,
                                 data=payload, files={"file": ("audio.wav", audio, "audio/wav")},
-                                timeout=self.settings.timeout_seconds, follow_redirects=False)
+                                deadline=deadline, before_send=mark_sent, follow_redirects=False)
                     if response.status_code >= 300:
                         raise provider_http_error(response)
                     try:
@@ -181,7 +238,8 @@ class OpenAITransport:
                         try:
                             settled = budget.finish(reservation_id, model, budget_payload, attempt_response,
                                 elapsed_ms=round((time.monotonic() - attempt_started) * 1000),
-                                failure_code=attempt_error.code if attempt_error else None)
+                                failure_code=attempt_error.code if attempt_error else None,
+                                request_sent=request_sent)
                             record["attempt_records"].append(settled)
                             record["estimated_cost_usd"] = settled["estimated_cost_usd"]
                             record["estimate_basis"] = settled["estimate_basis"]
@@ -192,7 +250,7 @@ class OpenAITransport:
                 if not error.retryable or attempt >= self.settings.max_retries:
                     record["failure_code"] = error.code
                     raise error
-                self.sleep(min(2 ** attempt, 4))
+                self.sleep(min(2 ** attempt, 4, self._remaining_timeout(deadline)))
         finally:
             record["ended_at"] = datetime.now(timezone.utc).isoformat()
             record["elapsed_ms"] = round((time.monotonic() - start) * 1000)
@@ -221,6 +279,8 @@ class OpenAITransport:
                    "max_output_tokens": self.settings.max_output_tokens, "store": False, "service_tier": "default",
                    "text": {"format": {"type": "json_schema", "name": schema_name,
                                         "strict": True, "schema": strict_schema(schema)}}}
+        if model in GPT6_MODELS:
+            payload["reasoning"] = {"effort": "low"}
         data = self._request("responses", model, payload, metadata=metadata)
         try:
             if data.get("status") != "completed":
@@ -264,6 +324,8 @@ class OpenAITransport:
                    "tools": [{"type": "web_search", "search_context_size": "low"}],
                    "max_tool_calls": max_tool_calls, "tool_choice": "required",
                    "include": ["web_search_call.action.sources"]}
+        if model in GPT6_MODELS:
+            payload["reasoning"] = {"effort": "low"}
         data = self._request("responses", model, payload, metadata=metadata or {"capability": "research"})
         if data.get("status") != "completed":
             raise ProviderError("provider_incomplete", "Background research ended before a complete response was available.")

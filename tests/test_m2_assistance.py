@@ -241,7 +241,7 @@ def test_configuration_uses_independent_assistance_model_and_provider(monkeypatc
     monkeypatch.setenv("VIDEO_M2_PROVIDER", "disabled")
     monkeypatch.setenv("OPENAI_M2_MODEL", "gpt-4.1-nano")
     settings = ProviderSettings.from_env()
-    assert settings.m2_provider == "disabled" and settings.m2_model == "gpt-4.1-nano"
+    assert settings.m2_provider == "disabled" and settings.m2_model == "gpt-6.1-sol"
     assert settings.creative_provider == "openai"
 
 

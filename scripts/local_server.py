@@ -33,6 +33,7 @@ from scripts.local_storage import (  # noqa: E402
 from scripts.local_connection import available_keychain, install_connection_api, keychain_disabled  # noqa: E402
 from scripts.mac_keychain import KeychainError  # noqa: E402
 from scripts.mac_app_bundle import package_fingerprint  # noqa: E402
+from scripts.app_preferences import read_preferences  # noqa: E402
 
 
 def read_api_key() -> str:
@@ -58,15 +59,18 @@ def local_settings(data_dir: Path, api_key: str, *, allow_empty=False) -> Provid
         timeout_seconds=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "90")),
         # A failed first experiment must not silently start another paid attempt.
         max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "0")),
-        analysis_language=os.getenv("ANALYSIS_OUTPUT_LANGUAGE", "Chinese"),
+        analysis_language=read_preferences(data_dir / "app-preferences.json").language,
+        # Old launcher environments may still contain whisper-1. The current
+        # owner policy permits GPT-6+ only; no audio exception is approved yet.
+        transcription_model="disabled",
     )
     if not settings.api_key and not allow_empty:
         raise ValueError("Live mode requires a backend API key.")
     text_models = (settings.vision_model, settings.creative_model, settings.m2_model)
     if any(model not in STRUCTURED_VISION_MODELS for model in text_models):
         raise ValueError("The configured text or vision model is not supported by this adapter. See LOCAL_API.md.")
-    if settings.transcription_model not in TIMESTAMP_MODELS:
-        raise ValueError("The timestamped transcription adapter requires whisper-1. See LOCAL_API.md.")
+    if settings.transcription_model != "disabled" and settings.transcription_model not in TIMESTAMP_MODELS:
+        raise ValueError("The speech model must be disabled or use the separately authorized timestamped transcription adapter. See LOCAL_API.md.")
     return settings
 
 
@@ -94,7 +98,8 @@ def local_app(data_dir: Path, settings: ProviderSettings, reference: Path | None
     app = create_app(service=service)
     install_connection_api(app, keychain=keychain, key_source=key_source, remembered=remembered,
                            keychain_error=keychain_error, control_token=control_token, shutdown=shutdown,
-                           preference_path=data_dir / "credential-preferences.json")
+                           preference_path=data_dir / "credential-preferences.json",
+                           app_preference_path=data_dir / "app-preferences.json")
 
     @app.middleware("http")
     async def local_boundary(request: Request, call_next):

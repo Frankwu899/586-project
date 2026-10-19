@@ -4,7 +4,9 @@ For the Finder app with saved Keychain credentials and repeat-open behavior, use
 [MAC_APP.md](MAC_APP.md). This browser launcher serves the built workspace and backend on your own computer.
 The native Mac application has a separate build path in [desktop/README.md](desktop/README.md).
 A source ZIP is not a DMG. All installation and launcher messages are English;
-source evidence and chosen AI output may remain Chinese.
+the app defaults to English and can switch to Chinese. New Research explanations
+follow the app language. Verbatim evidence keeps its source language; Ideas has
+an independent generation language.
 
 ## Start on macOS
 
@@ -101,24 +103,32 @@ Real analysis, Structure research and AI generation can incur charges when
 requested. A fictional sample remains deterministic. Credentials being configured
 does not establish billing availability or model access.
 
-The current compatibility baseline is `gpt-4.1-mini` for visual/text capabilities
-and `whisper-1` for segment timestamps. The launcher defaults to zero automatic
-retries. Provider configuration is backend-only. A shared persistent experiment
+The current baseline is `gpt-6.1-sol` for visual analysis, Structure synthesis,
+Ideas, Production and input assistance, with `gpt-6-luna` for bounded background
+retrieval. GPT-6 models do not accept audio input. New speech transcription is
+disabled under the owner's GPT-6-only policy pending approval for a dedicated
+audio-model exception; existing saved speech is retained. No older model is
+silently selected. The launcher defaults to zero automatic retries. Provider
+configuration is backend-only. A shared persistent experiment
 ledger reserves estimated request costs before sending requests and enforces the
 owner-authorized maximum of USD 3. Keep the same ledger for the entire experiment;
 do not create new libraries to reset that allowance. The provider's billing page
 remains the source for actual billed totals. See the current evaluation report for
 which paid calls actually ran; a local build or sample test is not a live result.
 
-A private bundle may include an owner-supplied `samples/guandan-reference.mp4`.
-Startup imports it once by content hash as **Guandan reference · Real video
-experiment**; it does not analyze, apply or approve it. Deleted media stays deleted.
-The clip is not a redistributable public fixture.
+Delivery bundles contain no owner-supplied videos or preloaded case projects.
+Import the video you choose after opening the app.
+
+API connection shows the local budget, estimated usage and unresolved reservations.
+**Release rejected requests** only releases historical, explicitly rejected
+authentication/permission attempts. It retains the audit trail, unknown charges,
+and the USD 3 ceiling. The OpenAI account balance is separate. A blocked accounting
+state stays paused for review; this action does not reset or unblock the ledger.
 
 ## Troubleshooting
 
 - **Key or quota failure:** verify the key's project, model permissions and balance.
-  Restart the browser launcher to supply another key. Do not share the key in chat.
+  Use API connection to replace the key. Do not share the key in chat.
 - **Connection failure:** the local machine must reach the configured provider.
   Managed cloud environments also need explicit network access to that domain.
 - **Missing media:** use the original-file repair control to choose the identical

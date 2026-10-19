@@ -1,6 +1,6 @@
 """Shared pre-request experiment budget. No provider invoice is inferred.
 
-Prices and model limits were checked against official OpenAI pages on 2026-10-18.
+Prices and model limits were checked against official OpenAI pages on 2026-10-19.
 Unknown attempts keep their reservation; known usage settles at undiscounted rates.
 SQLite BEGIN IMMEDIATE serializes reservations across threads and processes.
 """
@@ -15,14 +15,18 @@ import sqlite3
 from uuid import uuid4
 
 from .base import ProviderError
+from .catalog import GPT6_MODELS, GPT6_PRICES
 
-PRICING_VERIFIED_ON = date(2026, 10, 18)
+PRICING_VERIFIED_ON = date(2026, 10, 19)
 PRICING_SOURCES = [
     "https://developers.openai.com/api/docs/models/gpt-4.1-mini",
     "https://developers.openai.com/api/docs/models/whisper-1",
     "https://developers.openai.com/api/docs/pricing",
+    "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+    "https://developers.openai.com/api/docs/models/gpt-6-luna",
+    "https://developers.openai.com/api/reference/resources/responses/subresources/input_tokens/methods/count",
 ]
-TEXT_MODELS = frozenset({"gpt-4.1-mini", "gpt-4.1-mini-2025-04-14"})
+TEXT_MODELS = frozenset({"gpt-4.1-mini", "gpt-4.1-mini-2025-04-14"}) | GPT6_MODELS
 CONTEXT_TOKENS = 1_047_576
 INPUT_RATE = Decimal("0.40") / 1_000_000
 OUTPUT_RATE = Decimal("1.60") / 1_000_000
@@ -31,6 +35,7 @@ SEARCH_CALL_RATE = Decimal("0.01")
 SEARCH_CONTENT_TOKENS = 8000
 MAXIMUM_USD = Decimal("3")
 UNITS_PER_USD = Decimal(1_000_000_000)  # exact integer accounting, never binary floats
+REJECTED_BEFORE_GENERATION = frozenset({"provider_authentication", "provider_permission"})
 
 
 def _number(value):
@@ -83,6 +88,18 @@ def estimate_upper_bound(model, payload):
             raise ProviderError("experiment_tool_limit", "Research needs a bounded maximum of one to three search calls.")
     if payload.get("service_tier", "default") != "default":
         raise ProviderError("experiment_cost_bound_missing", "Only standard service pricing is reviewed.")
+    if model in GPT6_MODELS:
+        price = GPT6_PRICES[model]
+        if calls:
+            # Hosted search has no documented hard retrieved-token limit.
+            # Reserve each possible full context, including cache-write and long
+            # context premiums; the smaller retrieval model keeps this affordable.
+            tokens = price.context_tokens * (calls + 1)
+            return (tokens * price.cache_write_per_million * 2 + output * price.output_per_million * Decimal("1.5")) / 1_000_000 + calls * SEARCH_CALL_RATE
+        tokens = payload.get("_input_tokens_bound")
+        if type(tokens) is not int or not 0 < tokens <= price.long_context_threshold:
+            raise ProviderError("experiment_input_limit", "The request needs a verified input token count within the reviewed short-context limit; no generation was sent.")
+        return (tokens * price.cache_write_per_million + output * price.output_per_million) / 1_000_000
     # Reserve one whole context per possible tool/model turn. This covers images,
     # all prompt/schema bytes, and hidden retrieved context without a tokenizer guess.
     # Additional fixed search content blocks deliberately over-reserve potential overlap.
@@ -109,6 +126,22 @@ def usage_estimate(model, payload, response):
     calls = payload.get("max_tool_calls", 0) if payload.get("tools") else 0
     if sum(item.get("type") == "web_search_call" for item in response.get("output", []) if isinstance(item, dict)) > calls:
         return None, "provider_tool_limit"
+    if model in GPT6_MODELS:
+        if resolved != model:
+            return None, "unknown_model_or_usage"
+        price = GPT6_PRICES[model]
+        bound = price.context_tokens * (calls + 1) if calls else payload.get("_input_tokens_bound", 0)
+        if input_tokens > bound or output_tokens > payload["max_output_tokens"]:
+            return None, "usage_exceeds_reviewed_bound"
+        # Count cache writes at the documented premium. Missing cache details
+        # conservatively use that premium for every input token, never a discount.
+        details = usage.get("input_tokens_details")
+        writes = details.get("cache_write_tokens") if isinstance(details, dict) else None
+        writes = writes if type(writes) is int and 0 <= writes <= input_tokens else input_tokens
+        input_cost = (input_tokens - writes) * price.input_per_million + writes * price.cache_write_per_million
+        long_context = bool(calls) or input_tokens > price.long_context_threshold
+        cost = (input_cost * (2 if long_context else 1) + output_tokens * price.output_per_million * (Decimal("1.5") if long_context else 1)) / 1_000_000
+        return cost + calls * SEARCH_CALL_RATE, "provider_tokens_with_cache_write_and_maximum_search_bound"
     if input_tokens > CONTEXT_TOKENS * (calls + 1) or output_tokens > payload["max_output_tokens"]:
         return None, "usage_exceeds_reviewed_bound"
     # No prompt-cache discount and no assumption that a missing search event was free.
@@ -160,13 +193,17 @@ class ExperimentBudget:
             limit = db.execute("SELECT maximum, blocked FROM budget WHERE id=1").fetchone()
             held = db.execute("SELECT coalesce(sum(held),0) FROM attempts").fetchone()[0]
             if limit["blocked"] or held + amount > limit["maximum"]:
-                raise ProviderError("experiment_budget_exhausted", "The shared experiment budget cannot cover another attempt; completed work is retained.")
+                raise ProviderError("experiment_budget_exhausted", "The local API budget cannot cover this request. Open API settings to see estimated usage and unresolved reservations. Saved work is retained; this is not your OpenAI account balance.")
             db.execute("INSERT INTO attempts(id,module,model,reserved,held,status,created_at) VALUES(?,?,?,?,?,'reserved',?)",
                        (request_id, module_name(metadata), model, amount, amount, datetime.now(timezone.utc).isoformat()))
         return request_id
 
-    def finish(self, request_id, model, payload, response=None, *, elapsed_ms=0, failure_code=None):
+    def finish(self, request_id, model, payload, response=None, *, elapsed_ms=0, failure_code=None, request_sent=True):
         estimate, basis = usage_estimate(model, payload, response) if response is not None else (None, "unknown_attempt_usage_reservation_retained")
+        if response is None and failure_code in REJECTED_BEFORE_GENERATION:
+            estimate, basis = Decimal(0), "http_auth_rejection_before_generation"
+        if not request_sent and response is None:
+            estimate, basis = Decimal(0), "generation_request_not_sent"
         with self._transaction() as db:
             row = db.execute("SELECT * FROM attempts WHERE id=?", (request_id,)).fetchone()
             if row is None or row["status"] != "reserved":
@@ -185,6 +222,19 @@ class ExperimentBudget:
         return {"reservation_id": request_id, "reserved_upper_bound_usd": _usd(row["reserved"]),
                 "held_usd": _usd(held), "estimated_cost_usd": _usd(estimated) if estimated is not None else None,
                 "estimate_basis": basis, "provider_billed_cost_usd": None}
+
+    def reconcile_rejected_attempts(self):
+        """Release only old explicit HTTP 401/403 refusals, never unknown failures.
+
+        Keep the original reservation and failure code for audit. The caller can
+        offer this as a recovery action; this never resets or enlarges the cap.
+        """
+        with self._transaction() as db:
+            rows = db.execute("SELECT id, held FROM attempts WHERE status='unknown' AND failure_code IN (?, ?)",
+                              tuple(sorted(REJECTED_BEFORE_GENERATION))).fetchall()
+            for row in rows:
+                db.execute("UPDATE attempts SET held=0,estimated=0,status='estimated',basis='http_auth_rejection_before_generation' WHERE id=?", (row["id"],))
+        return {"reconciled_attempts": len(rows), "released_usd": _usd(sum(row["held"] for row in rows))}
 
     def summary(self):
         with self._transaction() as db:
@@ -207,6 +257,8 @@ class ExperimentBudget:
                 "reserved_upper_bound_usd": _usd(sum(row["reserved"] for row in rows)),
                 "known_estimated_cost_usd": _usd(sum(row["estimated"] or 0 for row in rows)),
                 "unknown_attempts": sum(row["estimated"] is None for row in rows), "attempts": len(rows),
+                "recoverable_rejected_attempts": sum(row["status"] == "unknown" and row["failure_code"] in REJECTED_BEFORE_GENERATION for row in rows),
+                "unresolved_reserved_usd": _usd(sum(row["held"] for row in rows if row["estimated"] is None)),
                 "blocked": bool(limit["blocked"]), "modules": modules, "provider_billed_cost_usd": None,
                 "pricing_verified_on": PRICING_VERIFIED_ON.isoformat(), "pricing_sources": PRICING_SOURCES,
                 "explanation": "One shared USD 3 application experiment cap. Held includes estimated undiscounted usage and unresolved reservations; cumulative reservations are not spend. Provider invoice and activity outside this ledger are unknown."}

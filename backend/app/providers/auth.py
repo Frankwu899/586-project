@@ -55,7 +55,7 @@ def provider_http_error(response: httpx.Response) -> ProviderError:
     if code == "model_not_found":
         return ProviderError("provider_model_access", "OpenAI could not find or allow access to the configured model. Check project model access and the selected model.")
     if status == 403:
-        return ProviderError("provider_permission", "OpenAI denied this request (HTTP 403). Check this project's key permissions and model access; video analysis needs Responses and Audio Transcriptions access.")
+        return ProviderError("provider_permission", "OpenAI denied this request (HTTP 403). Check this project's key permissions, Responses access and access to the selected models.")
     if 300 <= status < 400:
         return ProviderError("provider_unexpected_redirect", "The OpenAI connection returned an unexpected redirect. Check the network connection; the credential was not forwarded.")
     transient = status in (408, 409, 429) or status >= 500
@@ -110,7 +110,8 @@ def check_openai_connection(settings: ProviderSettings, *, client: httpx.Client 
         visible = {entry["id"] for entry in entries}
         configured = {settings.structure_model, settings.research_model}
         for capability in ("vision", "transcription", "creative", "m2"):
-            if getattr(settings, f"{capability}_provider") == "openai":
+            if (getattr(settings, f"{capability}_provider") == "openai"
+                    and getattr(settings, f"{capability}_model") != "disabled"):
                 configured.add(getattr(settings, f"{capability}_model"))
         missing = tuple(sorted(configured - visible))
         if missing:

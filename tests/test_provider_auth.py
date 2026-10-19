@@ -21,7 +21,7 @@ def test_connection_check_is_one_bounded_read_without_media_budget_or_persisted_
         assert request.headers["Authorization"] == "Bearer sk-offline-fixture"
         assert not request.content
         assert request.extensions["timeout"]["read"] == 10
-        return httpx.Response(200, json={"data": [{"id": "gpt-4.1-mini"}, {"id": "whisper-1"}]})
+        return httpx.Response(200, json={"data": [{"id": "gpt-6.1-sol"}, {"id": "gpt-6-luna"}, {"id": "whisper-1"}]})
 
     settings = ProviderSettings(api_key=" \tsk-offline-fixture\r\n", budget_path=tmp_path / "ledger.sqlite3", cache_dir=tmp_path / "cache")
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
@@ -71,7 +71,7 @@ def test_check_distinguishes_invalid_key_permission_quota_and_service_failure_wi
 
 
 def test_missing_model_is_warning_not_assertion_of_inference_permission():
-    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"data": [{"id": "gpt-4.1-mini"}]}))) as client:
+    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"data": [{"id": "gpt-6.1-sol"}, {"id": "gpt-6-luna"}]}))) as client:
         result = check_openai_connection(ProviderSettings(api_key="sk-fixture"), client=client)
     assert result.status == "unverified"
     assert result.code == "provider_models_unverified"

@@ -50,6 +50,8 @@ def test_v03_upgrade_preserves_all_content_review_history_and_citations(legacy):
         assert video.pop("deleted_at") is None
         assert video.pop("playback") is None
     for analysis in converted["analyses"]:
+        assert analysis.pop("extraction_failures") == {}
+        assert analysis.pop("output_language") is None
         for event in analysis["events"]:
             assert event.pop("visual_details") is None
     assert converted == untouched

@@ -312,6 +312,10 @@ def test_corrupt_cache_is_revalidated_and_recomputed(recognition_input, tmp_path
     adapter.analyze(recognition_input[0])
     cache = next(path for path in (tmp_path / "cache").glob("*.json") if not path.name.startswith("speech-"))
     cache.write_text('{"vision": {"frames": []}, "speech": []}')
+    # Both aggregate and per-batch caches are untrusted local inputs. A valid
+    # independent batch would correctly avoid a duplicate paid extraction.
+    for batch in (tmp_path / "cache" / "visual-batches").glob("*.json"):
+        batch.write_text('{"frames": []}')
     result = adapter.analyze(recognition_input[0])
     assert result.status == "succeeded" and vision.calls == 2 and speech.calls == 1
 

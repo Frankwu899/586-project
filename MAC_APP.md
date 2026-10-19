@@ -54,7 +54,7 @@ permissions, account balance, or model output quality.
   secret key at https://platform.openai.com/api-keys and save the complete string
   in API connection. Never use the masked key displayed in the list.
 - **HTTP 403:** OpenAI denied access. Check project and key permissions for
-  Responses and Audio Transcriptions, and the configured model access. A Models
+  Responses and the configured models. A Models
   read restriction alone is shown as an unverified check, not an invalid key.
 - **Billing/quota:** inspect billing for the project/organization owning this
   key. Buying credit does not itself establish key permissions.
@@ -67,3 +67,38 @@ Errors appear inside API connection and beside the failed operation. If one
 persists, share only the displayed error/code, never the key. Saving a new key
 updates Timeline, Structure, Ideas and input assistance together without a
 restart. Finish running operations before changing or forgetting the key.
+
+## Workspace controls and language
+
+Use **New project** to create a workspace. Each project's **•••** menu offers
+Open project, Rename project and Move to Trash. **Close project** is below the
+project list. Deletion moves a project to **Trash**;
+Restore returns its drafts, videos and history. It does not erase source files.
+Running work must finish before deletion. Closing a project saves its draft.
+
+The app starts in English. Change **App language** to Chinese to update the
+interface and newly generated Research explanations. Saved analyses keep their
+original language; explicitly generate a new version to change it. Original
+speech and visible text remain verbatim. Ideas' **Generation language** remains
+independent. Panels adapt to window size; narrower windows use the Projects
+toggle and internal scrolling instead of stretching the entire page.
+
+## Models, missing analysis and budget
+
+Visual analysis, Structure synthesis, Ideas, Production and input assistance use
+GPT-6.1 Sol. Bounded background research uses GPT-6 Luna. These models do not accept
+audio. Under the requested GPT-6-only policy, new speech transcription is disabled
+pending approval for a dedicated speech-model exception. Existing saved speech
+is retained; changing model names cannot add audio support.
+
+Visuals and visible text are extracted in small batches. If one fails, completed
+batches remain usable; **Retry missing analysis** reuses validated cached results.
+It creates a new analysis revision rather than overwriting reviewed history.
+Structure displays a limitation when its source analysis is incomplete.
+
+**API connection** also shows the shared local USD 3 test budget. It is separate
+from OpenAI credit. **Release rejected requests**, when available, removes only
+reservations for explicit authentication/permission refusals. Unknown charges
+stay reserved, and the ceiling is not increased. If the ledger shows an accounting
+pause, this action does not clear that pause. No paid call runs merely by opening
+the app, switching languages or reading a saved project.

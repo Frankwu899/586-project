@@ -18,9 +18,15 @@ from .base import ProviderCapabilities, ProviderError
 from .config import ProviderSettings
 from .transport import OpenAITransport, STRUCTURED_VISION_MODELS, TIMESTAMP_MODELS
 
-VISION_PROMPT_VERSION = "visual-ocr-content-region-v2"
+VISION_PROMPT_VERSION = "visual-ocr-bounded-batches-v4-language"
 SPEECH_PROMPT_VERSION = "source-speech-v1"
 NORMALIZATION_VERSION = "frames-v0.4-1"
+VISION_BATCH_SIZE = 3
+
+
+def authored_text(language, english, chinese):
+    """Localize generated explanation, never quoted source evidence or stable IDs."""
+    return chinese if language == "Chinese" else english
 
 
 class FrameObservation(ContractModel):
@@ -70,16 +76,24 @@ class OpenAIVisionProvider:
             "brands, prices and units. Never translate or complete blurred words. Empty text list means "
             "no readable text was found in that frame; explain unreadable text in uncertainty. "
             "Use visual_details for significant subjects, visible actions and product presentation. "
+            "Keep each frame concise: at most three significant subjects, two supported actions and "
+            "two product presentations. Do not inventory incidental background objects. "
             "Use stable subject IDs within each frame, valid relationship references and product roles. "
             "Unknown/other labels need descriptive evidence; null is not the string 'null'. "
             "A group marked observations requires items, none_found requires an examined empty group, "
             "not_analyzed means omitted, failed requires a safe error. A null visual_details means no "
             "structured extraction was performed, not absence. Avoid claiming action from static pose alone. "
             "Supply narrative roles only as tentative interpretation, separate from observation. "
-            f"Write descriptions/interpretation in {self.settings.analysis_language}; preserve source OCR words unchanged. "
+            f"Write every generated description, interpretation, uncertainty, and explanatory field within "
+            f"visual_details (including subject descriptions, actions, and product presentations) in "
+            f"{self.settings.analysis_language}. Keep schema keys, enum labels, IDs and proper names unchanged. "
+            "Preserve source OCR words verbatim; the video's source language does not set explanatory language. "
             "The image sequence corresponds to these source indices: " + json.dumps(labels)
         )
-        return self.transport.json_response(self.model, prompt, VisionOutput.model_json_schema(), "video_visual_evidence",
+        schema = VisionOutput.model_json_schema()
+        schema["$defs"]["FrameObservation"]["properties"]["frame_index"]["enum"] = [frame.frame_index for frame in frames]
+        schema["properties"]["frames"].update(minItems=len(frames), maxItems=len(frames))
+        return self.transport.json_response(self.model, prompt, schema, "video_visual_evidence",
                                             images=[frame.path for frame in frames], metadata=metadata)
 
 
@@ -124,6 +138,7 @@ class ProviderRecognitionAdapter:
         return AnalysisResult(analysis_id=analysis_id, task_id=request.task_id, video_id=video.video_id,
             duration_seconds=video.duration_seconds, frame_count=video.frame_timing.frame_count if video.frame_timing else None,
             status="failed", origin={"kind": "provider", "description": "Configured real recognition failed; no sample substitution."},
+            output_language=self.settings.analysis_language if self.settings.analysis_language in ("English", "Chinese") else None,
             error={"code": error.code, "message": error.message, "retryable": error.retryable})
 
     def _persist_records(self, records):
@@ -139,6 +154,68 @@ class ProviderRecognitionAdapter:
         except OSError:
             # Diagnostics failure is explicit; recognition remains usable.
             self.records.append({"failure_code": "diagnostics_write_failed", "usage": None})
+
+    def _visual_batches(self, prepared, key_payload, metadata, records):
+        """Bound outputs and preserve independently validated samples across attempts.
+
+        There is no automatic repeat of a failed batch. A later user-requested
+        analysis reuses successful batches and source speech from disk. Category
+        failures describe missing samples; successful samples remain inspectable.
+        """
+        frames, errors, attempts, hits = [], [], 0, 0
+        blocked = False
+        batches = [prepared.frames[start:start + VISION_BATCH_SIZE]
+                   for start in range(0, len(prepared.frames), VISION_BATCH_SIZE)]
+        for index, batch in enumerate(batches):
+            identity = {key: key_payload[key] for key in ("source_sha256", "preparation", "content_region",
+                        "normalization", "schema", "vision_prompt", "vision", "timing")}
+            identity.update(language=self.settings.analysis_language, output_limit=self.settings.max_output_tokens,
+                            indices=[frame.frame_index for frame in batch])
+            digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+            path = self.settings.cache_dir / "visual-batches" / f"{digest}.json" if self.settings.cache_dir else None
+            cached = None
+            if path and path.is_file():
+                try:
+                    cached = self._validate_visual(json.loads(path.read_text(encoding="utf-8")), batch)
+                    if any(frame.visual_details and frame.visual_details.has_failures() for frame in cached.frames):
+                        cached = None
+                except (OSError, ValueError, TypeError, KeyError):
+                    cached = None
+            if cached:
+                frames.extend(cached.frames)
+                hits += 1
+                continue
+            if blocked:
+                continue
+            transport = getattr(self.vision_provider, "transport", None)
+            before_count = len(transport.records) if transport else 0
+            try:
+                attempts += 1
+                raw = self.vision_provider.extract(batch, metadata={**metadata,
+                    "visual_batch": index + 1, "visual_batch_count": len(batches),
+                    "sampled_frames": [frame.frame_index for frame in batch]})
+                parsed = self._validate_visual(raw, batch)
+                frames.extend(parsed.frames)
+                if path and not any(frame.visual_details and frame.visual_details.has_failures() for frame in parsed.frames):
+                    try:
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        temporary = path.with_suffix(f".{uuid4().hex}.tmp")
+                        temporary.write_text(parsed.model_dump_json(), encoding="utf-8")
+                        temporary.replace(path)
+                    except OSError:
+                        records.append({**metadata, "visual_batch": index + 1,
+                                        "failure_code": "visual_cache_write_failed", "usage": None})
+            except (ProviderError, ValidationError, ValueError, TypeError, KeyError) as exc:
+                failure = exc if isinstance(exc, ProviderError) else ProviderError(
+                    "provider_invalid_output", "A visual batch failed evidence validation. Completed samples are retained.")
+                errors.append(failure)
+                if transport and len(transport.records) > before_count:
+                    transport.records[-1]["failure_code"] = failure.code
+                # Authentication, configuration and budget failures affect every
+                # remaining batch. Do not send repeated requests for them.
+                if failure.code not in {"provider_incomplete", "provider_invalid_output", "provider_invalid_json"}:
+                    blocked = True
+        return VisionOutput(frames=frames) if frames else None, errors, attempts, hits
 
     def _analyze(self, request):
         video = request.video
@@ -199,11 +276,17 @@ class ProviderRecognitionAdapter:
                         cached = None
                 # Audio is untouched by a visual crop. Reuse independently keyed
                 # source-aligned transcription rather than billing for it again.
+                # Disabling new audio requests does not invalidate an already
+                # paid transcript from the same source/timing/chunk identity.
+                # Only this known historical provider cache is reusable; task
+                # history and user-edited transcript text are never copied.
+                speech_cache_provider = (["openai", "whisper-1"] if self.transcription_provider.model == "disabled"
+                                         else [self.transcription_provider.provider, self.transcription_provider.model])
                 speech_key = hashlib.sha256(json.dumps({
                     "source_sha256": prepared.source_sha256, "normalization": NORMALIZATION_VERSION,
                     "preparation": prepared.preparation_version,
                     "speech_prompt": SPEECH_PROMPT_VERSION,
-                    "provider": [self.transcription_provider.provider, self.transcription_provider.model],
+                    "provider": speech_cache_provider,
                     "timing": video.frame_timing.model_dump(), "has_audio": video.has_audio,
                     "chunks": [(chunk.start_seconds, chunk.end_seconds) for chunk in prepared.audio_chunks],
                 }, sort_keys=True).encode()).hexdigest()
@@ -217,9 +300,10 @@ class ProviderRecognitionAdapter:
                 base = {"job_id": request.job_id, "analysis_id": analysis_id, "analysis_revision": 1,
                         "source_sha256": prepared.source_sha256, "normalization_version": NORMALIZATION_VERSION,
                         "cache_key": cache_key, "content_region_revision": region.revision, "content_region_fingerprint": region.fingerprint}
-                errors = []
+                errors = {}
                 visual = None
                 speech = None
+                reused_speech_origin = None
                 for capability, provider, prompt_version in (("vision", self.vision_provider, VISION_PROMPT_VERSION),
                         ("timestamped_transcription", self.transcription_provider, SPEECH_PROMPT_VERSION)):
                     begun = datetime.now(timezone.utc)
@@ -240,13 +324,24 @@ class ProviderRecognitionAdapter:
                                 raise ProviderError("missing_prepared_frames", "No readable source frames were prepared.")
                             if cached:
                                 raw = cached["vision"]
+                                visual = self._validate_visual(raw, prepared.frames)
                             else:
-                                local_attempts += 1
-                                raw = provider.extract(prepared.frames, metadata=metadata)
-                            visual = self._validate_visual(raw, prepared.frames)
+                                visual, batch_errors, local_attempts, hits = self._visual_batches(
+                                    prepared, key_payload, metadata, records)
+                                if batch_errors:
+                                    failure = batch_errors[0]
+                                    errors.update(visual_action=failure, on_screen_text=failure)
+                                if hits:
+                                    cache_status = "hit" if not local_attempts else "partial_hit"
                         elif video.has_audio is False:
                             speech = []
                             cache_status = "skipped_no_audio"
+                        elif provider.model == "disabled":
+                            speech = cached_speech if cached_speech is not None else []
+                            cache_status = "hit_transcription_disabled" if cached_speech is not None else "disabled"
+                            if cached_speech is not None:
+                                reused_speech_origin = speech_cache_provider
+                                metadata.update(cached_provider=speech_cache_provider[0], cached_model=speech_cache_provider[1])
                         else:
                             if self.settings.transcription_provider != provider.provider and isinstance(provider, OpenAITranscriptionProvider):
                                 raise ProviderError("unsupported_provider", "Configure a supported transcription provider or inject an alternate adapter.")
@@ -269,12 +364,13 @@ class ProviderRecognitionAdapter:
                             cache_status = "hit"
                     except (ProviderError, ValidationError, ValueError, TypeError, KeyError) as exc:
                         failure = exc if isinstance(exc, ProviderError) else ProviderError("provider_invalid_output", "Provider output failed evidence validation; review settings and retry.")
-                        errors.append(failure)
                         if capability == "vision":
+                            errors.update(visual_action=failure, on_screen_text=failure)
                             visual = None
                         else:
-                            # The current Coverage contract cannot mix failed and observed
-                            # chunks in one category. Keep complete categories only.
+                            errors["speech"] = failure
+                            # The source speech cache contains a complete transcript;
+                            # do not cache an incomplete sequence after a chunk fails.
                             speech = None
                     provider_records = transport.records[before_count:] if transport else []
                     records.extend(provider_records)
@@ -285,9 +381,9 @@ class ProviderRecognitionAdapter:
                             "cache_status": cache_status, "attempts": 0 if transport else local_attempts,
                             "failure_code": failure.code if failure else None, "usage": None, "cost_usd": None,
                             "usage_explanation": "No provider-reported usage for cached/skipped/alternate-provider result."})
-                    elif failure:
+                    elif failure and capability != "vision":
                         records[-1]["failure_code"] = failure.code
-                if speech is not None and speech_cache_path and cached_speech is None:
+                if speech is not None and speech_cache_path and cached_speech is None and self.transcription_provider.model != "disabled":
                     try:
                         speech_cache_path.parent.mkdir(parents=True, exist_ok=True)
                         temporary = speech_cache_path.with_suffix(f".{uuid4().hex}.tmp")
@@ -296,9 +392,10 @@ class ProviderRecognitionAdapter:
                     except OSError:
                         records.append({**base, "failure_code": "speech_cache_write_failed", "usage": None})
                 if visual is None and speech is None:
-                    result = self._failure(request, analysis_id, errors[0])
+                    result = self._failure(request, analysis_id, next(iter(errors.values())))
                 else:
-                    result = self._build_result(request, analysis_id, visual, speech, errors)
+                    result = self._build_result(request, analysis_id, visual, speech, errors,
+                                                reused_speech_origin=reused_speech_origin)
                 if result.status == "succeeded" and cache_path and not cached:
                     try:
                         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -357,12 +454,25 @@ class ProviderRecognitionAdapter:
     @staticmethod
     def _validate_cached_speech(spans, duration):
         parsed = [SpeechSpan.model_validate(span) for span in spans]
-        if any(span.start >= span.end or span.end > duration for span in parsed):
+        if (any(span.start >= span.end or span.end > duration for span in parsed)
+                or any(right.start < left.start for left, right in zip(parsed, parsed[1:]))):
             raise ValueError("invalid cached speech")
         return [span.model_dump() for span in parsed]
 
-    def _build_result(self, request, analysis_id, visual, speech, errors):
+    def _build_result(self, request, analysis_id, visual, speech, errors, *, reused_speech_origin=None):
         video, events, segments = request.video, [], []
+        language = self.settings.analysis_language
+        speech_provider, speech_model = reused_speech_origin or (
+            self.transcription_provider.provider, self.transcription_provider.model)
+        visual_note = authored_text(language,
+            "Observed at one sampled frame; action/shot boundaries between samples are unknown.",
+            "仅观察了一个采样帧；采样间的动作与镜头边界尚不确定。")
+        ocr_note = authored_text(language,
+            "Text visibility interval is limited to this sampled frame.",
+            "文字的可见范围仅限于此采样帧。")
+        segment_note = authored_text(language,
+            "Segment timing covers the observed sample only, not an inferred shot boundary.",
+            "片段时间仅表示已观察的采样帧，不代表推断的镜头边界。")
         nested_failure = False
         if visual:
             for index, frame in enumerate(visual.frames):
@@ -375,25 +485,28 @@ class ProviderRecognitionAdapter:
                     events.append({**interval, "event_id": identifier, "video_id": video.video_id, "lane": "visual",
                         "kind": "visual_action", "description": frame.description, "visual_details": frame.visual_details,
                         "source": self.vision_provider.provider, "method": "sampled_frame_vision",
-                        "uncertainty": "Observed at one sampled frame; action/shot boundaries between samples are unknown. " + (frame.uncertainty or "")})
+                        "uncertainty": " ".join(filter(None, [visual_note, frame.uncertainty]))})
                 for text_index, source_text in enumerate(frame.on_screen_text):
                     identifier = f"ocr_{index}_{text_index}"
                     ids.append(identifier)
                     events.append({**interval, "event_id": identifier, "video_id": video.video_id, "lane": "visual",
                         "kind": "on_screen_text", "text": source_text, "source": self.vision_provider.provider,
-                        "method": "sampled_frame_ocr", "uncertainty": "Text visibility interval is limited to this sampled frame. " + (frame.uncertainty or "")})
+                        "method": "sampled_frame_ocr", "uncertainty": " ".join(filter(None, [ocr_note, frame.uncertainty]))})
                 if ids:
                     segments.append({**interval, "segment_id": f"segment_{index}", "video_id": video.video_id,
                         "roles": frame.roles, "evidence_ids": ids,
-                        "interpretation": (frame.interpretation or "Tentative narrative role inferred from the sampled frame.") +
-                                          " Segment timing covers the observed sample only, not an inferred shot boundary."})
+                        "interpretation": (frame.interpretation or authored_text(language,
+                            "Tentative narrative role inferred from the sampled frame.", "根据采样帧推断的暂定叙事作用。")) + " " + segment_note})
         if speech is not None:
             for index, span in enumerate(speech):
                 first, stop = seconds_to_frame_range(span["start"], span["end"], video.frame_timing)
                 events.append({"start_frame": first, "end_frame": stop, "event_id": f"speech_{index}",
                     "video_id": video.video_id, "lane": "audio", "kind": "speech", "text": span["text"],
-                    "source": self.transcription_provider.provider, "method": "timestamped_audio_transcription",
-                    "uncertainty": "Provider segment timing quantized to measured source-frame boundaries; verify wording and timing."})
+                    "source": f"{speech_provider}/{speech_model}" if reused_speech_origin else speech_provider,
+                    "method": "cached_timestamped_audio_transcription" if reused_speech_origin else "timestamped_audio_transcription",
+                    "uncertainty": authored_text(language,
+                        "Provider segment timing quantized to measured source-frame boundaries; verify wording and timing.",
+                        "语音片段时间已对齐实测原视频帧边界；请核对原文与时间。")})
         events.sort(key=lambda item: (item["start_frame"], item["event_id"]))
         coverage = {kind: ("observations" if any(event["kind"] == kind for event in events) else "none_found")
                     for kind in ("visual_action", "on_screen_text", "speech")}
@@ -401,22 +514,48 @@ class ProviderRecognitionAdapter:
             coverage.update(visual_action="failed", on_screen_text="failed")
         if speech is None:
             coverage["speech"] = "failed"
-        description = (f"Real provider recognition: vision {self.vision_provider.provider}/{self.vision_provider.model}; "
-            f"speech {self.transcription_provider.provider}/{self.transcription_provider.model}. "
+        elif self.transcription_provider.model == "disabled" and video.has_audio is not False and reused_speech_origin is None:
+            coverage["speech"] = "not_analyzed"
+        for kind in errors:
+            if coverage[kind] != "observations":
+                coverage[kind] = "failed"
+        description = authored_text(language,
+            (f"Real provider recognition: vision {self.vision_provider.provider}/{self.vision_provider.model}; "
+            f"speech {speech_provider}/{speech_model}. "
             f"Sparse frame observations; narrative descriptions in {self.settings.analysis_language}. "
-            "Original OCR/ASR wording is preserved. Music/SFX were not analyzed.")
+            "Original OCR/ASR wording is preserved. Music/SFX were not analyzed."),
+            (f"真实模型识别：画面 {self.vision_provider.provider}/{self.vision_provider.model}；"
+             f"语音 {speech_provider}/{speech_model}。"
+             "画面为稀疏采样观察；分析说明使用中文。保留画面文字与语音原文；未分析音乐或音效。"))
         region = getattr(request, "content_region", None)
         if region:
-            description += f" Content-area revision {region.get('revision', 0)} applied to vision only; original timing, source bytes and audio retained."
+            description += authored_text(language,
+                f" Content-area revision {region.get('revision', 0)} applied to vision only; original timing, source bytes and audio retained.",
+                f" 内容区域版本 {region.get('revision', 0)} 仅用于画面识别；原始时间、文件与音频保持不变。")
         if video.has_audio is False:
-            description += " Intake established no audio stream; speech extraction was skipped and speech is none_found."
+            description += authored_text(language,
+                " Intake established no audio stream; speech extraction was skipped and speech is none_found.",
+                " 导入检测确认没有音轨；已跳过语音识别，语音状态为 none_found。")
+        elif reused_speech_origin:
+            description += authored_text(language,
+                " Reused validated source transcription from cache; no new audio API request was made.",
+                " 已复用校验通过的原视频语音缓存；未发出新的音频 API 请求。")
+        elif self.transcription_provider.model == "disabled":
+            description += authored_text(language,
+                " Speech transcription is off: current GPT-6 models do not accept audio.",
+                " 语音转写已关闭：当前 GPT-6 模型不支持音频输入。")
         if errors:
-            description += " Failed capabilities: " + ", ".join(error.code for error in errors) + "."
+            description += authored_text(language, " Failed extraction: ", " 未完成的识别：") + ", ".join(f"{kind}: {error.code}" for kind, error in errors.items()) + "."
         return AnalysisResult(analysis_id=analysis_id, task_id=request.task_id, video_id=video.video_id,
             duration_seconds=video.duration_seconds, frame_count=video.frame_timing.frame_count,
             status="partial" if errors or nested_failure else "succeeded", events=events, segments=segments,
             coverage=coverage, origin={"kind": "provider", "description": description},
-            empty_result_reason="No usable observations were found in the bounded sampled frames/audio." if not events else None)
+            output_language=self.settings.analysis_language if self.settings.analysis_language in ("English", "Chinese") else None,
+            extraction_failures={kind: {"code": error.code, "message": error.message, "retryable": error.retryable}
+                                 for kind, error in errors.items()},
+            empty_result_reason=authored_text(language,
+                "No usable observations were found in the bounded sampled frames/audio.",
+                "本次有限采样的画面与音频中未获得可用观察。") if not events else None)
 
 
 def vision_is_default(provider):

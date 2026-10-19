@@ -1,5 +1,6 @@
 """Structure stays source-grounded, durable and independent of creative approvals."""
 import threading
+from dataclasses import replace
 
 import pytest
 
@@ -70,6 +71,69 @@ class ResearchAgent(SampleStructureAgent):
             graph.nodes[1].context_ids = [workspace.contexts[-1].id]
         return FeedbackContent(answer='This is an interpretation; it does not establish effectiveness.',
                                event_ids=['event_lid_text'], source_ids=[], graph=graph)
+
+
+@pytest.mark.parametrize(('app_language', 'ideas_language'), [('English', 'Chinese'), ('Chinese', 'English')])
+def test_structure_language_follows_application_not_ideas(source, app_language, ideas_language):
+    workflow, state, analysis, video = real_source(source)
+    workflow.provider_settings = replace(workflow.provider_settings, analysis_language=app_language)
+    state = workflow.store.update(state.task.task_id, state.task.version,
+        lambda item: setattr(item.task, 'generation_language', ideas_language))
+
+    class LanguageAgent(ResearchAgent):
+        def __init__(self):
+            super().__init__()
+            self.languages = []
+
+        def draft(self, analysis, video, language, metadata):
+            self.languages.append(language)
+            return super().draft(analysis, video, language, metadata)
+
+        def research(self, workspace, analysis, video, language, metadata):
+            self.languages.append(language)
+            return super().research(workspace, analysis, video, language, metadata)
+
+        def feedback(self, workspace, analysis, video, instruction, kind, node_id, language, metadata):
+            self.languages.append(language)
+            return super().feedback(workspace, analysis, video, instruction, kind, node_id, language, metadata)
+
+    agent = LanguageAgent()
+    service = StructureService(workflow, agent=agent, executor=ImmediateExecutor())
+    result = service.analyze(state.task.task_id, AnalyzeRequest())
+    service.feedback(state.task.task_id, FeedbackRequest(expected_version=result.version,
+        node_id='feature', instruction='Explain the mechanism.', kind='question'))
+    assert agent.languages == [app_language, app_language, app_language]
+    assert result.output_language == app_language
+
+
+def test_feedback_preserves_saved_structure_language_after_app_switch(source):
+    workflow, state, _, _ = real_source(source)
+    agent = ResearchAgent()
+    service = StructureService(workflow, agent=agent, executor=ImmediateExecutor())
+    result = service.analyze(state.task.task_id, AnalyzeRequest())
+    assert result.output_language == 'English'
+    workflow.provider_settings = replace(workflow.provider_settings, analysis_language='Chinese')
+    languages = []
+    original_feedback = agent.feedback
+
+    def feedback(workspace, analysis, video, instruction, kind, node_id, language, metadata):
+        languages.append(language)
+        return original_feedback(workspace, analysis, video, instruction, kind, node_id, language, metadata)
+
+    agent.feedback = feedback
+    service.feedback(state.task.task_id, FeedbackRequest(expected_version=result.version,
+        node_id='feature', instruction='Explain the mechanism.', kind='question'))
+    assert languages == ['English']
+
+
+def test_explicit_sample_structure_respects_chinese_application_language(source):
+    workflow, state, _, _ = source
+    workflow.provider_settings = replace(workflow.provider_settings, analysis_language='Chinese')
+    service = StructureService(workflow, executor=ImmediateExecutor())
+    result = service.analyze(state.task.task_id, AnalyzeRequest())
+    assert result.output_language == 'Chinese'
+    assert result.graph.title == 'LumaCup：从功能展示到选择的虚构示例'
+    assert result.origin == 'sample'
 
 
 def test_sample_does_not_require_brief_approval_or_review_and_handoff_preserves_evidence(source):

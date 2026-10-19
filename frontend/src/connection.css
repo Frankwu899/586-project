@@ -20,4 +20,9 @@
 .connection-actions { display:flex; justify-content:flex-end; gap:9px; }
 .connection-forget { justify-self:start; font-size:12px; }
 .connection-help { font-size:inherit; margin-left:8px; flex-shrink:0; }
+.connection-budget { border-top:1px solid #cad9df; margin-top:22px; padding-top:16px; display:grid; gap:12px; font-size:12px; }
+.connection-budget h3 { margin:0; font-size:15px; }
+.budget-totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:12px; margin:0; }
+.budget-totals dd { margin:5px 0 0; font-size:17px; font-weight:600; }
+.connection-budget button { justify-self:start; }
 @media (max-width:720px) { .connection-indicator { display:none; } .connection-toggle { padding:5px; font-size:11px; } .connection-dialog { padding:18px; } }

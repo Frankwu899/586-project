@@ -803,6 +803,22 @@
           "title": "Structure Id",
           "type": "string"
         },
+        "output_language": {
+          "anyOf": [
+            {
+              "enum": [
+                "English",
+                "Chinese"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Language"
+        },
         "task_id": {
           "maxLength": 150,
           "minLength": 1,

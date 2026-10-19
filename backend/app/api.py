@@ -269,6 +269,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
     from .content_region import create_content_region_router
     from .media_repair import create_media_repair_router
     from .structure_api import install_structure_api
+    from .project_api import install_project_api
 
     operation_models = {"recognize": Recognize, "directions": GenerateDirections,
                         "refine": RefineDirection, "production": GenerateOutputs}
@@ -308,6 +309,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
     app.include_router(create_content_region_router(svc))
     app.include_router(create_media_repair_router(svc))
     install_structure_api(app, svc)
+    install_project_api(app, svc)
     return app
 
 

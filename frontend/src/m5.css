@@ -164,3 +164,53 @@
 .content-area-dialog footer p { max-width:520px; }
 @media (max-width:1100px) { .reference-editor-grid { grid-template-columns:minmax(0,1fr) 275px; } .reference-toolbar { gap:8px; } .reference-toolbar > div { gap:6px; } .reference-toolbar button { padding:6px 8px; } .timeline-heading span:nth-child(2) { display:none; } }
 @media (max-width:760px) { .research-timeline { overflow:auto; } .reference-editor-grid { grid-template-columns:minmax(0,1fr); grid-template-rows:300px 210px minmax(260px,auto); flex:none; } .reference-timeline-slot { grid-row:2; } .reference-inspector { grid-row:3; max-height:500px; } .reference-toolbar { align-items:flex-start; flex-direction:column; } .content-area-layout { grid-template-columns:1fr; } .content-preview { max-height:30vh; } .content-area-dialog footer { align-items:stretch; flex-direction:column; } .timeline-lane,.timeline-ruler { grid-template-columns:75px minmax(0,1fr); gap:8px; } .timeline-playhead-space { left:83px; } }
+
+.research-timeline { overflow-y: auto; overflow-x: hidden; }
+.reference-toolbar .actions { margin: 0; flex-shrink: 0; }
+.reference-toolbar > div:first-child { flex: 1; }
+.reference-editor-grid { grid-template-rows: minmax(145px,1fr) 195px; min-height: 350px; }
+.reference-operation-feedback { flex-shrink: 0; }
+.reference-timeline-slot { overflow: auto; }
+.m5-timeline { min-height: 185px; }
+.timeline-lane, .timeline-ruler { grid-template-columns: 90px minmax(0,1fr); }
+.timeline-playhead-space { left: 100px; }
+.timeline-channel-state { display: flex; align-items: center; height: 100%; padding-inline: 9px; font-size: 10px; color: var(--m2-muted); background: #ffffffb0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.timeline-channel-state.failed { color: #8c3c29; background: #fff0e6; }
+.analysis-channel-status { margin-bottom: 14px; padding: 10px; border: 1px solid #e3c6a5; border-radius: 7px; background: #fff8ed; font-size: 12px; }
+.analysis-channel-status > p { margin: 0 0 8px; }
+.analysis-channel-status ul { margin: 0 0 9px; padding: 0; list-style: none; }
+.analysis-channel-status li { margin: 8px 0; }
+.analysis-channel-status li strong, .analysis-channel-status li span, .analysis-channel-status small { display: block; }
+.analysis-channel-status li span { margin-top: 3px; font-size: 11px; overflow-wrap: anywhere; }
+.analysis-channel-status button { font-size: 11px; padding: 5px 8px; width: 100%; }
+.analysis-channel-status small { margin-top: 6px; font-size: 10px; }
+.saved-output-language { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; padding: 8px 10px; }
+@media (min-width: 761px) and (max-height: 780px) {
+  .research-timeline { padding: 7px; gap: 7px; }
+  .reference-toolbar { flex-wrap: wrap; }
+  .reference-toolbar .actions { gap: 5px; }
+  .reference-toolbar button { min-height: 30px; }
+  .reference-editor-grid { min-height: 335px; grid-template-rows: minmax(135px,1fr) 190px; }
+}
+@media (max-width: 760px) {
+  .research-timeline { padding: 7px; }
+  .reference-editor-grid { min-height: auto; grid-template-columns: minmax(0,1fr); grid-template-rows: 280px 210px minmax(240px,auto); width: 100%; }
+  .reference-inspector { grid-row: 3; overflow-y: auto; max-height: 450px; }
+  .reference-toolbar .actions { width: 100%; flex-wrap: wrap; }
+  .reference-toolbar { width: 100%; }
+  .reference-toolbar > div:first-child { max-width: 100%; }
+  .reference-operation-feedback { max-height: 180px; }
+  .reference-operation-feedback .notice, .local-operation { flex-wrap: wrap; }
+  .local-operation > span:last-child:not(.working-spinner) { margin-left: 0; }
+  .timeline-lane, .timeline-ruler { grid-template-columns: 75px minmax(0,1fr); }
+  .timeline-playhead-space { left: 85px; }
+  .m5-timeline { min-width: 530px; }
+  .timeline-heading span:nth-child(2) { display: none; }
+}
+@media (max-width: 430px) {
+  .reference-editor-grid { grid-template-rows: 230px 210px minmax(260px,auto); }
+  .research-timeline .frame-controls { gap: 4px; padding: 4px 6px; }
+  .research-timeline .frame-controls button { padding: 3px 5px; font-size: 10px; }
+  .research-timeline .frame-controls output { font-size: 9px; }
+  .content-area-dialog { width: calc(100vw - 20px); padding: 12px; }
+}

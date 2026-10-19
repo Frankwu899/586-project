@@ -65,7 +65,8 @@ def test_live_app_uses_key_without_exposing_or_persisting_it(built_ui, tmp_path,
     data = tmp_path / "saved"
     settings = local_server.local_settings(data, secret)
     assert settings.max_retries == 0
-    assert settings.analysis_language == "Chinese"
+    assert settings.analysis_language == "English"
+    assert settings.transcription_model == "disabled"
     assert settings.cache_dir == data / "provider-cache"
     assert settings.budget_path == data / "provider-budget.sqlite3"
     assert secret not in repr(settings)

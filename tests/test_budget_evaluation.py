@@ -51,6 +51,8 @@ def test_live_runner_mock_exercises_modules_under_one_persisted_guard(tmp_path, 
     names = []
     def handle(request):
         payload = json.loads(request.content)
+        if request.url.path.endswith("input_tokens"):
+            return httpx.Response(200, json={"object": "response.input_tokens", "input_tokens": 1000})
         name = payload["text"]["format"]["name"]
         names.append(name)
         if name == "m2_assistance":
@@ -64,7 +66,7 @@ def test_live_runner_mock_exercises_modules_under_one_persisted_guard(tmp_path, 
             content = {"production_brief": {"title": "Fictional production fixture", **common}, "rows": [
                 {"start_seconds": 0, "end_seconds": 15, "visual": "Illustrated cup and lid", "dialogue": None,
                  "on_screen_text": "Explore three colors", "sound": None, "cta": "Explore three colors", "evidence": []}]}
-        return httpx.Response(200, json={"status": "completed", "model": "gpt-4.1-mini",
+        return httpx.Response(200, json={"status": "completed", "model": "gpt-6.1-sol",
             "usage": {"input_tokens": 1000, "output_tokens": 200},
             "output": [{"content": [{"type": "output_text", "text": json.dumps(content)}]}]})
     client = httpx.Client(transport=httpx.MockTransport(handle))
@@ -75,7 +77,7 @@ def test_live_runner_mock_exercises_modules_under_one_persisted_guard(tmp_path, 
     client.close()
     assert names == ["m2_assistance", "creative_directions", "creative_refine", "creative_production"]
     assert report["status"] == "completed" and report["budget"]["attempts"] == 4
-    assert report["budget"]["maximum_usd"] == "3" and report["budget"]["known_estimated_cost_usd"] == "0.00288"
+    assert report["budget"]["maximum_usd"] == "3" and report["budget"]["known_estimated_cost_usd"] == "0.018"
     assert report["creative_input"].startswith("fictional_fixture")
     assert all(report["modules"][module]["attempts"] == 1 for module in ("m2", "creative", "refinement", "production"))
     assert report["modules"]["vision"]["status"] == "not_run"

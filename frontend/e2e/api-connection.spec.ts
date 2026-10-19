@@ -8,6 +8,10 @@ const fakeKey = 'sk-proj-fictional-browser-test-key-never-valid';
 async function connectionRoute(page: Page, configured = false) {
   const calls: { path: string; body: Record<string, unknown> }[] = [];
   let status = { ...initial, configured, key_source: configured ? 'keychain' : 'none', remembered: configured };
+  await page.route('**/api/local/budget', (route) => route.fulfill({ json: {
+    maximum_usd: '3', remaining_usd: '3', known_estimated_cost_usd: '0',
+    unresolved_reserved_usd: '0', recoverable_rejected_attempts: 0, blocked: false,
+  } }));
   await page.route('**/api/local/connection**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (route.request().method() === 'GET') return route.fulfill({ json: status });
@@ -100,7 +104,8 @@ test('analysis authentication failures show the actual reason and an in-place co
   const feedback = page.locator('.reference-operation-feedback');
   await expect(feedback.getByRole('alert')).toContainText(message);
   await expect(feedback).not.toContainText('Analysis could not complete');
-  await expect(page.locator('.workspace-feedback')).not.toContainText('Reopen the saved project');
+  await expect(feedback).not.toContainText('Reopen the saved project');
+  await expect(page.locator('.workspace-feedback.error')).toHaveCount(0);
   await feedback.getByRole('button', { name: 'Check API connection', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'API connection', exact: true })).toBeVisible();
 });

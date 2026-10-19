@@ -212,6 +212,7 @@ export type TargetId = string;
 export type Field = "text" | "description" | "roles" | "visual_details";
 export type JsonValue = unknown;
 export type Corrections = Correction[];
+export type OutputLanguage = ("English" | "Chinese") | null;
 export type EmptyResultReason = string | null;
 export type Analyses = AnalysisResult[];
 export type SchemaVersion4 = "0.6.0" | "0.7.0";
@@ -608,6 +609,8 @@ export interface AnalysisResult {
   review: ReviewState;
   corrections: Corrections;
   error: ErrorInfo | null;
+  extraction_failures: ExtractionFailures;
+  output_language: OutputLanguage;
   empty_result_reason: EmptyResultReason;
 }
 export interface EvidenceEvent {
@@ -700,6 +703,9 @@ export interface Correction {
   field: Field;
   before: JsonValue;
   after: JsonValue;
+}
+export interface ExtractionFailures {
+  [k: string]: ErrorInfo;
 }
 export interface CreativeDirection {
   schema_version: SchemaVersion4;
