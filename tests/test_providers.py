@@ -167,6 +167,33 @@ def test_cache_is_version_model_source_and_settings_scoped(recognition_input, tm
     assert "Luma杯" not in diagnostic  # no recognized private text in run records
 
 
+@pytest.mark.parametrize("configuration", ["environment", "local_launcher"])
+def test_runtime_budget_path_allows_recognition_and_cache_reuse(recognition_input, tmp_path, monkeypatch, configuration):
+    """Use deployed settings: bare ProviderSettings() omits the ledger Path."""
+    monkeypatch.setenv("VIDEO_ANATOMY_DATA_DIR", str(tmp_path / "library"))
+    monkeypatch.setenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(tmp_path / "ledger.sqlite3"))
+    if configuration == "local_launcher":
+        from scripts.local_server import local_settings
+        settings = local_settings(tmp_path / "library", "offline-fake-key")
+    else:
+        settings = ProviderSettings.from_env()
+    vision, speech = AlternateVision(), AlternateSpeech()
+    request, prepared = recognition_input
+    adapter = ProviderRecognitionAdapter(settings, vision_provider=vision,
+        transcription_provider=speech, prepare=lambda *_: prepared)
+    first = adapter.analyze(request)
+    assert first.status == "succeeded" and first.events
+    # Relocating an accounting file must not invalidate already paid evidence.
+    adapter.settings = replace(settings, budget_path=tmp_path / "relocated-ledger.sqlite3")
+    second = adapter.analyze(request)
+    assert second.status == "succeeded"
+    assert vision.calls == speech.calls == 1
+    # Output-affecting settings still invalidate the visual cache.
+    adapter.settings = replace(adapter.settings, analysis_language="French")
+    assert adapter.analyze(request).status == "succeeded"
+    assert vision.calls == 2 and speech.calls == 1
+
+
 def test_changed_source_hash_fails_before_any_provider(recognition_input):
     request, prepared = recognition_input
     adapter, vision, speech = adapter_for((request, replace(prepared, source_sha256="c"*64)))
