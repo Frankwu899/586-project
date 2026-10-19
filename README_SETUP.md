@@ -1,8 +1,8 @@
 # Video Anatomy — v0.7 local workspace
 
-For a single-port local app with an API key entered securely at startup, use
-[LOCAL_API.md](LOCAL_API.md). The private launch bundle can preload the owner's
-reference clip without analyzing it; the offline launcher below remains separate.
+For the macOS Finder launcher with in-page API setup, Keychain storage and repeat
+opening, use [MAC_APP.md](MAC_APP.md). For the Terminal/developer launcher, use
+[LOCAL_API.md](LOCAL_API.md). Classroom bundles do not preload private videos.
 
 For the single-port demo with paid providers disabled, use [DEMO.md](DEMO.md). The current implementation boundary is recorded in [the workspace implementation notes](docs/design/workspace-redesign/IMPLEMENTATION.md); the earlier [workspace handoff](docs/handoff/creative-workspace-demo.md) remains historical. These instructions also support development and later explicitly authorized provider evaluation.
 

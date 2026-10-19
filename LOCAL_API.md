@@ -1,6 +1,7 @@
 # Run Video Anatomy locally
 
-This browser launcher serves the built workspace and backend on your own computer.
+For the Finder app with saved Keychain credentials and repeat-open behavior, use
+[MAC_APP.md](MAC_APP.md). This browser launcher serves the built workspace and backend on your own computer.
 The native Mac application has a separate build path in [desktop/README.md](desktop/README.md).
 A source ZIP is not a DMG. All installation and launcher messages are English;
 source evidence and chosen AI output may remain Chinese.
@@ -17,9 +18,12 @@ source evidence and chosen AI output may remain Chinese.
    install [Homebrew](https://brew.sh/), then run `brew install python@3.12 ffmpeg`.
    The first run installs pinned Python packages. The bundle contains the built
    frontend; Node is needed only when building from source.
-4. Enter your OpenAI API key at the hidden Terminal prompt. It stays in backend
-   memory. It is not saved, printed, sent to the page or placed in a command-line
-   argument. An existing `OPENAI_API_KEY` environment variable also works.
+4. Configure your key in **API connection** in the workspace. On macOS, Remember
+   on this Mac stores it in the login Keychain. Otherwise it stays in server
+   memory for this session. It is never returned to the page or written to task
+   storage. An existing `OPENAI_API_KEY` environment variable works for the
+   Terminal launcher; the Finder app ignores inherited keys. Use `--prompt-key`
+   only if you specifically want the older hidden Terminal prompt.
 5. The browser opens `http://127.0.0.1:8000`. Keep Terminal open. Stop with Ctrl+C.
 
 To open saved work without any paid provider, run:

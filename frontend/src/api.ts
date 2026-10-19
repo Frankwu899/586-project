@@ -4,6 +4,12 @@ export class ApiError extends Error {
   }
 }
 
+export function operationErrorMessage(failure: unknown): string {
+  const message = failure instanceof Error ? failure.message : 'The operation failed.';
+  const versionConflict = failure instanceof ApiError && ['version_conflict', 'm2_draft_conflict', 'editor_draft_conflict', 'structure_version_conflict', 'stale_result'].includes(failure.code ?? '');
+  return `${message}${versionConflict ? ' Your draft is retained. Reopen the saved project to review the latest version.' : ''}`;
+}
+
 export async function request<T>(path: string, body?: unknown): Promise<T> {
   const match = body !== undefined && !(body instanceof FormData) ? path.match(/^\/tasks\/([^/]+)\/(recognize|directions\/generate|directions\/([^/]+)\/refine|outputs\/generate)$/) : null;
   if (match) {

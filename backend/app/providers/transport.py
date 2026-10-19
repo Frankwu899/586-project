@@ -16,6 +16,7 @@ from typing import Callable
 import httpx
 
 from .base import ProviderError
+from .auth import normalize_api_key, provider_connection_error, provider_http_error
 from .config import ProviderSettings
 from .budget import ExperimentBudget, TEXT_MODELS, module_name
 
@@ -107,8 +108,7 @@ class OpenAITransport:
 
     def _request(self, endpoint: str, model: str, payload: dict, *, metadata: dict | None = None,
                  audio_path: Path | None = None) -> dict:
-        if not self.settings.api_key.strip():
-            raise ProviderError("provider_not_configured", "Set OPENAI_API_KEY in the backend environment before using real analysis.")
+        api_key = normalize_api_key(self.settings.api_key)
         record = {"provider": "openai", "requested_model": model, "resolved_model": None,
                   "started_at": datetime.now(timezone.utc).isoformat(), "ended_at": None,
                   "elapsed_ms": None, "attempts": 0, "cache_status": "miss", "failure_code": None,
@@ -146,27 +146,17 @@ class OpenAITransport:
                     except (OSError, sqlite3.Error) as exc:
                         raise ProviderError("experiment_budget_unavailable", "The shared experiment ledger is unavailable; no paid request was sent.") from exc
                     record["attempts"] += 1
-                    headers = {"Authorization": f"Bearer {self.settings.api_key}"}
+                    headers = {"Authorization": f"Bearer {api_key}"}
                     if audio_path is None:
                         response = self._post(client, "https://api.openai.com/v1/" + endpoint,
-                                               headers=headers, json=payload, timeout=self.settings.timeout_seconds)
+                                               headers=headers, json=payload, timeout=self.settings.timeout_seconds, follow_redirects=False)
                     else:
                         with audio_path.open("rb") as audio:
                             response = self._post(client, "https://api.openai.com/v1/" + endpoint, headers=headers,
                                 data=payload, files={"file": ("audio.wav", audio, "audio/wav")},
-                                timeout=self.settings.timeout_seconds)
-                    if response.status_code >= 400:
-                        try:
-                            code = response.json().get("error", {}).get("code")
-                        except (ValueError, AttributeError):
-                            code = None
-                        if response.status_code in (401, 403):
-                            raise ProviderError("provider_authentication", "Provider authentication failed; check the backend API key and account permissions.")
-                        if code in ("insufficient_quota", "billing_hard_limit_reached"):
-                            raise ProviderError("provider_quota", "Provider credit or billing quota is exhausted; check the provider account.")
-                        transient = response.status_code in (408, 409, 429) or response.status_code >= 500
-                        raise ProviderError("provider_temporarily_unavailable" if transient else "provider_request_rejected",
-                                            "Provider request failed; retry later." if transient else "Provider rejected the configured model or request; check backend capability settings.", transient)
+                                timeout=self.settings.timeout_seconds, follow_redirects=False)
+                    if response.status_code >= 300:
+                        raise provider_http_error(response)
                     try:
                         data = response.json()
                         if not isinstance(data, dict):
@@ -182,8 +172,7 @@ class OpenAITransport:
                         record["usage_explanation"] = "Usage for the successful response only; unsuccessful-attempt usage and billed cost are unknown."
                     return data
                 except httpx.TransportError as exc:
-                    error = ProviderError("provider_timeout" if isinstance(exc, httpx.TimeoutException) else "provider_network",
-                                          "Provider request timed out or could not connect; retry later.", True)
+                    error = provider_connection_error(exc)
                 except ProviderError as exc:
                     error = exc
                 finally:

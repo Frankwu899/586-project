@@ -30,6 +30,9 @@ from backend.app.service import WorkflowService  # noqa: E402
 from scripts.local_storage import (  # noqa: E402
     default_cache_dir, default_data_dir, library_lock, prepare_library, storage_info,
 )
+from scripts.local_connection import available_keychain, install_connection_api, keychain_disabled  # noqa: E402
+from scripts.mac_keychain import KeychainError  # noqa: E402
+from scripts.mac_app_bundle import package_fingerprint  # noqa: E402
 
 
 def read_api_key() -> str:
@@ -48,7 +51,7 @@ def read_api_key() -> str:
     return key
 
 
-def local_settings(data_dir: Path, api_key: str) -> ProviderSettings:
+def local_settings(data_dir: Path, api_key: str, *, allow_empty=False) -> ProviderSettings:
     settings = replace(
         ProviderSettings.from_env(), api_key=api_key, cache_dir=data_dir / "provider-cache",
         budget_path=Path(os.getenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(data_dir / "provider-budget.sqlite3"))),
@@ -57,7 +60,7 @@ def local_settings(data_dir: Path, api_key: str) -> ProviderSettings:
         max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "0")),
         analysis_language=os.getenv("ANALYSIS_OUTPUT_LANGUAGE", "Chinese"),
     )
-    if not settings.api_key:
+    if not settings.api_key and not allow_empty:
         raise ValueError("Live mode requires a backend API key.")
     text_models = (settings.vision_model, settings.creative_model, settings.m2_model)
     if any(model not in STRUCTURED_VISION_MODELS for model in text_models):
@@ -82,11 +85,16 @@ def prepare_reference(service: WorkflowService, source: Path) -> str:
 
 def local_app(data_dir: Path, settings: ProviderSettings, reference: Path | None = None, *,
               session_token: str | None = None, address: str | None = None,
-              cache_dir: Path | None = None, migration: dict | None = None):
+              cache_dir: Path | None = None, migration: dict | None = None,
+              keychain=None, key_source="none", remembered=False, keychain_error=None,
+              instance_id=None, control_token=None, shutdown=None, build_fingerprint=None):
     service = WorkflowService(data_dir, provider_settings=settings)
     if reference is not None:
         prepare_reference(service, reference)
     app = create_app(service=service)
+    install_connection_api(app, keychain=keychain, key_source=key_source, remembered=remembered,
+                           keychain_error=keychain_error, control_token=control_token, shutdown=shutdown,
+                           preference_path=data_dir / "credential-preferences.json")
 
     @app.middleware("http")
     async def local_boundary(request: Request, call_next):
@@ -110,8 +118,10 @@ def local_app(data_dir: Path, settings: ProviderSettings, reference: Path | None
     @app.get("/api/local/runtime")
     def runtime_info():
         return {**storage_info(data_dir, cache_dir or default_cache_dir(), migration),
-                "mode": "live" if settings.api_key else "offline",
-                "desktop": session_token is not None}
+                "mode": "live" if service.provider_settings.api_key else "offline",
+                "desktop": session_token is not None, "instance_id": instance_id, "url": address,
+                "pid": os.getpid(), "package_root": str(ROOT.resolve()),
+                "launcher_protocol": 1 if instance_id else None, "package_fingerprint": build_fingerprint}
 
     app.mount("/", StaticFiles(directory=ROOT / "frontend" / "dist", html=True), name="workspace")
     return app
@@ -131,6 +141,35 @@ def desktop_credentials() -> tuple[str, str]:
         raise ValueError("The desktop launcher could not establish a private session.") from exc
 
 
+def managed_identity() -> tuple[str, str]:
+    try:
+        payload = json.loads(sys.stdin.readline(16384))
+        instance_id, token = payload["instance_id"], payload["control_token"]
+        if any(not isinstance(value, str) or not 32 <= len(value) <= 128 or not value.isalnum()
+               for value in (instance_id, token)):
+            raise ValueError("Invalid identity")
+        return instance_id, token
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ValueError("The application launcher could not establish its local session.") from exc
+
+
+def initial_credentials(*, keychain=None, managed=False, offline=False, prompt=False, preference_path=None):
+    """Managed apps ignore stale shell keys. Startup itself never calls OpenAI."""
+    if offline:
+        return "", "none", False, None
+    if prompt:
+        return read_api_key(), "session", False, None
+    if keychain is not None and not keychain_disabled(preference_path):
+        try:
+            saved = keychain.get()
+            if saved:
+                return saved, "keychain", True, None
+        except KeychainError as exc:
+            return "", "none", False, str(exc)
+    key = "" if managed else os.getenv("OPENAI_API_KEY", "").strip()
+    return key, "environment" if key else "none", False, None
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8000)
@@ -141,8 +180,12 @@ def main():
     parser.add_argument("--no-open", action="store_true", help="Do not open this machine's browser")
     parser.add_argument("--offline", action="store_true", help="Run without credentials or paid model requests")
     parser.add_argument("--desktop", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--managed-launcher", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--prompt-key", action="store_true", help="Enter a session key in Terminal instead of API settings")
     args = parser.parse_args()
-    if not (1 <= args.port <= 65535 or (args.desktop and args.port == 0)):
+    if args.desktop and args.managed_launcher:
+        parser.error("Select one application launcher mode.")
+    if not (1 <= args.port <= 65535 or ((args.desktop or args.managed_launcher) and args.port == 0)):
         parser.error("Port must be between 1 and 65535.")
     if not (ROOT / "frontend" / "dist" / "index.html").is_file():
         parser.error("Built frontend missing. Use scripts/start-local.sh or scripts/start-local.ps1.")
@@ -163,18 +206,32 @@ def main():
         address = f"http://127.0.0.1:{actual_port}"
         try:
             with library_lock(args.data_dir):
+                keychain = available_keychain()
+                instance_id, control_token = managed_identity() if args.managed_launcher else (None, None)
+                build_fingerprint = package_fingerprint(ROOT) if args.managed_launcher else None
+                key_source, remembered, keychain_error = "none", False, None
                 if args.desktop:
                     api_key, session_token = desktop_credentials()
+                    key_source = "session" if api_key else "none"
                 else:
-                    api_key, session_token = ("" if args.offline else read_api_key()), None
-                settings = (local_settings(args.data_dir, api_key) if api_key else
-                            replace(ProviderSettings.from_env(), api_key="", cache_dir=args.data_dir / "provider-cache",
-                                    budget_path=Path(os.getenv("VIDEO_EXPERIMENT_BUDGET_PATH", str(args.data_dir / "provider-budget.sqlite3"))), max_retries=0))
+                    api_key, key_source, remembered, keychain_error = initial_credentials(
+                        keychain=keychain, managed=args.managed_launcher, offline=args.offline, prompt=args.prompt_key,
+                        preference_path=args.data_dir / "credential-preferences.json")
+                    session_token = None
+                settings = local_settings(args.data_dir, api_key, allow_empty=True)
                 migration = prepare_library(args.data_dir, args.migrate_from or ROOT / ".local-data" / "live",
                                             explicit_import=args.migrate_from is not None)
                 args.cache_dir.mkdir(parents=True, exist_ok=True)
+                server_holder = {}
+                def request_shutdown():
+                    timer = threading.Timer(.3, lambda: setattr(server_holder["server"], "should_exit", True))
+                    timer.daemon = True
+                    timer.start()
                 app = local_app(args.data_dir, settings, reference, session_token=session_token,
-                                address=address, cache_dir=args.cache_dir, migration=migration)
+                                address=address, cache_dir=args.cache_dir, migration=migration,
+                                keychain=keychain, key_source=key_source, remembered=remembered,
+                                keychain_error=keychain_error, instance_id=instance_id,
+                                control_token=control_token, shutdown=request_shutdown, build_fingerprint=build_fingerprint)
                 print(f"\nVideo Anatomy: {address}\nLibrary: {args.data_dir}", flush=True)
                 print(f"Derived cache: {args.cache_dir}", flush=True)
                 print("Paid results, original media and drafts are retained in the library.", flush=True)
@@ -188,19 +245,23 @@ def main():
                     print(f"Speech: {settings.transcription_model}; automatic retries: {settings.max_retries}")
                     print("Startup and import do not call models. Analysis and AI generation can incur API charges.", flush=True)
                 else:
-                    print("Offline mode: no API key is configured. Saved work and the fictional sample remain available.", flush=True)
+                    print("No API key configured. Open API connection in the workspace to configure it. Saved work remains available.", flush=True)
                 print("Stop with Ctrl+C or close the desktop app. Saved tasks remain available next time.", flush=True)
 
                 @app.on_event("startup")
                 async def ready():
-                    if args.desktop:
-                        print("VIDEO_ANATOMY_READY " + json.dumps({"url": address}), flush=True)
+                    if args.desktop or args.managed_launcher:
+                        print("VIDEO_ANATOMY_READY " + json.dumps({"url": address,
+                            "instance_id": instance_id, "pid": os.getpid(), "data_dir": str(args.data_dir.resolve()),
+                            "package_root": str(ROOT.resolve()), "launcher_protocol": 1,
+                            "package_fingerprint": build_fingerprint}), flush=True)
                     elif not args.no_open:
                         timer = threading.Timer(1, webbrowser.open, args=(address,))
                         timer.daemon = True
                         timer.start()
 
                 server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=actual_port, access_log=not args.desktop))
+                server_holder["server"] = server
                 server.run(sockets=[listener])
         except ValueError as exc:
             parser.error(str(exc))

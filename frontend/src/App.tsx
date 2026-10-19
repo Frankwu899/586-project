@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import type { M2Draft, TaskState } from './generated/contracts';
-import { ApiError, request } from './api';
+import { operationErrorMessage, request } from './api';
+import ApiConnection, { ApiConnectionButton, ConnectionHelp } from './ApiConnection';
 import BriefEditor, { type M2EditorStatus } from './BriefEditor';
 import Directions from './Directions';
 import Production from './Production';
@@ -89,12 +90,12 @@ function Workspace({ state, config, mutate, activities, onApplied, flushRef, m2S
     navigate('reference'); selectResearchTab('timeline');
     window.requestAnimationFrame(() => seekRef.current?.(frame));
   };
-  const areaScope = area === 'directions' ? 'creative' : area === 'production' ? 'production' : 'reference';
-  const visibleActivity = activities.filter((item) => scopeOf(item.path) === areaScope && (item.running || item.error));
+  const areaScope = area === 'directions' ? 'creative' : area === 'production' ? 'production' : researchTab === 'structure' ? 'structure' : 'reference';
+  const visibleActivity = activities.filter((item) => (scopeOf(item.path) === areaScope || (areaScope === 'structure' && item.path === '/recognize')) && (item.running || item.error));
   return <>
     <div className="workspace-heading"><div><h1>{state.task.title}</h1><span className="saved-state">{state.task.mode === 'sample' ? 'Fictional sample · ' : ''}Saved · v{state.task.version}</span></div><button className="secondary context-toggle" type="button" onClick={() => setContextOpen(true)}>Project context{m2Status.unsaved ? ' · Saving' : m2Status.pending ? ' · Draft' : ''}</button></div>
     <nav className="workspace-tabs" aria-label="Workspaces">{areas.map((item) => <button key={item.id} id={`tab-${item.id}`} type="button" aria-current={area === item.id ? 'page' : undefined} aria-controls={`area-${item.id}`} onClick={() => navigate(item.id)}>{item.title}</button>)}</nav>
-    {visibleActivity.map((activity) => <div key={`${activity.path}:${activity.started}`} className={`workspace-feedback ${activity.error ? 'error' : 'notice'}`} role={activity.error ? 'alert' : 'status'}>{activity.running && <span className="spinner" aria-hidden="true" />}{activity.error ?? `${activity.label}… You can keep working in another area.`}</div>)}
+    {visibleActivity.map((activity) => <div key={`${activity.path}:${activity.started}`} className={`workspace-feedback ${activity.error ? 'error' : 'notice'}`} role={activity.error ? 'alert' : 'status'}>{activity.running && <span className="spinner" aria-hidden="true" />}{activity.error ?? `${activity.label}… You can keep working in another area.`}<ConnectionHelp message={activity.error} /></div>)}
     <div className="workspace-body">
       <div id="area-reference" className="workspace-area research-area" hidden={area !== 'reference'} aria-labelledby="tab-reference"><div className="research-tabs" role="tablist" aria-label="Research view" onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); const next = researchTab === 'timeline' ? 'structure' : 'timeline'; selectResearchTab(next); document.getElementById(`${next}-tab`)?.focus(); }}><button type="button" role="tab" id="timeline-tab" tabIndex={researchTab === 'timeline' ? 0 : -1} aria-selected={researchTab === 'timeline'} aria-controls="timeline-panel" onClick={() => selectResearchTab('timeline')}>Timeline</button><button type="button" role="tab" id="structure-tab" tabIndex={researchTab === 'structure' ? 0 : -1} aria-selected={researchTab === 'structure'} aria-controls="structure-panel" onClick={() => selectResearchTab('structure')}>Structure</button></div><div id="timeline-panel" role="tabpanel" aria-labelledby="timeline-tab" className="research-panel" hidden={researchTab !== 'timeline'}><ReferenceWorkspace state={state} config={config} mutate={mutate} busy={referenceBusy} actionError={referenceError} seekRef={seekRef} onPendingChange={setAnalysisPending} /></div><div id="structure-panel" role="tabpanel" aria-labelledby="structure-tab" className="research-panel" hidden={researchTab !== 'structure'}><StructureWorkspace state={state} mutate={mutate} onSeekEvidence={seekEvidence} onUseInIdeas={() => navigate('directions')} onActivity={onStructureActivity} /></div></div>
       <div id="area-directions" className="workspace-area scroll-workspace" hidden={area !== 'directions'} aria-labelledby="tab-directions">{m2Blocked && <p className="context-hint">Add brand facts when you are ready to generate. <button className="text-button" type="button" onClick={() => setContextOpen(true)}>Open project context</button></p>}<Directions state={state} mutate={mutate} busy={creativeBusy} m2Blocked={m2Blocked} analysisBlocked={analysisPending} onSeekEvidence={seekEvidence} /></div>
@@ -207,7 +208,7 @@ export default function App() {
       if (failedJob?.error) { failureMessage = failedJob.error.message; return false; }
       return saved;
     } catch (failure) {
-      failureMessage = `${failure instanceof Error ? failure.message : 'The operation failed.'}${failure instanceof ApiError && failure.status === 409 ? ' Your draft is retained. Reopen the saved project to review the latest version.' : ''}`;
+      failureMessage = operationErrorMessage(failure);
       try { storeTask(await request<TaskState>(`/tasks/${taskId}`)); } catch { /* Retain the visible draft while offline. */ }
       return false;
     } finally {
@@ -227,8 +228,8 @@ export default function App() {
   const createTask = (event: FormEvent) => { event.preventDefault(); void create(); };
   const running = Object.values(activities).filter((item) => item.running);
   const failed = Object.values(activities).filter((item) => item.error);
-  return <div className="desktop-app">
-    <header className="app-header"><a className="wordmark" href="#" onClick={(event) => event.preventDefault()} aria-label="Video Anatomy"><span className="brand-symbol" aria-hidden="true">◈</span> Video Anatomy</a><span className="header-label">Local workspace</span><button type="button" className={`activity-toggle secondary ${running.length ? 'has-running' : ''}`} aria-expanded={activityOpen} onClick={() => setActivityOpen(!activityOpen)}>{running.length > 0 && <span className="spinner" aria-hidden="true" />}Activity{running.length ? ` · ${running.length} running` : failed.length ? ` · ${failed.length} needs attention` : ''}</button></header>
+  return <ApiConnection><div className="desktop-app">
+    <header className="app-header"><a className="wordmark" href="#" onClick={(event) => event.preventDefault()} aria-label="Video Anatomy"><span className="brand-symbol" aria-hidden="true">◈</span> Video Anatomy</a><span className="header-label">Local workspace</span><button type="button" className={`activity-toggle secondary ${running.length ? 'has-running' : ''}`} aria-expanded={activityOpen} onClick={() => setActivityOpen(!activityOpen)}>{running.length > 0 && <span className="spinner" aria-hidden="true" />}Activity{running.length ? ` · ${running.length} running` : failed.length ? ` · ${failed.length} needs attention` : ''}</button><ApiConnectionButton /></header>
     <main className="app-layout">
       <aside className="task-sidebar" aria-label="Saved tasks"><div className="sidebar-heading"><h2>Projects</h2><span>{tasks.length}</span></div><form onSubmit={createTask}><Field label="New task title"><input required placeholder="Project name" value={title} onChange={(event) => setTitle(event.target.value)} disabled={navigating || loading} /></Field><button type="submit" aria-label="Create task" disabled={navigating || loading || !title.trim()}>New project</button></form>
         {error && <p role="alert" className="error sidebar-error">{error}</p>}{loading ? <p role="status" className="muted">Restoring projects…</p> : <ul className="task-list">{tasks.map((item) => <li key={item.task.task_id}><button type="button" aria-current={active?.task.task_id === item.task.task_id ? 'page' : undefined} onClick={() => openTask(item.task.task_id)} disabled={navigating}><strong>{item.task.title}</strong><small>{Object.values(activities).some((operation) => operation.taskId === item.task.task_id && operation.running) ? 'Processing…' : taskProgress(item)}</small></button></li>)}</ul>}
@@ -240,5 +241,5 @@ export default function App() {
     </main>
     <footer className="app-status"><span>{running.length ? `${running.length} operation${running.length === 1 ? '' : 's'} running` : 'Ready'}</span><span>Video Anatomy · Local preview</span></footer>
     {activityOpen && <section className="activity-panel" aria-label="Activity center"><div className="drawer-toolbar"><h2>Activity</h2><button className="text-button" type="button" onClick={() => setActivityOpen(false)}>Close</button></div>{Object.values(activities).length ? <ul>{Object.values(activities).map((item, index) => <li key={`${item.taskId}:${item.path}:${index}`}><strong>{item.title}</strong><p>{item.running ? <span className="spinner" aria-hidden="true" /> : null}{item.error ?? `${item.label}${item.running ? '…' : ' · Complete'}`}</p><button type="button" className="text-button" onClick={() => { void openTask(item.taskId); setActivityOpen(false); }}>Open project</button></li>)}</ul> : <p className="muted">No operations yet.</p>}</section>}
-  </div>;
+  </div></ApiConnection>;
 }

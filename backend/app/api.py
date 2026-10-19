@@ -311,4 +311,12 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
     return app
 
 
-app = create_app()
+def __getattr__(name):
+    # Uvicorn's `backend.app.api:app` remains supported, but importing the
+    # factory from a packaged launcher must not create a second data store
+    # relative to the (possibly read-only) application bundle.
+    if name == "app":
+        application = create_app()
+        globals()["app"] = application
+        return application
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

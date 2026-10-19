@@ -259,6 +259,7 @@ def test_timeout_transient_retries_are_bounded_and_budgeted():
 
 
 @pytest.mark.parametrize("status,code,expected", [(401, "invalid_api_key", "provider_authentication"),
+    (403, "insufficient_permissions", "provider_permission"), (404, "model_not_found", "provider_model_access"),
     (429, "insufficient_quota", "provider_quota"), (400, "invalid_request", "provider_request_rejected")])
 def test_auth_quota_and_bad_requests_are_never_retried(status, code, expected):
     transport = transport_with(lambda _: httpx.Response(status, json={"error": {"code": code, "message": "secret raw body"}}))
