@@ -1,4 +1,4 @@
-"""Boundary tests for authoritative v0.3 timing, references and lineage."""
+"""Boundary tests for authoritative v0.7 timing, references and lineage."""
 import copy
 import json
 import subprocess
@@ -25,12 +25,12 @@ def imported_state():
 def frame_state():
     """Synthetic 25-fps metadata for isolated validation, not real media intake."""
     data = json.loads((ROOT / "examples/v0.2.legacy-migrated.json").read_text())
-    data["task"]["schema_version"] = "0.3.0"
+    data["task"]["schema_version"] = "0.6.0"
     for collection in data.values():
         if isinstance(collection, list):
             for record in collection:
                 if "schema_version" in record:
-                    record["schema_version"] = "0.3.0"
+                    record["schema_version"] = "0.6.0"
     video = data["videos"][0]
     video["frame_timing"] = {
         "fps_numerator": 25, "fps_denominator": 1, "frame_count": 500,
@@ -51,6 +51,7 @@ def creative_state():
     analysis = state.analyses[-1]
     brief = BrandTaskBrief(brief_id="brief_test", task_id=task_id, brand_company="Fictional LumaCup",
                           product="Fictional cup", selling_points=["Removable lid"],
+                          claim_details=[{"claim_id": "claim_test", "statement": "Removable lid", "confirmation_origin": "user_confirmed"}],
                           target_audience="Cup buyers", platform="Team demo", communication_goal="Show the lid",
                           target_duration_seconds=8)
     brief_ref = VersionRef(id=brief.brief_id, revision=1)
@@ -85,7 +86,7 @@ def creative_state():
 
 def test_current_contract_and_generated_json_schema_agree():
     state = creative_state()
-    schema = json.loads((ROOT / "contracts/v0.3.task-state.schema.json").read_text())
+    schema = json.loads((ROOT / "contracts/v0.7.task-state.schema.json").read_text())
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(state.model_dump(mode="json"))
     assert TaskState.model_validate_json(state.model_dump_json()) == state
@@ -207,13 +208,13 @@ def test_partial_coverage_is_explicit_and_never_inferred_silence():
 
 
 def test_complete_sample_fixture_validates_at_real_runtime_boundary():
-    state = TaskState.model_validate_json((ROOT / "examples/v0.3.sample-task.json").read_text())
+    state = TaskState.model_validate_json((ROOT / "examples/v0.6.sample-task.json").read_text())
     assert state.task.mode == "sample"
     assert len(state.directions) >= 3
     assert state.feedback[0].status == "applied"
     assert state.production_briefs and state.storyboards
     assert state.analyses[0].origin.kind == "sample"
-    schema = json.loads((ROOT / "contracts/v0.3.task-state.schema.json").read_text())
+    schema = json.loads((ROOT / "contracts/v0.7.task-state.schema.json").read_text())
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(state.model_dump(mode="json"))
 
 

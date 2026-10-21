@@ -1,0 +1,596 @@
+{
+  "task": {
+    "schema_version": "0.4.0",
+    "created_at": "2026-10-08T07:00:00Z",
+    "updated_at": "2026-10-08T07:05:00Z",
+    "task_id": "project_demo_001",
+    "title": "Imported fictional LumaCup v0.1 examples — no media",
+    "mode": "sample",
+    "progress": "review",
+    "version": 1,
+    "current_brief": null,
+    "current_video_id": "video_demo_001",
+    "current_analysis": {
+      "id": "analysis_demo_001",
+      "revision": 2
+    },
+    "chosen_direction": null,
+    "selected_direction": null,
+    "current_production_brief": null,
+    "current_storyboard": null
+  },
+  "briefs": [],
+  "videos": [
+    {
+      "schema_version": "0.4.0",
+      "created_at": "2026-10-08T07:00:00Z",
+      "updated_at": "2026-10-08T07:05:00Z",
+      "video_id": "video_demo_001",
+      "task_id": "project_demo_001",
+      "purpose": "reference",
+      "input_method": "legacy",
+      "storage_id": null,
+      "content_sha256": null,
+      "sample_key": null,
+      "original_file_name": "SYNTHETIC_LumaCup_demo_NO_MEDIA.mp4",
+      "source_url": "https://example.invalid/synthetic-demo-video",
+      "duration_seconds": 20.0,
+      "frame_timing": null,
+      "playback": null,
+      "width": null,
+      "height": null,
+      "video_codec": null,
+      "audio_codec": null,
+      "has_audio": null,
+      "intake_status": "missing",
+      "origin": {
+        "kind": "sample",
+        "description": "Legacy schema-only source reference; duration copied from fixture, not measured here; no file exists or playback is claimed."
+      },
+      "public_metrics": {
+        "source_url": "https://example.invalid/synthetic-demo-video",
+        "captured_at": "2026-10-08T06:50:00Z",
+        "views": null,
+        "likes": null,
+        "comments": null
+      },
+      "error": null
+    }
+  ],
+  "analyses": [
+    {
+      "schema_version": "0.4.0",
+      "created_at": "2026-10-08T07:00:00Z",
+      "updated_at": "2026-10-08T07:00:00Z",
+      "analysis_id": "analysis_demo_001",
+      "revision": 1,
+      "task_id": "project_demo_001",
+      "video_id": "video_demo_001",
+      "duration_seconds": 20.0,
+      "frame_count": null,
+      "status": "succeeded",
+      "events": [
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "event_id": "segment_demo_001_visual",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "A fictional cup is shown on a desk.",
+          "source": "legacy_segment:segment_demo_001",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "event_id": "segment_demo_001_speech",
+          "video_id": "video_demo_001",
+          "lane": "audio",
+          "kind": "speech",
+          "text": "Meet LumaCup.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_001",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "event_id": "segment_demo_001_screen",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "A cup for your daily routine.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_001",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "event_id": "segment_demo_002_visual",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "A hand lifts the lid from the fictional cup.",
+          "source": "legacy_segment:segment_demo_002",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "event_id": "segment_demo_002_speech",
+          "video_id": "video_demo_001",
+          "lane": "audio",
+          "kind": "speech",
+          "text": "The lid lifts off for cleaning.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_002",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "event_id": "segment_demo_002_screen",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "Removable lid",
+          "description": null,
+          "source": "legacy_segment:segment_demo_002",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "event_id": "segment_demo_003_visual",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "Three illustrated cups appear beside a fictional brand name.",
+          "source": "legacy_segment:segment_demo_003",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "event_id": "segment_demo_003_speech",
+          "video_id": "video_demo_001",
+          "lane": "audio",
+          "kind": "speech",
+          "text": "Explore the colors.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_003",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "event_id": "segment_demo_003_screen",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "Find your color",
+          "description": null,
+          "source": "legacy_segment:segment_demo_003",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        }
+      ],
+      "segments": [
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "segment_id": "segment_demo_001",
+          "video_id": "video_demo_001",
+          "roles": [
+            "hook"
+          ],
+          "evidence_ids": [
+            "segment_demo_001_visual",
+            "segment_demo_001_speech",
+            "segment_demo_001_screen"
+          ],
+          "interpretation": "Introduces the fictional product; effectiveness has not been measured."
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "segment_id": "segment_demo_002",
+          "video_id": "video_demo_001",
+          "roles": [
+            "product_demo",
+            "proof"
+          ],
+          "evidence_ids": [
+            "segment_demo_002_visual",
+            "segment_demo_002_speech",
+            "segment_demo_002_screen"
+          ],
+          "interpretation": "The action illustrates a removable lid, but does not demonstrate broader performance claims."
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "segment_id": "segment_demo_003",
+          "video_id": "video_demo_001",
+          "roles": [
+            "cta"
+          ],
+          "evidence_ids": [
+            "segment_demo_003_visual",
+            "segment_demo_003_speech",
+            "segment_demo_003_screen"
+          ],
+          "interpretation": "Invites further product exploration; no click or conversion data is available."
+        }
+      ],
+      "coverage": {
+        "visual_action": "observations",
+        "on_screen_text": "observations",
+        "speech": "observations",
+        "music": "not_analyzed",
+        "sfx": "not_analyzed"
+      },
+      "origin": {
+        "kind": "sample",
+        "description": "Imported v0.1 synthetic fixture; schema-only, no media verified. Legacy model_run: {\"model\": \"none\", \"prompt_version\": \"proposal-0.1\", \"provider\": \"synthetic_fixture_not_an_api_run\"}"
+      },
+      "original_revision": 1,
+      "review": {
+        "user_confirmed": false,
+        "confirmed_at": null
+      },
+      "corrections": [],
+      "error": null,
+      "empty_result_reason": null
+    },
+    {
+      "schema_version": "0.4.0",
+      "created_at": "2026-10-08T07:00:00Z",
+      "updated_at": "2026-10-08T07:05:00Z",
+      "analysis_id": "analysis_demo_001",
+      "revision": 2,
+      "task_id": "project_demo_001",
+      "video_id": "video_demo_001",
+      "duration_seconds": 20.0,
+      "frame_count": null,
+      "status": "succeeded",
+      "events": [
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "event_id": "segment_demo_001_visual",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "A fictional cup is shown on a desk.",
+          "source": "legacy_segment:segment_demo_001",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "event_id": "segment_demo_001_speech",
+          "video_id": "video_demo_001",
+          "lane": "audio",
+          "kind": "speech",
+          "text": "Meet LumaCup.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_001",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "event_id": "segment_demo_001_screen",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "A cup for your daily routine.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_001",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "event_id": "segment_demo_002_visual",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "A hand lifts the lid; the interior of the cup is not visible.",
+          "source": "legacy_segment:segment_demo_002",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "event_id": "segment_demo_002_speech",
+          "video_id": "video_demo_001",
+          "lane": "audio",
+          "kind": "speech",
+          "text": "The lid lifts off for cleaning.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_002",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "event_id": "segment_demo_002_screen",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "Removable lid",
+          "description": null,
+          "source": "legacy_segment:segment_demo_002",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "event_id": "segment_demo_003_visual",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "visual_action",
+          "text": null,
+          "description": "Three illustrated cups appear beside a fictional brand name.",
+          "source": "legacy_segment:segment_demo_003",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "event_id": "segment_demo_003_speech",
+          "video_id": "video_demo_001",
+          "lane": "audio",
+          "kind": "speech",
+          "text": "Explore the colors.",
+          "description": null,
+          "source": "legacy_segment:segment_demo_003",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "event_id": "segment_demo_003_screen",
+          "video_id": "video_demo_001",
+          "lane": "visual",
+          "kind": "on_screen_text",
+          "text": "Find your color",
+          "description": null,
+          "source": "legacy_segment:segment_demo_003",
+          "method": "legacy_v0.1_import",
+          "uncertainty": null,
+          "visual_details": null
+        }
+      ],
+      "segments": [
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 0.0,
+            "end_seconds": 4.0
+          },
+          "segment_id": "segment_demo_001",
+          "video_id": "video_demo_001",
+          "roles": [
+            "hook"
+          ],
+          "evidence_ids": [
+            "segment_demo_001_visual",
+            "segment_demo_001_speech",
+            "segment_demo_001_screen"
+          ],
+          "interpretation": "Introduces the fictional product; effectiveness has not been measured."
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 4.0,
+            "end_seconds": 15.0
+          },
+          "segment_id": "segment_demo_002",
+          "video_id": "video_demo_001",
+          "roles": [
+            "product_demo"
+          ],
+          "evidence_ids": [
+            "segment_demo_002_visual",
+            "segment_demo_002_speech",
+            "segment_demo_002_screen"
+          ],
+          "interpretation": null
+        },
+        {
+          "start_frame": null,
+          "end_frame": null,
+          "legacy_seconds": {
+            "start_seconds": 15.0,
+            "end_seconds": 20.0
+          },
+          "segment_id": "segment_demo_003",
+          "video_id": "video_demo_001",
+          "roles": [
+            "cta"
+          ],
+          "evidence_ids": [
+            "segment_demo_003_visual",
+            "segment_demo_003_speech",
+            "segment_demo_003_screen"
+          ],
+          "interpretation": "Invites further product exploration; no click or conversion data is available."
+        }
+      ],
+      "coverage": {
+        "visual_action": "observations",
+        "on_screen_text": "observations",
+        "speech": "observations",
+        "music": "not_analyzed",
+        "sfx": "not_analyzed"
+      },
+      "origin": {
+        "kind": "sample",
+        "description": "Imported v0.1 synthetic fixture; schema-only, no media verified. Legacy model_run: {\"model\": \"none\", \"prompt_version\": \"proposal-0.1\", \"provider\": \"synthetic_fixture_not_an_api_run\"}"
+      },
+      "original_revision": 1,
+      "review": {
+        "user_confirmed": true,
+        "confirmed_at": "2026-10-08T07:05:00Z"
+      },
+      "corrections": [
+        {
+          "target_type": "event",
+          "target_id": "segment_demo_002_visual",
+          "field": "description",
+          "before": "A hand lifts the lid from the fictional cup.",
+          "after": "A hand lifts the lid; the interior of the cup is not visible."
+        },
+        {
+          "target_type": "segment",
+          "target_id": "segment_demo_002",
+          "field": "roles",
+          "before": [
+            "product_demo",
+            "proof"
+          ],
+          "after": [
+            "product_demo"
+          ]
+        }
+      ],
+      "error": null,
+      "empty_result_reason": null
+    }
+  ],
+  "directions": [],
+  "feedback": [],
+  "production_briefs": [],
+  "storyboards": [],
+  "jobs": []
+}

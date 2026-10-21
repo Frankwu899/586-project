@@ -18,6 +18,10 @@ LEGACY_HASHES = {
     "contracts/v0.2.task-state.schema.json": "6a6b536ad5bf50d0424f55a214cd4d3ce472b36fc631f58fe028c3b6d21ed9bd",
     "examples/v0.2.sample-task.json": "9c0ee5cd7726d5cd356b73b025d2be179699efe9e4ea21a21df5034980aba121",
     "examples/v0.2.legacy-migrated.json": "0ea9654d6624cfb37ba8b56bd2d291b84ec1f62601d29af7eb7290788a1f9c7f",
+    "contracts/v0.3.analysis.schema.json": "b9f49a0203038d9c8839c7caad155f2b115554a7609653bbdab0649c8c1c186e",
+    "contracts/v0.3.task-state.schema.json": "c6708d93634c696578098527dd9451233416e6c15bc18229699dccf8daa9c51b",
+    "examples/v0.3.sample-task.json": "e2020a6b362d9a7a336d6b1bd4482cdfbcef6c3f98946e519dcb932973b679f3",
+    "examples/v0.3.legacy-migrated.json": "cdf0419b0a2d1a339ba4cabf1abb98846fbcd412c6291f4c35da97ec7f40174d",
 }
 
 
@@ -38,7 +42,14 @@ def test_legacy_bytes_preserved_and_both_supplied_examples_validate():
 def test_migration_keeps_synthetic_origin_unknown_metrics_and_missing_media():
     original, revised = legacy()
     state = migrate_legacy_examples(original, revised)
-    assert state == TaskState.model_validate_json((ROOT / "examples/v0.3.legacy-migrated.json").read_text())
+    # New explicit imports use the current record version; retain and compare
+    # every historical fixture field rather than rewriting the v0.6 example.
+    expected = json.loads((ROOT / "examples/v0.6.legacy-migrated.json").read_text())
+    expected["task"]["schema_version"] = "0.7.0"
+    for name in ("briefs", "videos", "analyses", "directions", "feedback", "production_briefs", "storyboards", "jobs"):
+        for record in expected[name]:
+            record["schema_version"] = "0.7.0"
+    assert state == TaskState.model_validate(expected)
     assert state.task.task_id == original["project_id"]
     assert state.task.mode == "sample"
     video = state.videos[0]

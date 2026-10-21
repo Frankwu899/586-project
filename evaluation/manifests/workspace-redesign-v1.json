@@ -1,0 +1,541 @@
+{
+  "schema_version": 1,
+  "corpus_id": "workspace-redesign-v1",
+  "created_date": "2026-10-18",
+  "purpose": "Small, auditable development evaluation corpus for the authorized USD 3 experiment; not a trained model, benchmark accuracy claim or representative ad dataset.",
+  "api_calls_performed_by_collection": 0,
+  "paid_cost_usd_for_collection": 0,
+  "ground_truth_policy": "Observations were manually reviewed at cited sampled times; hypotheses are review criteria, never exact gold answers. User context and publisher captions retain their provenance. Score live outputs separately; do not convert readiness into model quality.",
+  "assets": [
+    {
+      "id": "lei-jun-recording",
+      "title": "Owner-supplied Guandan car recording",
+      "origin": "owner_upload",
+      "status": "local_available",
+      "path": ".local-data/evaluation/media/lei-jun-recording.mp4",
+      "attachment_filename": "雷军掼蛋sample.mp4",
+      "sha256": "e4b54aae1bfeabd65ad6d68f0f24dd9da2648a3566ee00f153e3adea024d2af5",
+      "media": {
+        "duration_seconds": 15.533333,
+        "width": 592,
+        "height": 1280,
+        "fps": "30/1",
+        "average_fps": "6270/233",
+        "frame_count": 418,
+        "video_codec": "h264",
+        "audio": true
+      },
+      "rights": {
+        "evaluation_scope": "Private project evaluation of owner-supplied media; do not redistribute. User upload is not proof of copyright ownership.",
+        "training_allowed": false,
+        "redistribution_allowed": false,
+        "license": "not established",
+        "basis": "Owner supplied this clip and requested project testing; no model-training or publication license established."
+      },
+      "module_tags": [
+        "intake",
+        "content_area",
+        "recognition",
+        "structure",
+        "research",
+        "ideas",
+        "production",
+        "export"
+      ],
+      "expected_checks": [
+        {
+          "id": "lei-ui-exclusion",
+          "kind": "guardrail",
+          "modules": [
+            "recognition",
+            "content_area"
+          ],
+          "expected": "Phone clock, battery state, app navigation, follow state and engagement counters are recording/interface context, not creative content events.",
+          "evidence": "Manual frame review at 0.5, 2.8, 4, 8 and 13 seconds."
+        },
+        {
+          "id": "lei-fixed-disclaimer",
+          "kind": "observation",
+          "modules": [
+            "recognition",
+            "content_area"
+          ],
+          "expected": "The fixed vertical warning “仅供娱乐 禁止赌博” belongs to the video overlay and must not be excluded merely because it is stationary.",
+          "evidence": "Visible on right side at 0.5, 4, 8 and 13 seconds; full original coordinates approximately x=520–550, y=126–332."
+        },
+        {
+          "id": "lei-scene",
+          "kind": "observation",
+          "modules": [
+            "recognition",
+            "structure"
+          ],
+          "expected": "Cards, a table and car seating are visible together; subtitles introduce a Guandan gathering and later ask viewers for tips.",
+          "evidence": "Frames at 0.5, 4 and 13 seconds."
+        },
+        {
+          "id": "lei-background",
+          "kind": "user_context",
+          "modules": [
+            "structure",
+            "research"
+          ],
+          "expected": "The owner supplied a hypothesis about middle-aged male audiences and car purchase intent; do not promote it to a directly observed or independently proven fact.",
+          "evidence": "Owner discussion accompanying the upload."
+        },
+        {
+          "id": "lei-product-text",
+          "kind": "guardrail",
+          "modules": [
+            "recognition",
+            "research",
+            "structure"
+          ],
+          "expected": "A subtitle at about 2.8 s reads “小米澎程N90 Max”. Record text as a source-video claim; do not infer authentic official brand/product identity, release status or technical features from that text alone.",
+          "evidence": "Direct inspection of the full-resolution 2.8-second frame."
+        },
+        {
+          "id": "lei-not-shown",
+          "kind": "guardrail",
+          "modules": [
+            "structure",
+            "ideas"
+          ],
+          "expected": "Do not claim the video demonstrates a seat rotation mechanism or a complete four-person game. These are not established by the reviewed frames.",
+          "evidence": "Sampled visual review, not an exhaustive negative proof of every frame."
+        },
+        {
+          "id": "lei-method",
+          "kind": "hypothesis",
+          "modules": [
+            "structure",
+            "ideas"
+          ],
+          "expected": "A useful analysis can connect shared-interest activity, product-use setting and an invitation to contribute tips; that is an interpretation, not a unique gold graph or proven sales effect.",
+          "evidence": "Interpretation of the visible activity and ending question."
+        }
+      ],
+      "paid_priority": 1,
+      "skip_default_paid": false,
+      "notes": [
+        "Real phone recording with platform chrome. Not a verified original brand export.",
+        "Nominal 30 fps with 418 frames over 15.53 s: do not infer exact timestamp from frame index / 30 without the media contract."
+      ],
+      "permitted": true,
+      "rights_note": "Private project evaluation of owner-supplied media; do not redistribute. User upload is not proof of copyright ownership.",
+      "kind": "owner_upload"
+    },
+    {
+      "id": "lei-jun-ui-masked",
+      "title": "Guandan manual UI-mask control",
+      "origin": "derived_control",
+      "status": "locally_prepared",
+      "path": ".local-data/evaluation/media/lei-jun-ui-masked.mp4",
+      "sha256": "50706e861688622c2362f977c87282d70a8e20d7fb49cb28eebfb0c7553a4400",
+      "derived_from": "lei-jun-recording",
+      "derivation": {
+        "kind": "manual_ui_masks",
+        "rectangles_pixels": [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 592,
+            "height": 88
+          },
+          {
+            "x": 16,
+            "y": 94,
+            "width": 100,
+            "height": 40
+          },
+          {
+            "x": 472,
+            "y": 94,
+            "width": 43,
+            "height": 40
+          },
+          {
+            "x": 530,
+            "y": 94,
+            "width": 42,
+            "height": 29
+          },
+          {
+            "x": 530,
+            "y": 1050,
+            "width": 45,
+            "height": 42
+          },
+          {
+            "x": 0,
+            "y": 1094,
+            "width": 592,
+            "height": 186
+          }
+        ],
+        "reason": "Analyst-defined phone/platform exclusion control, manually checked at sampled times; preserve right-side in-video warning and main subtitles."
+      },
+      "media": {
+        "duration_seconds": 15.533333,
+        "width": 592,
+        "height": 1280,
+        "fps": "30/1",
+        "average_fps": "6270/233",
+        "frame_count": 418,
+        "video_codec": "h264",
+        "audio": true
+      },
+      "rights": {
+        "evaluation_scope": "Private project evaluation of owner-supplied media; do not redistribute. User upload is not proof of copyright ownership.",
+        "training_allowed": false,
+        "redistribution_allowed": false,
+        "license": "not established",
+        "basis": "Owner supplied this clip and requested project testing; no model-training or publication license established."
+      },
+      "module_tags": [
+        "content_area",
+        "recognition"
+      ],
+      "expected_checks": [
+        {
+          "id": "lei-ui-exclusion",
+          "kind": "guardrail",
+          "modules": [
+            "recognition",
+            "content_area"
+          ],
+          "expected": "Phone clock, battery state, app navigation, follow state and engagement counters are recording/interface context, not creative content events.",
+          "evidence": "Manual frame review at 0.5, 2.8, 4, 8 and 13 seconds."
+        },
+        {
+          "id": "lei-fixed-disclaimer",
+          "kind": "observation",
+          "modules": [
+            "recognition",
+            "content_area"
+          ],
+          "expected": "The fixed vertical warning “仅供娱乐 禁止赌博” belongs to the video overlay and must not be excluded merely because it is stationary.",
+          "evidence": "Visible on right side at 0.5, 4, 8 and 13 seconds; full original coordinates approximately x=520–550, y=126–332."
+        },
+        {
+          "id": "lei-scene",
+          "kind": "observation",
+          "modules": [
+            "recognition",
+            "structure"
+          ],
+          "expected": "Cards, a table and car seating are visible together; subtitles introduce a Guandan gathering and later ask viewers for tips.",
+          "evidence": "Frames at 0.5, 4 and 13 seconds."
+        }
+      ],
+      "paid_priority": 3,
+      "skip_default_paid": false,
+      "notes": [
+        "Artificial opaque masks over the same original; not clean original media and not a second independent sample.",
+        "Masks do not reconstruct occluded video pixels. This tests the benefit of explicit exclusion, not automatic mask detection accuracy."
+      ],
+      "permitted": true,
+      "rights_note": "Private project evaluation of owner-supplied media; do not redistribute. User upload is not proof of copyright ownership.",
+      "kind": "derived_control"
+    },
+    {
+      "id": "dreamcatcher-product-ad",
+      "title": "Owner-supplied DreamCatcher fishing-rod ad",
+      "origin": "owner_upload",
+      "status": "local_available",
+      "path": ".local-data/evaluation/media/dreamcatcher-product-ad.mp4",
+      "attachment_filename": "Video-82834.mp4",
+      "sha256": "d51483046b5efc05cc3ca8081edf244a52f783e350536f3fb3b314736e6e1346",
+      "media": {
+        "duration_seconds": 55.516054,
+        "width": 720,
+        "height": 1280,
+        "fps": "30/1",
+        "average_fps": "30/1",
+        "frame_count": 1662,
+        "video_codec": "h264",
+        "audio": true
+      },
+      "rights": {
+        "evaluation_scope": "Private project evaluation of owner-supplied media; do not redistribute. User upload is not proof of copyright ownership.",
+        "training_allowed": false,
+        "redistribution_allowed": false,
+        "license": "not established",
+        "basis": "Owner supplied this clip and requested project testing; no model-training or publication license established."
+      },
+      "module_tags": [
+        "intake",
+        "content_area",
+        "recognition",
+        "structure",
+        "research",
+        "ideas",
+        "production",
+        "export"
+      ],
+      "expected_checks": [
+        {
+          "id": "dc-clean-control",
+          "kind": "observation",
+          "modules": [
+            "content_area",
+            "recognition"
+          ],
+          "expected": "Reviewed frames show an embedded ad with captions and brand/exhibition signage, without phone status or social action bars. Do not automatically mask fixed ad text.",
+          "evidence": "Frames at 1, 18, 28 and 53 seconds."
+        },
+        {
+          "id": "dc-wood-grip",
+          "kind": "observation",
+          "modules": [
+            "recognition",
+            "structure"
+          ],
+          "expected": "A wood-toned fishing-rod grip is shown and the opening caption expresses surprise about the handle.",
+          "evidence": "Opening and approximately 18-second frames."
+        },
+        {
+          "id": "dc-two-tips",
+          "kind": "guardrail",
+          "modules": [
+            "structure",
+            "ideas"
+          ],
+          "expected": "Distinguish two interchangeable rod tips/configurations from two complete rods or a verified buy-one-get-one promotion.",
+          "evidence": "Caption at 28 s mentions a medium tip; exhibition backdrop says ONE ROD TWO TIPS."
+        },
+        {
+          "id": "dc-cta",
+          "kind": "observation",
+          "modules": [
+            "recognition",
+            "structure"
+          ],
+          "expected": "The closing frame contains SHOP NOW AT DCFISHING.SHOP, a purchase-oriented CTA.",
+          "evidence": "53-second frame."
+        },
+        {
+          "id": "dc-independence",
+          "kind": "guardrail",
+          "modules": [
+            "research",
+            "structure"
+          ],
+          "expected": "Do not identify interviewees as independent experts or imply ICAST endorsement from a badge or exhibition setting. Treat participant comments and factory/manufacturing claims as source statements unless independently supported.",
+          "evidence": "What is visible cannot establish affiliation or independence."
+        },
+        {
+          "id": "dc-value-logic",
+          "kind": "hypothesis",
+          "modules": [
+            "structure",
+            "ideas"
+          ],
+          "expected": "A plausible graph connects unusual grip/appearance and multiple configurations to value reasoning, with a sales CTA. No unique correct causal graph or conversion rate is established.",
+          "evidence": "Interpretation, based on visual samples and prior owner-facing review; not independently scored ground truth."
+        }
+      ],
+      "paid_priority": 2,
+      "skip_default_paid": false,
+      "notes": [
+        "A clean-layout user upload based on reviewed frames; original export provenance is not independently verified."
+      ],
+      "permitted": true,
+      "rights_note": "Private project evaluation of owner-supplied media; do not redistribute. User upload is not proof of copyright ownership.",
+      "kind": "owner_upload"
+    },
+    {
+      "id": "shared-culture-full",
+      "title": "A Shared Culture (full public campaign video)",
+      "origin": "public_licensed_campaign",
+      "status": "downloaded_verified",
+      "path": ".local-data/evaluation/cc-shared-culture.mp4",
+      "sha256": "e61474998aea5ada0504715eed51647b2586bd1dab4e6fbd89b927822e62b0fd",
+      "download_url": "https://raw.githubusercontent.com/IDPF/epub3-samples/7651e2002b631e6577fadf7e9e0692fa6efb8746/30/cc-shared-culture/EPUB/video/shared-culture.mp4",
+      "source_revision": "7651e2002b631e6577fadf7e9e0692fa6efb8746",
+      "media": {
+        "duration_seconds": 200.298667,
+        "width": 720,
+        "height": 480,
+        "fps": "2997/125",
+        "average_fps": "2997/125",
+        "frame_count": 4802,
+        "video_codec": "h264",
+        "audio": true
+      },
+      "rights": {
+        "evaluation_scope": "Noncommercial academic/project evaluation with attribution; source and any shared adaptation remain CC BY-NC-SA 3.0.",
+        "training_allowed": false,
+        "redistribution_allowed": "only under source license; not bundled in the product",
+        "license": "CC BY-NC-SA 3.0",
+        "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+        "attribution": "A Shared Culture by Jesse Dylan / Creative Commons. Music and image credits are listed on the source page.",
+        "source_page": "https://creativecommons.org/about/videos/a-shared-culture/",
+        "basis": "Publisher license plus pinned EPUB package metadata. Fine-tuning/training eligibility has not been reviewed."
+      },
+      "module_tags": [
+        "intake"
+      ],
+      "expected_checks": [
+        {
+          "id": "cc-length-limit",
+          "kind": "guardrail",
+          "modules": [
+            "intake"
+          ],
+          "expected": "The full 200.30-second source exceeds the default 180-second upload limit. Reject clearly and leave previously saved work intact; use the excerpt for accepted-input tests.",
+          "evidence": "ffprobe duration; default MediaSettings.max_duration_seconds=180."
+        }
+      ],
+      "paid_priority": null,
+      "skip_default_paid": true,
+      "notes": [
+        "Official 2008 Creative Commons advocacy/fundraising campaign, not a consumer-product or WeChat ad.",
+        "Kept locally for provenance and rejection-boundary testing."
+      ],
+      "permitted": true,
+      "rights_note": "Noncommercial academic/project evaluation with attribution; source and any shared adaptation remain CC BY-NC-SA 3.0.",
+      "kind": "public_licensed_campaign"
+    },
+    {
+      "id": "shared-culture-30s-excerpt",
+      "title": "A Shared Culture: opening 30-second excerpt",
+      "origin": "public_campaign_excerpt",
+      "status": "locally_prepared",
+      "path": ".local-data/evaluation/media/shared-culture-30s-excerpt.mp4",
+      "sha256": "83d1c6c1d6e04d9caad74303b92b4ed9fdbc011e855a202f0084474863d43fbb",
+      "derived_from": "shared-culture-full",
+      "derivation": {
+        "kind": "excerpt",
+        "start_seconds": 0,
+        "duration_seconds": 30,
+        "reason": "A short budget-control input within the app duration limit; not a complete campaign narrative."
+      },
+      "media": {
+        "duration_seconds": 30.03003,
+        "width": 720,
+        "height": 480,
+        "fps": "2997/125",
+        "average_fps": "2997/125",
+        "frame_count": 720,
+        "video_codec": "h264",
+        "audio": true
+      },
+      "rights": {
+        "evaluation_scope": "Noncommercial academic/project evaluation with attribution; source and any shared adaptation remain CC BY-NC-SA 3.0.",
+        "training_allowed": false,
+        "redistribution_allowed": "only under source license; not bundled in the product",
+        "license": "CC BY-NC-SA 3.0",
+        "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+        "attribution": "A Shared Culture by Jesse Dylan / Creative Commons. Music and image credits are listed on the source page.",
+        "source_page": "https://creativecommons.org/about/videos/a-shared-culture/",
+        "basis": "Publisher license plus pinned EPUB package metadata. Fine-tuning/training eligibility has not been reviewed."
+      },
+      "module_tags": [
+        "intake",
+        "content_area",
+        "recognition",
+        "structure",
+        "research"
+      ],
+      "expected_checks": [
+        {
+          "id": "cc-visible-observations",
+          "kind": "observation",
+          "modules": [
+            "recognition"
+          ],
+          "expected": "The excerpt starts with a Creative Commons logo and includes interview footage and illustrative still images; no phone status/action bars were seen in inspected samples.",
+          "evidence": "Frames inspected at 1, 10, 20 and 25 seconds."
+        },
+        {
+          "id": "cc-transcript-reference",
+          "kind": "source_statement",
+          "modules": [
+            "recognition",
+            "structure"
+          ],
+          "expected": "Publisher-provided captions discuss shared culture, restrictions, participation and failed sharing. Use this as a reference transcription, not independently verified word-exact timing.",
+          "evidence": "https://raw.githubusercontent.com/IDPF/epub3-samples/7651e2002b631e6577fadf7e9e0692fa6efb8746/30/cc-shared-culture/EPUB/captions/cc-en.vtt"
+        },
+        {
+          "id": "cc-no-invented-ending",
+          "kind": "guardrail",
+          "modules": [
+            "structure"
+          ],
+          "expected": "The input is a 30-second excerpt. Do not invent a closing purchase CTA, full-video ending, product price, sales outcome or later content that is outside the supplied media.",
+          "evidence": "Known explicit extraction boundaries."
+        }
+      ],
+      "paid_priority": 4,
+      "skip_default_paid": false,
+      "notes": [
+        "Publicly found, independently sourced advocacy campaign control. Does not satisfy a claim of broad consumer-ad or Chinese-channel coverage."
+      ],
+      "permitted": true,
+      "rights_note": "Noncommercial academic/project evaluation with attribution; source and any shared adaptation remain CC BY-NC-SA 3.0.",
+      "kind": "public_campaign_excerpt"
+    }
+  ],
+  "online_candidates": [
+    {
+      "id": "mg-vau",
+      "title": "Mobile Gaming Video Ads Understanding Benchmark",
+      "source_url": "https://github.com/Reforged-Labs/mg-vau",
+      "source_revision": "97b79257fb756157385fbe93cbc7711f250c708c",
+      "status": "source_verified_media_not_downloaded",
+      "category": "real_product_ads",
+      "count_reported_by_publisher": 13,
+      "access": "MP4s are hosted separately on Google Drive, not in GitHub. Current shell policy does not allow drive.google.com. No bypass attempted.",
+      "rights": "Repository CC BY 4.0; LICENSE separately states video ads belong to game publishers and are provided for research/evaluation. Do not infer a training or redistribution license for underlying ads.",
+      "training_allowed": false,
+      "runnable": false
+    },
+    {
+      "id": "ads-1k",
+      "title": "Ads-1k (ACCV 2022)",
+      "source_url": "https://github.com/yunlong10/Ads-1k",
+      "source_revision": "998f15223610f4dbc01b18f18d4c9f9801a9e41c",
+      "status": "annotations_features_only_for_this_review",
+      "category": "mostly_chinese_ad_dataset",
+      "access": "README provides annotations and pre-extracted features, with larger feature files on Google Drive/Baidu. No directly runnable original MP4s were obtained.",
+      "rights": "BSD-2-Clause repository licensing is not an established license to all underlying ad footage.",
+      "training_allowed": false,
+      "runnable": false
+    },
+    {
+      "id": "adshot",
+      "title": "AdShot823",
+      "source_url": "https://github.com/ostadabbas/AdShot",
+      "status": "not_acquired_access_restricted",
+      "category": "real_ads",
+      "access": "Raw MP4s are not redistributed. Keyframes/audio are gated, large and subject to a research data-use agreement.",
+      "rights": "Publisher explicitly says no license is granted to underlying ads; annotations/packaging CC BY-NC 4.0.",
+      "training_allowed": false,
+      "runnable": false
+    },
+    {
+      "id": "tencent-channels-cases",
+      "title": "Tencent Ads WeChat Channels commercial case library",
+      "source_url": "https://training.tencentads.com/uploads/202306/iiP4sj9B_EQId5g.pdf",
+      "status": "search_discovered_direct_fetch_failed",
+      "category": "official_wechat_channels_documentation",
+      "access": "Search index exposed the title/content; direct web fetch failed. This is a PDF reference, not a video asset.",
+      "rights": "No reusable video or training license established.",
+      "training_allowed": false,
+      "runnable": false
+    },
+    {
+      "id": "tencent-channels-review-cases",
+      "title": "Tencent Ads WeChat Channels case review (October 2024 path)",
+      "source_url": "https://training.tencentads.com/uploads/202410/C9X4m4Nq_sc7QRG.pdf",
+      "status": "web_document_read_media_not_available",
+      "category": "official_wechat_channels_documentation",
+      "access": "13-page official PDF opened successfully through web search tooling. Contains example screenshots/case commentary, not downloadable complete ad videos.",
+      "rights": "Documentation reference only; no MP4 or training license established.",
+      "training_allowed": false,
+      "runnable": false
+    }
+  ]
+}

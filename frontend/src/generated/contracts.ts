@@ -5,18 +5,19 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export type SchemaVersion = "0.3.0";
+export type SchemaVersion = "0.6.0" | "0.7.0";
 export type CreatedAt = string;
 export type UpdatedAt = string;
 export type TaskId = string;
 export type Title = string;
 export type Mode = "real" | "sample";
+export type GenerationLanguage = ("English" | "Chinese") | null;
 export type Progress = "setup" | "analysis" | "review" | "directions" | "production";
 export type Version = number;
 export type Id = string;
 export type Revision = number;
 export type CurrentVideoId = string | null;
-export type SchemaVersion1 = "0.3.0";
+export type SchemaVersion1 = "0.6.0" | "0.7.0";
 export type CreatedAt1 = string;
 export type UpdatedAt1 = string;
 export type BriefId = string;
@@ -28,6 +29,30 @@ export type Product = string;
  * @minItems 1
  */
 export type SellingPoints = [string, ...string[]];
+/**
+ * @minItems 1
+ */
+export type ClaimDetails = [ClaimDetail, ...ClaimDetail[]];
+export type ClaimId = string;
+export type Statement = string;
+export type SupportingNotes = string | null;
+/**
+ * @maxItems 10
+ */
+export type SourceUrls =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type Qualification = string | null;
+export type ConfirmationOrigin = "user_confirmed" | "legacy_unrecorded";
 export type ApprovedMessages = string[];
 export type TargetAudience = string;
 export type Platform = string;
@@ -40,11 +65,12 @@ export type Tone = string | null;
 export type ProductionLimits = string | null;
 export type ProhibitedClaims = string[];
 export type Briefs = BrandTaskBrief[];
-export type SchemaVersion2 = "0.3.0";
+export type SchemaVersion2 = "0.6.0" | "0.7.0";
 export type CreatedAt2 = string;
 export type UpdatedAt2 = string;
 export type VideoId = string;
 export type TaskId2 = string;
+export type DeletedAt = string | null;
 export type Purpose = "reference" | "draft";
 export type InputMethod = "file" | "sample" | "legacy";
 export type StorageId = string | null;
@@ -66,10 +92,14 @@ export type MediaStartSeconds = number;
 export type FrameBoundariesSeconds = [number, number, ...number[]];
 export type RateMode = "constant" | "variable";
 export type Source = "probed";
+export type StorageId1 = string;
+export type VideoCodec = "h264";
+export type AudioCodec = "aac" | null;
+export type DurationSeconds1 = number;
 export type Width = number | null;
 export type Height = number | null;
-export type VideoCodec = string | null;
-export type AudioCodec = string | null;
+export type VideoCodec1 = string | null;
+export type AudioCodec1 = string | null;
 export type HasAudio = boolean | null;
 export type IntakeStatus = "ready" | "failed" | "missing";
 export type Kind = "sample" | "provider" | "manual" | "legacy";
@@ -83,14 +113,14 @@ export type Code = string;
 export type Message = string;
 export type Retryable = boolean;
 export type Videos = VideoAsset[];
-export type SchemaVersion3 = "0.3.0";
+export type SchemaVersion3 = "0.6.0" | "0.7.0";
 export type CreatedAt3 = string;
 export type UpdatedAt3 = string;
 export type AnalysisId = string;
 export type Revision2 = number;
 export type TaskId3 = string;
 export type VideoId1 = string;
-export type DurationSeconds1 = number;
+export type DurationSeconds2 = number;
 export type FrameCount1 = number | null;
 export type Status = "pending" | "running" | "succeeded" | "partial" | "failed";
 export type StartFrame = number | null;
@@ -106,6 +136,54 @@ export type Description1 = string | null;
 export type Source1 = string;
 export type Method = string;
 export type Uncertainty = string | null;
+export type Status1 = "not_analyzed" | "observations" | "none_found" | "failed";
+export type SubjectId = string;
+export type Kind2 =
+  | ("person" | "animal" | "plant" | "physical_object" | "digital_interface" | "graphic" | "environment" | "other")
+  | null;
+export type Label = string;
+export type Description2 = string | null;
+export type Roles =
+  | [
+      "product" | "presenter" | "product_user" | "context" | "other",
+      ...("product" | "presenter" | "product_user" | "context" | "other")[]
+    ]
+  | null;
+export type Items = VisualSubject[];
+export type Status2 = "not_analyzed" | "observations" | "none_found" | "failed";
+export type ActionType =
+  | (
+      | "hold"
+      | "pick_up"
+      | "put_down"
+      | "open"
+      | "close"
+      | "pour"
+      | "apply"
+      | "operate"
+      | "assemble"
+      | "disassemble"
+      | "wear"
+      | "eat_drink"
+      | "point"
+      | "move"
+      | "other"
+    )
+  | null;
+export type ActorSubjectIds = string[];
+export type TargetSubjectIds = string[];
+export type Description3 = string;
+export type Items1 = VisualAction[];
+export type Status3 = "not_analyzed" | "observations" | "none_found" | "failed";
+/**
+ * @minItems 1
+ */
+export type ProductSubjectIds = [string, ...string[]];
+export type PresentationType =
+  | ("appearance" | "feature_demo" | "use_case" | "result_display" | "comparison" | "packaging" | "unboxing" | "other")
+  | null;
+export type Description4 = string;
+export type Items2 = ProductPresentation[];
 export type Events = EvidenceEvent[];
 export type StartFrame1 = number | null;
 export type EndFrame1 = number | null;
@@ -114,14 +192,14 @@ export type VideoId3 = string;
 /**
  * @minItems 1
  */
-export type Roles = [
+export type Roles1 = [
   "hook" | "product_demo" | "proof" | "cta" | "other",
   ...("hook" | "product_demo" | "proof" | "cta" | "other")[]
 ];
 export type EvidenceIds = string[];
 export type Interpretation = string | null;
 export type Segments = ContentSegment[];
-export type VisualAction = "not_analyzed" | "observations" | "none_found" | "failed";
+export type VisualAction1 = "not_analyzed" | "observations" | "none_found" | "failed";
 export type OnScreenText = "not_analyzed" | "observations" | "none_found" | "failed";
 export type Speech = "not_analyzed" | "observations" | "none_found" | "failed";
 export type Music = "not_analyzed" | "observations" | "none_found" | "failed";
@@ -131,17 +209,19 @@ export type UserConfirmed = boolean;
 export type ConfirmedAt = string | null;
 export type TargetType = "event" | "segment";
 export type TargetId = string;
-export type Field = "text" | "description" | "roles";
+export type Field = "text" | "description" | "roles" | "visual_details";
 export type JsonValue = unknown;
 export type Corrections = Correction[];
+export type OutputLanguage = ("English" | "Chinese") | null;
 export type EmptyResultReason = string | null;
 export type Analyses = AnalysisResult[];
-export type SchemaVersion4 = "0.3.0";
+export type SchemaVersion4 = "0.6.0" | "0.7.0";
 export type CreatedAt4 = string;
 export type UpdatedAt4 = string;
 export type DirectionId = string;
 export type Revision3 = number;
 export type TaskId4 = string;
+export type StructureHandoffId = string | null;
 export type FeedbackRefs = VersionRef[];
 export type CoreMessage = string;
 export type Hook = string;
@@ -155,25 +235,27 @@ export type EventId1 = string;
 export type Reason = string;
 export type Evidence = EvidenceReference[];
 export type Rationale = string;
+export type AuxiliaryStatus = "current" | "needs_review";
 export type Hypotheses = string[];
 export type ProductionNotes = string[];
 export type ApprovalStatus = "draft" | "approved";
 export type ApprovedAt = string | null;
 export type Currentness = "current" | "outdated";
 export type Directions = CreativeDirection[];
-export type SchemaVersion5 = "0.3.0";
+export type SchemaVersion5 = "0.6.0" | "0.7.0";
 export type CreatedAt5 = string;
 export type UpdatedAt5 = string;
 export type FeedbackId = string;
 export type Revision4 = number;
 export type TaskId5 = string;
 export type Instruction = string;
-export type Status1 = "pending" | "applied" | "not_interpreted";
+export type Status4 = "pending" | "applied" | "not_interpreted";
 export type Explanation = string | null;
 export type Feedback = CreativeFeedback[];
-export type SchemaVersion6 = "0.3.0";
+export type SchemaVersion6 = "0.6.0" | "0.7.0";
 export type CreatedAt6 = string;
 export type UpdatedAt6 = string;
+export type BundleId = string | null;
 export type OutputId = string;
 export type Revision5 = number;
 export type TaskId6 = string;
@@ -188,9 +270,10 @@ export type Cta1 = string;
 export type ProductionNotes1 = string[];
 export type Evidence1 = EvidenceReference[];
 export type ProductionBriefs = ProductionCreativeBrief[];
-export type SchemaVersion7 = "0.3.0";
+export type SchemaVersion7 = "0.6.0" | "0.7.0";
 export type CreatedAt7 = string;
 export type UpdatedAt7 = string;
+export type BundleId1 = string | null;
 export type OutputId1 = string;
 export type Revision6 = number;
 export type TaskId7 = string;
@@ -212,19 +295,163 @@ export type Sound = string | null;
 export type Cta2 = string | null;
 export type Evidence2 = EvidenceReference[];
 export type Storyboards = TextStoryboard[];
-export type SchemaVersion8 = "0.3.0";
+export type SchemaVersion8 = "0.6.0" | "0.7.0";
 export type CreatedAt8 = string;
 export type UpdatedAt8 = string;
 export type JobId = string;
 export type TaskId8 = string;
 export type Operation = "analyze" | "directions" | "refine" | "production";
-export type Status2 = "pending" | "running" | "succeeded" | "failed";
+export type Status5 = "pending" | "running" | "succeeded" | "failed";
 export type VideoId5 = string | null;
 export type ResultType = string | null;
 export type Attempt = number;
 export type PartialCoverage = boolean;
 export type Jobs = ProcessingJob[];
+export type TaskId9 = string;
+export type DraftVersion = number;
+export type BrandCompany1 = string | null;
+export type Product1 = string | null;
+export type TargetAudience1 = string | null;
+export type Platform1 = string | null;
+export type CommunicationGoal1 = string | null;
+export type TargetDurationSeconds2 = number | null;
+export type AvailableFootage1 = string | null;
+export type Presenters1 = string | null;
+export type Locations1 = string | null;
+export type Tone1 = string | null;
+export type ProductionLimits1 = string | null;
+export type ApprovedMessages1 = string[];
+export type ProhibitedClaims1 = string[];
+export type ClaimId1 = string;
+export type Statement1 = string;
+export type SupportingNotes1 = string | null;
+/**
+ * @maxItems 10
+ */
+export type SourceUrls1 =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type Qualification1 = string | null;
+export type ConfirmedForUse = boolean;
+export type Claims = M2Claim[];
+export type SourceNotes = string;
+export type ReviewedInputCheckpoint = string;
+export type HasPendingInputs = boolean;
+export type LegacyReviewRequired = boolean;
+export type MissingFields = string[];
+export type UpdatedAt9 = string;
+export type ExpectedDraftVersion = number;
+export type Claims1 = M2Claim[];
+export type SourceNotes1 = string;
+export type ExpectedDraftVersion1 = number;
+export type ExpectedVersion = number;
+export type Changed = boolean;
+export type ExpectedDraftVersion2 = number;
+export type DraftVersion1 = number;
+export type RequestId = string;
+export type Mode1 = "extract" | "suggest_task_field";
+export type RequestedField = ("target_audience" | "communication_goal") | null;
+export type RequestId1 = string;
+export type SourceDraftVersion = number;
+export type ProviderMode = "real" | "fake";
+export type Target =
+  | "brand_company"
+  | "product"
+  | "target_audience"
+  | "platform"
+  | "communication_goal"
+  | "target_duration_seconds"
+  | "available_footage"
+  | "presenters"
+  | "locations"
+  | "tone"
+  | "production_limits"
+  | "approved_messages"
+  | "prohibited_claims"
+  | "claim";
+export type Value = string | number | string[] | M2ProposedClaim;
+export type Statement2 = string;
+export type SupportingNotes2 = string | null;
+/**
+ * @maxItems 10
+ */
+export type SourceUrls2 =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type Qualification2 = string | null;
+export type Origin1 = "extracted" | "suggested";
+export type SourceExcerpt = string | null;
+export type CandidateId = string;
+/**
+ * @maxItems 30
+ */
+export type Candidates = M2Candidate[];
+/**
+ * @maxItems 10
+ */
+export type UnresolvedNotes =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type SourceDraftVersion1 = number;
+export type RequestId2 = string;
+/**
+ * @minItems 1
+ * @maxItems 30
+ */
+export type Candidates1 = [M2Candidate, ...M2Candidate[]];
+export type TaskId10 = string;
+export type Scope = string;
+export type DraftVersion2 = number;
+export type HasPendingChanges = boolean;
+export type Conflict = boolean;
+export type UpdatedAt10 = string;
+export type ExpectedDraftVersion3 = number;
+export type ExpectedDraftVersion4 = number;
 
+/**
+ * Generation bundle; endpoints consume the individual referenced records.
+ */
+export interface M2ContractBundle {
+  task_state: TaskState;
+  draft: M2Draft;
+  draft_update: M2DraftUpdate;
+  apply_request: M2ApplyRequest;
+  apply_result: M2ApplyResult;
+  discard_request: M2DiscardRequest;
+  assistance_request: M2AssistanceRequest;
+  assistance_response: M2AssistanceResponse;
+  adopt_request: M2AdoptRequest;
+  editor_draft: EditorDraft;
+  editor_update: EditorDraftUpdate;
+  editor_discard: EditorDiscardRequest;
+}
 export interface TaskState {
   task: CreativeTask;
   briefs: Briefs;
@@ -243,6 +470,7 @@ export interface CreativeTask {
   task_id: TaskId;
   title: Title;
   mode: Mode;
+  generation_language: GenerationLanguage;
   progress: Progress;
   version: Version;
   current_brief: VersionRef | null;
@@ -267,6 +495,7 @@ export interface BrandTaskBrief {
   brand_company: BrandCompany;
   product: Product;
   selling_points: SellingPoints;
+  claim_details: ClaimDetails;
   approved_messages: ApprovedMessages;
   target_audience: TargetAudience;
   platform: Platform;
@@ -279,12 +508,24 @@ export interface BrandTaskBrief {
   production_limits: ProductionLimits;
   prohibited_claims: ProhibitedClaims;
 }
+/**
+ * Permission to use exact supplied wording; never a factual verification.
+ */
+export interface ClaimDetail {
+  claim_id: ClaimId;
+  statement: Statement;
+  supporting_notes: SupportingNotes;
+  source_urls: SourceUrls;
+  qualification: Qualification;
+  confirmation_origin: ConfirmationOrigin;
+}
 export interface VideoAsset {
   schema_version: SchemaVersion2;
   created_at: CreatedAt2;
   updated_at: UpdatedAt2;
   video_id: VideoId;
   task_id: TaskId2;
+  deleted_at: DeletedAt;
   purpose: Purpose;
   input_method: InputMethod;
   storage_id: StorageId;
@@ -294,10 +535,11 @@ export interface VideoAsset {
   source_url: SourceUrl;
   duration_seconds: DurationSeconds;
   frame_timing: FrameTiming | null;
+  playback: PlaybackRepresentation | null;
   width: Width;
   height: Height;
-  video_codec: VideoCodec;
-  audio_codec: AudioCodec;
+  video_codec: VideoCodec1;
+  audio_codec: AudioCodec1;
   has_audio: HasAudio;
   intake_status: IntakeStatus;
   origin: Origin;
@@ -321,6 +563,16 @@ export interface FrameTiming {
   frame_boundaries_seconds: FrameBoundariesSeconds;
   rate_mode: RateMode;
   source: Source;
+}
+/**
+ * Browser derivative with one measured presentation frame per source frame.
+ */
+export interface PlaybackRepresentation {
+  storage_id: StorageId1;
+  video_codec: VideoCodec;
+  audio_codec: AudioCodec;
+  duration_seconds: DurationSeconds1;
+  frame_timing: FrameTiming;
 }
 export interface Origin {
   kind: Kind;
@@ -346,7 +598,7 @@ export interface AnalysisResult {
   revision: Revision2;
   task_id: TaskId3;
   video_id: VideoId1;
-  duration_seconds: DurationSeconds1;
+  duration_seconds: DurationSeconds2;
   frame_count: FrameCount1;
   status: Status;
   events: Events;
@@ -357,6 +609,8 @@ export interface AnalysisResult {
   review: ReviewState;
   corrections: Corrections;
   error: ErrorInfo | null;
+  extraction_failures: ExtractionFailures;
+  output_language: OutputLanguage;
   empty_result_reason: EmptyResultReason;
 }
 export interface EvidenceEvent {
@@ -372,6 +626,7 @@ export interface EvidenceEvent {
   source: Source1;
   method: Method;
   uncertainty: Uncertainty;
+  visual_details: VisualDetails | null;
 }
 /**
  * Preserved legacy interval when source media is unavailable for probing.
@@ -380,18 +635,59 @@ export interface LegacySeconds {
   start_seconds: StartSeconds;
   end_seconds: EndSeconds;
 }
+/**
+ * Event-local observations inheriting their parent source-frame interval.
+ */
+export interface VisualDetails {
+  subjects: ObservationGroupVisualSubject;
+  actions: ObservationGroupVisualAction;
+  product_presentations: ObservationGroupProductPresentation;
+}
+export interface ObservationGroupVisualSubject {
+  status: Status1;
+  items: Items;
+  error: ErrorInfo | null;
+}
+export interface VisualSubject {
+  subject_id: SubjectId;
+  kind: Kind2;
+  label: Label;
+  description: Description2;
+  roles: Roles;
+}
+export interface ObservationGroupVisualAction {
+  status: Status2;
+  items: Items1;
+  error: ErrorInfo | null;
+}
+export interface VisualAction {
+  action_type: ActionType;
+  actor_subject_ids: ActorSubjectIds;
+  target_subject_ids: TargetSubjectIds;
+  description: Description3;
+}
+export interface ObservationGroupProductPresentation {
+  status: Status3;
+  items: Items2;
+  error: ErrorInfo | null;
+}
+export interface ProductPresentation {
+  product_subject_ids: ProductSubjectIds;
+  presentation_type: PresentationType;
+  description: Description4;
+}
 export interface ContentSegment {
   start_frame: StartFrame1;
   end_frame: EndFrame1;
   legacy_seconds: LegacySeconds | null;
   segment_id: SegmentId;
   video_id: VideoId3;
-  roles: Roles;
+  roles: Roles1;
   evidence_ids: EvidenceIds;
   interpretation: Interpretation;
 }
 export interface Coverage {
-  visual_action: VisualAction;
+  visual_action: VisualAction1;
   on_screen_text: OnScreenText;
   speech: Speech;
   music: Music;
@@ -408,6 +704,9 @@ export interface Correction {
   before: JsonValue;
   after: JsonValue;
 }
+export interface ExtractionFailures {
+  [k: string]: ErrorInfo;
+}
 export interface CreativeDirection {
   schema_version: SchemaVersion4;
   created_at: CreatedAt4;
@@ -416,7 +715,8 @@ export interface CreativeDirection {
   revision: Revision3;
   task_id: TaskId4;
   brief_ref: VersionRef;
-  analysis_ref: VersionRef;
+  analysis_ref: VersionRef | null;
+  structure_handoff_id: StructureHandoffId;
   feedback_refs: FeedbackRefs;
   core_message: CoreMessage;
   hook: Hook;
@@ -425,6 +725,7 @@ export interface CreativeDirection {
   production_requirements: ProductionRequirements;
   evidence: Evidence;
   rationale: Rationale;
+  auxiliary_status: AuxiliaryStatus;
   hypotheses: Hypotheses;
   production_notes: ProductionNotes;
   origin: Origin;
@@ -449,8 +750,8 @@ export interface CreativeFeedback {
   instruction: Instruction;
   target_direction: VersionRef;
   brief_ref: VersionRef;
-  analysis_ref: VersionRef;
-  status: Status1;
+  analysis_ref: VersionRef | null;
+  status: Status4;
   resulting_direction: VersionRef | null;
   explanation: Explanation;
 }
@@ -458,12 +759,13 @@ export interface ProductionCreativeBrief {
   schema_version: SchemaVersion6;
   created_at: CreatedAt6;
   updated_at: UpdatedAt6;
+  bundle_id: BundleId;
   output_id: OutputId;
   revision: Revision5;
   task_id: TaskId6;
   direction_ref: VersionRef;
   brief_ref: VersionRef;
-  analysis_ref: VersionRef;
+  analysis_ref: VersionRef | null;
   feedback_refs: FeedbackRefs1;
   origin: Origin;
   currentness: Currentness1;
@@ -480,12 +782,13 @@ export interface TextStoryboard {
   schema_version: SchemaVersion7;
   created_at: CreatedAt7;
   updated_at: UpdatedAt7;
+  bundle_id: BundleId1;
   output_id: OutputId1;
   revision: Revision6;
   task_id: TaskId7;
   direction_ref: VersionRef;
   brief_ref: VersionRef;
-  analysis_ref: VersionRef;
+  analysis_ref: VersionRef | null;
   feedback_refs: FeedbackRefs2;
   origin: Origin;
   currentness: Currentness2;
@@ -511,7 +814,7 @@ export interface ProcessingJob {
   job_id: JobId;
   task_id: TaskId8;
   operation: Operation;
-  status: Status2;
+  status: Status5;
   input_refs: InputRefs;
   video_id: VideoId5;
   result_ref: VersionRef | null;
@@ -522,4 +825,123 @@ export interface ProcessingJob {
 }
 export interface InputRefs {
   [k: string]: VersionRef;
+}
+export interface M2Draft {
+  task_id: TaskId9;
+  draft_version: DraftVersion;
+  based_on_brief: VersionRef | null;
+  fields: M2Fields;
+  claims: Claims;
+  source_notes: SourceNotes;
+  reviewed_input_checkpoint: ReviewedInputCheckpoint;
+  has_pending_inputs: HasPendingInputs;
+  legacy_review_required: LegacyReviewRequired;
+  missing_fields: MissingFields;
+  updated_at: UpdatedAt9;
+}
+/**
+ * Partial task-local input; null is unknown, explicit 'none' remains text.
+ */
+export interface M2Fields {
+  brand_company: BrandCompany1;
+  product: Product1;
+  target_audience: TargetAudience1;
+  platform: Platform1;
+  communication_goal: CommunicationGoal1;
+  target_duration_seconds: TargetDurationSeconds2;
+  available_footage: AvailableFootage1;
+  presenters: Presenters1;
+  locations: Locations1;
+  tone: Tone1;
+  production_limits: ProductionLimits1;
+  approved_messages: ApprovedMessages1;
+  prohibited_claims: ProhibitedClaims1;
+}
+export interface M2Claim {
+  claim_id: ClaimId1;
+  statement: Statement1;
+  supporting_notes: SupportingNotes1;
+  source_urls: SourceUrls1;
+  qualification: Qualification1;
+  confirmed_for_use: ConfirmedForUse;
+}
+export interface M2DraftUpdate {
+  expected_draft_version: ExpectedDraftVersion;
+  fields: M2Fields;
+  claims: Claims1;
+  source_notes: SourceNotes1;
+}
+export interface M2ApplyRequest {
+  expected_draft_version: ExpectedDraftVersion1;
+  expected_version: ExpectedVersion;
+  based_on_brief: VersionRef | null;
+}
+export interface M2ApplyResult {
+  changed: Changed;
+  draft: M2Draft;
+  task: TaskState;
+}
+export interface M2DiscardRequest {
+  expected_draft_version: ExpectedDraftVersion2;
+}
+export interface M2AssistanceRequest {
+  draft_version: DraftVersion1;
+  request_id: RequestId;
+  mode: Mode1;
+  requested_field: RequestedField;
+}
+export interface M2AssistanceResponse {
+  request_id: RequestId1;
+  source_draft_version: SourceDraftVersion;
+  provider_mode: ProviderMode;
+  candidates: Candidates;
+  unresolved_notes: UnresolvedNotes;
+}
+export interface M2Candidate {
+  target: Target;
+  value: Value;
+  origin: Origin1;
+  source_excerpt: SourceExcerpt;
+  candidate_id: CandidateId;
+}
+export interface M2ProposedClaim {
+  statement: Statement2;
+  supporting_notes: SupportingNotes2;
+  source_urls: SourceUrls2;
+  qualification: Qualification2;
+}
+export interface M2AdoptRequest {
+  source_draft_version: SourceDraftVersion1;
+  request_id: RequestId2;
+  candidates: Candidates1;
+}
+export interface EditorDraft {
+  task_id: TaskId10;
+  scope: Scope;
+  draft_version: DraftVersion2;
+  base_refs: BaseRefs;
+  content: Content;
+  has_pending_changes: HasPendingChanges;
+  conflict: Conflict;
+  updated_at: UpdatedAt10;
+}
+export interface BaseRefs {
+  [k: string]: VersionRef;
+}
+export interface Content {
+  [k: string]: JsonValue;
+}
+export interface EditorDraftUpdate {
+  expected_draft_version: ExpectedDraftVersion3;
+  base_refs: BaseRefs1;
+  content: Content1;
+}
+export interface BaseRefs1 {
+  [k: string]: VersionRef;
+}
+export interface Content1 {
+  [k: string]: JsonValue;
+}
+export interface EditorDiscardRequest {
+  expected_draft_version: ExpectedDraftVersion4;
 }

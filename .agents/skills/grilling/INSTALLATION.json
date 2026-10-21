@@ -1,0 +1,11 @@
+{
+  "requested_url": "https://www.aihero.dev/skills-grill-me",
+  "landing_page_access": "HTTP 403 in this environment; not read",
+  "source_repository": "https://github.com/mattpocock/skills",
+  "source_commit": "49dd158d1076134a641b33efb035946536778336",
+  "source_path": "skills/productivity/grilling/SKILL.md",
+  "source_sha256": "befdff1e27a1dfe2a294d5871169ac1afe16d983911daa4f32627514a48c1e15",
+  "installation_scope": "Project-local Codex skill in the current workspace; not a global Mac installation",
+  "local_customization": "Native interactive question boxes required; Codex-compatible invocation; preserve confirmed decisions",
+  "license": "MIT"
+}

@@ -13,6 +13,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from .contract_migration import add_v04_fields
+from .m2_migration import add_v05_fields
 from .media import MediaError, probe_frame_timing
 from .models import FrameTiming, TaskState, validate_state
 from .timing import seconds_to_frame_range
@@ -22,10 +24,6 @@ _V02_VALIDATOR = Draft202012Validator(
     json.loads((ROOT / "contracts/v0.2.task-state.schema.json").read_text()),
     format_checker=FormatChecker(),
 )
-_COLLECTIONS = ("briefs", "videos", "analyses", "directions", "feedback",
-                "production_briefs", "storyboards", "jobs")
-
-
 def _convert_analysis(analysis: dict, timing: FrameTiming | None) -> dict:
     converted = deepcopy(analysis)
     converted["frame_count"] = timing.frame_count if timing else None
@@ -95,8 +93,7 @@ def migrate_v02_task(payload: dict, media_root: Path) -> TaskState:
     # requires it. Preserve that default while archiving the exact original JSON.
     state["task"].setdefault("chosen_direction", None)
     _V02_VALIDATOR.validate(state)
-    for record in [state["task"], *(record for name in _COLLECTIONS for record in state[name])]:
-        record["schema_version"] = "0.3.0"
+    add_v04_fields(state)
     media_root = Path(media_root).resolve()
     for video in state["videos"]:
         video_id = video["video_id"]
@@ -137,4 +134,7 @@ def migrate_v02_task(payload: dict, media_root: Path) -> TaskState:
                              for analysis in state["analyses"]]
     _archive_unavailable_creative(state)
     state["task"]["version"] += 1
+    add_v05_fields(state)
+    from .workspace_migration import add_v06_fields
+    add_v06_fields(state)
     return validate_state(TaskState.model_validate(state))

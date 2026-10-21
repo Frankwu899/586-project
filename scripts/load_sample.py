@@ -30,13 +30,16 @@ def _require_success(before: TaskState, after: TaskState, operation: str, result
     return job
 
 
-def load_sample(data_dir: Path, complete: bool = False):
+def load_sample(data_dir: Path, complete: bool = False, language: str = "English"):
     service = WorkflowService(data_dir)
     label = "Fictional LumaCup sample"
     if complete:
         label += " — scripted review and approval walkthrough"
     state = service.create(label)
     task_id = state.task.task_id
+    # Scripted fictional setup explicitly chooses a language; ordinary tasks
+    # remain unset until the user chooses in the creative workspace.
+    state = service.set_language(task_id, state.task.version, language)
     state = service.load_sample(task_id, state.task.version)
     before = state
     state = service.recognize(task_id, state.task.version, state.task.current_video_id)
@@ -93,10 +96,11 @@ def load_sample(data_dir: Path, complete: bool = False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=Path(os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data")))
+    parser.add_argument("--language", choices=("English", "Chinese"), default="English", help="Explicit output language for the fictional setup")
     parser.add_argument("--complete", action="store_true", help="Seed a fully fictional walkthrough including scripted approval and output edits")
     parser.add_argument("--write-fixture", type=Path, help="Save a JSON contract example; media remains in the data directory")
     args = parser.parse_args()
-    state = load_sample(args.data_dir, args.complete)
+    state = load_sample(args.data_dir, args.complete, args.language)
     if args.write_fixture:
         args.write_fixture.parent.mkdir(parents=True, exist_ok=True)
         args.write_fixture.write_text(json.dumps(state.model_dump(mode="json"), indent=2) + "\n")

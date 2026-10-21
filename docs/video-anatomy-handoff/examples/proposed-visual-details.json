@@ -1,0 +1,69 @@
+{
+  "proposal_notice": "IMPLEMENTATION PROPOSAL ONLY. Not accepted by unmodified v0.3. Chinese strings are intentional test content; no real video or recognition run is represented.",
+  "analysis_id": "analysis_demo",
+  "analysis_revision": 1,
+  "video_id": "video_demo",
+  "event_id": "ev_visual_03",
+  "visual_details": {
+    "subjects": {
+      "status": "observations",
+      "items": [
+        {
+          "subject_id": "s1",
+          "kind": "person",
+          "label": "画面中的人物",
+          "description": "人物手部正在操作杯盖。",
+          "roles": [
+            "product_user"
+          ]
+        },
+        {
+          "subject_id": "s2",
+          "kind": "physical_object",
+          "label": "红色杯子",
+          "description": "红色杯身、黑色杯盖。",
+          "roles": [
+            "product"
+          ]
+        }
+      ],
+      "error": null
+    },
+    "actions": {
+      "status": "observations",
+      "items": [
+        {
+          "action_type": "open",
+          "actor_subject_ids": [
+            "s1"
+          ],
+          "target_subject_ids": [
+            "s2"
+          ],
+          "description": "人物旋开红色杯子的杯盖。"
+        }
+      ],
+      "error": null
+    },
+    "product_presentations": {
+      "status": "observations",
+      "items": [
+        {
+          "product_subject_ids": [
+            "s2"
+          ],
+          "presentation_type": "feature_demo",
+          "description": "展示打开杯盖的操作过程，不证明保温性能。"
+        },
+        {
+          "product_subject_ids": [
+            "s2"
+          ],
+          "presentation_type": "appearance",
+          "description": "展示杯体与杯盖外观。"
+        }
+      ],
+      "error": null
+    }
+  }
+}

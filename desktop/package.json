@@ -1,0 +1,53 @@
+{
+  "name": "video-anatomy-desktop",
+  "version": "0.7.0",
+  "private": true,
+  "description": "Local Video Anatomy workspace with an authenticated bundled backend",
+  "author": "Video Anatomy team",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check session.cjs && node --check setup.js",
+    "build:runtime:mac": "bash build-runtime-macos.sh",
+    "package:mac:unsigned": "electron-builder --mac dmg --publish never -c.mac.identity=null",
+    "package:mac": "electron-builder --mac dmg --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.9.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.videoanatomy.desktop",
+    "productName": "Video Anatomy",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "session.cjs",
+      "setup.html",
+      "setup.js",
+      "setup.css"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "runtime"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "hardenedRuntime": true,
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "title": "Video Anatomy ${version}"
+    },
+    "artifactName": "Video-Anatomy-${version}-${arch}.${ext}",
+    "beforePack": "./verify-runtime.cjs"
+  }
+}

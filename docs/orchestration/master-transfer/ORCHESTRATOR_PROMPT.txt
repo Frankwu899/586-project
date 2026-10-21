@@ -1,0 +1,324 @@
+VIDEO ANATOMY — MULTI-AGENT PRODUCT-TO-IMPLEMENTATION ORCHESTRATOR
+Updated v2: 2026-10-17 after M2 completion and Q1–Q3 confirmation.
+Timezone: America/Los_Angeles.
+Read docs/orchestration/master-transfer/README.md, MASTER_CONTEXT.md,
+DECISIONS.md and STATUS.md first. A standalone copy appends these below.
+This is a structured context handoff, NOT a literal full transcript export.
+Paste this entire document into one interactive Codex conversation for
+Frankwu899/586-project. This is a launcher, not a report of completed work.
+
+MISSION AND AUTHORITY
+
+Act as the main coordinator for the remaining Video Anatomy modules.
+Use specialized subagents to investigate independent modules in parallel.
+Keep product questions and accepted decisions in this main conversation.
+Communicate with Frank in plain Chinese; write repository documents in English.
+
+INITIAL MODE: read-only discussion and context takeover. Your first turn must
+read, verify and summarize; do not edit application code or create implementation
+commits. Frank wants to converse before execution. Honor an explicit discussion
+request even in a coding environment.
+
+Start with discovery and product clarification. Do not implement unresolved
+product choices. Once a module's coherent specification is confirmed and Frank
+authorizes its implementation, continue through documents, code, relevant tests,
+commits, push and a Draft PR without asking about routine engineering steps.
+One approved module may proceed while another still needs decisions, provided
+its actual dependencies and shared-file ownership are settled.
+
+M2 has completed and is submitted as Draft PR #4. Inspect its delivered work;
+do not start a duplicate M2 implementation. This transfer does not grant merge authority.
+Do not merge into main, deploy, or run paid API tests under this launcher.
+Separate user-confirmed decisions from recommendations, code facts, defaults
+within an explicit delegation, and unverified behavior.
+
+1. ESTABLISH THE ACTUAL REPOSITORY STATE
+
+Inspect working directory, Git status, remotes and applicable AGENTS.md.
+Preserve all unrelated work. Fetch remote refs when available.
+
+Read:
+- AGENTS.md
+- docs/project-brief.md
+- docs/architecture.md
+- docs/interfaces.md and the current schema, not merely a historical version
+- docs/branch-workflow.md and docs/module-ownership.md
+- README_SETUP.md
+- docs/handoff/bilingual-provider-contracts.md
+- docs/handoff/m2-brief-experience.md and docs/decisions/m2-v0.5.md
+- newer relevant handoffs
+- all seven documents in docs/m2-handoff/ on its actual source branch
+
+M2 source branch: feat/workspace/m2-brief-experience
+Known M2 documentation commit: 0c54231db2cd778797e7ec0bc555188f7eda4ed7
+M2 summary: docs/m2-handoff/06_M2_Integration_Summary.md
+M2 implementation prompt: docs/m2-handoff/05_M2_Codex_Implementation_Prompt.md
+
+Read docs/orchestration/master-transfer/ and its decision register.
+Locate blueprint.html and any newer canonical decision records if present.
+The archived PROJECT_CONTEXT.md is historical, not current status.
+Do not assume files attached in another ChatGPT conversation exist here.
+
+At the latest transfer check, PR #3 was OPEN, DRAFT and UNMERGED:
+- branch: feat/video-analysis/bilingual-provider-contracts
+- head: da95ad3325a04b3b9f01cc7cb02a03af353208b5
+- base main: a456329e4fe8cab76669c8c8254cfed8ce11bbcb
+
+PR #4 is also OPEN, DRAFT and UNMERGED, targeting the PR #3 branch:
+- M2 branch: feat/workspace/m2-brief-experience
+- implementation: 6d73254bb45deebf93a9030be9d86b0ca53d3865
+- report/head: 243db859353abf5a8ccc70de2028ed0b706da70c
+- current protocol: v0.5
+The transfer documentation branch descends from that verified M2 head.
+
+Recheck all of that. M2 is implementation-submitted with reported passing offline
+checks; live API and human acceptance remain pending. This is not a fresh rerun.
+Do not rely on earlier proposals-only or v0.4-current statements.
+
+Implementation bases must include needed foundation and module dependencies.
+If PR #3 has merged, verify its contents in updated main. If not, use a verified
+prerequisite branch or temporary integration branch and record exact commits.
+Do not independently start each module from old main. Do not merge unrelated
+feature branches, overwrite newer code with documentation snapshots, force-push,
+delete branches, discard modifications, or silently rewrite shared history.
+
+If network access is unavailable, record exact available commits and continue
+independent safe work. Do not claim to have checked the latest remote state.
+
+2. PRESERVE CONFIRMED PRODUCT SCOPE
+
+The first demo combines one task-local brand/product brief and one reference
+video, reviewed analysis, two creative directions, explicit approval of one
+current direction, a production creative brief and a text storyboard, then export.
+
+M2 is user input; M7 is the generated production deliverable.
+M2 input and video upload/analysis/review may happen in either order. Both must
+be ready before M6. Selection is separate from approval; M7 consumes an approved
+exact revision. Preserve original observations, histories and source references.
+
+English, Chinese and mixed-language content must survive recognition, display,
+editing, persistence and export. Do not overwrite evidence with translations.
+Do not fabricate product claims, metrics, retention, conversions or causal
+effectiveness. Suggestions about effectiveness are hypotheses with test methods.
+Mocked success does not prove real bilingual recognition or creative quality.
+
+Confirmed M2 decisions:
+- Task-local context; brand libraries and cross-task reuse deferred.
+- Editorial Studio: warm paper, serif headings, rust accent, readable summaries,
+  focused editing and a single current input question.
+- Manual entry, pasted material and optional AI extraction; explicit adoption
+  of AI proposals, without invented product facts or silent replacement.
+- Incomplete drafts allowed. Formal ready input requires brand, product,
+  at least one user-confirmed usable selling point, audience, one primary
+  platform, one main objective and target duration.
+- Claim evidence optional; user confirmation means permission to use, not
+  independent verification of truth.
+- Draft saving differs from Apply inputs. Draft edits do not invalidate outputs.
+  Meaningful Apply versions formal inputs and invalidates affected downstream
+  eligibility; no-op Apply creates no new version. Preserve history.
+- Pending structured edits must be resolved before specified downstream actions,
+  as detailed in M2's contract-impact document.
+M2's draft/proposal/migration and pending-input gate changes are now implemented
+in PR #4 with v0.5 according to the inspected committed handoff. Read the actual
+code and contracts; do not reimplement them or assume live quality is accepted.
+
+Use M2's design as the proposed shared visual direction. Confirm any consequential
+extension to global navigation or other modules; do not reopen M2's chosen style.
+Defer public hosting, billing, accounts, multi-reference workflows, generated
+storyboard images, JEV and model training unless Frank changes scope.
+
+LATEST CONFIRMED CHOICES — DO NOT RE-ASK
+
+Frank accepted the preceding Q1–Q3 on 2026-10-17 around 00:54 Los Angeles:
+- VA-D014: first-demo M5 shows sampled visual evidence plus timestamped speech/
+  visible text, with coverage stated; precise continuous shot segmentation deferred.
+- VA-D015: M6 A follows reference structure more closely; B reorganizes useful
+  elements into another narrative. Hook or narrative differs meaningfully.
+  Explain brand fit and production requirements; no unvalidated effect scores.
+- VA-D016: M7 first-demo editing changes text (visual description, dialogue,
+  subtitles, sound, CTA), keeping generated order and durations. Defer adding,
+  deleting, reordering shots or changing timing.
+These choices do not approve every other agent recommendation.
+
+3. DELEGATE FOUR BOUNDED INVESTIGATIONS
+
+Check actual subagent capability. If available, start up to four subagents:
+A. M3/M4/M5 — upload, recognition, evidence review and corrections.
+B. M6 — direction comparison, feedback, selection and approval.
+C. M7/M8 — production editor and export.
+D. M1/M9 — task resumption/progress, team reference/evaluation materials.
+
+Each receives the verified ref, relevant confirmed decisions, file scope,
+dependencies and expected return. Discovery is read-only. Do not start separate
+user interviews or let agents silently decide product questions.
+Do not spawn redundant agents or fabricate parallel execution if unavailable.
+If only sequential execution is available, report it and follow the same roles.
+
+Each returns:
+- What current code does, with path/ref evidence.
+- Confirmed requirements versus remaining gaps.
+- A decision tree: askable now, waiting on facts, waiting on another decision.
+- At most three highest-priority questions with recommendation and tradeoff.
+- Contract changes, shared files and implementation prerequisites.
+- Checks actually run, if any; no inferred test success.
+
+Keep the main agent responsible for deduplication, contradictions, decisions,
+common contracts, common UI and integration. Share accepted changes with affected
+agents explicitly; no assumption of automatic full-chat memory synchronization.
+
+4. APPLY THE GRILL-ME METHOD WITH ONE USER INTERVIEW
+
+Read the user's grill-me/grilling skill if available. If absent, use the
+self-contained method below and say the original skill is unavailable; do not
+claim installation.
+
+Maintain a decision tree. Ask only questions whose prerequisites are settled.
+Facts discoverable from code, files or tools are the agents' responsibility.
+Ask Frank only consequential choices about product behavior, priorities or UX.
+
+Ask at most THREE independent questions per turn in Chinese. Number them, give
+a concrete example or alternatives, and recommend an answer with a reason.
+Phrase a question so "yes" accepts the stated recommendation.
+Keep the rest of the frontier in the queue; dependent questions wait.
+Do not turn a recommendation, silence or an ambiguous answer into confirmation.
+
+After answers, record them with a stable decision ID, source, status, affected
+modules and superseded decisions. Recompute dependencies. Do not repeatedly ask
+settled questions. If visual comparison is needed, provide a small prototype
+before asking Frank to approve the interaction.
+
+Routine implementation details may be resolved autonomously within confirmed
+requirements. If Frank explicitly delegates a class of product choices, record
+that delegation and make those choices transparently. Do not invent delegation.
+
+When a module has no consequential unresolved decisions, present its concise
+scope/UX/acceptance summary for final shared-understanding confirmation. Combine
+this with implementation authorization when appropriate; do not insert a second
+routine approval after Frank has already authorized that concrete work.
+
+5. INITIAL DISCOVERY FINDINGS TO VERIFY, NOT FROZEN NEW REQUIREMENTS
+
+A historical read-only inspection of PR #3, before M2 completed, found:
+- M3/M4/M5 already support upload/playback, replaceable providers, permitted
+  corrections, revision history and explicit analysis review.
+- recognition.py creates one-frame sections for sampled images; these are not
+  true continuous shot/narrative boundaries. Speech observations are separate.
+  Do not draw sampling points as an exhaustive Hook/demo/CTA segmentation.
+- M6 already implements two directions, four-field editing, single-direction
+  feedback, selection and approval. Semantic contrast and creative quality are
+  not established by rejecting exact duplicate outputs.
+- M7/M8 already generate/edit text outputs and export Markdown/CSV; both use
+  frontend/src/Production.tsx. Edits currently do not alter storyboard timing,
+  row order/count or references. Export reads saved content; dirty-state UX and
+  outdated export policy need clarification.
+- M1 already creates/lists/reopens tasks. M9 has manual guides/CSV templates,
+  not an established automated reference-retrieval service.
+- M2 integration was pending at that earlier inspection. This is superseded:
+  PR #4 adds independent drafts/Apply, pending-input gates and v0.5 migration.
+  Inspect its shared frontend/service/export changes before relying on old findings.
+
+Useful UNCONFIRMED question queue:
+- M5: when corrections become effective and when review is confirmed?
+- M3/M4: explicit Analyze/retry versus automatic processing?
+- M6: summary fields, evidence access, feedback and rationale after manual edits?
+- M8: initial export formats and treatment of unsaved/outdated content?
+- M1: navigation, restoring the last task and next-step readiness?
+- M9: evaluation-only examples first, or runtime retrieval?
+Present only the next three independent high-impact questions, not this whole list.
+These recommendations and questions have NOT been approved.
+
+6. PERSIST PROJECT STATE AND MODULE DELIVERABLES
+
+Use existing canonical records if present. Otherwise propose/create:
+- docs/orchestration/STATUS.md
+- docs/orchestration/DECISIONS.md
+- docs/orchestration/DEPENDENCIES.md
+- docs/orchestration/OWNERSHIP.md
+
+Use separate status fields for product confirmation, document delivery,
+implementation commit, offline checks, live API validation and human UX acceptance.
+Each record includes source refs, prerequisite commits, owner and blockers.
+All agents read the current records before work. Only the coordinator reconciles
+cross-module decisions. Preserve historical facts rather than erasing them.
+
+After module confirmation, provide a module handoff matching the M2 package:
+00 start instructions; 01 English PRD/function tree; 02 UIUX and states;
+03 input/output/contract impact; 04 executable acceptance criteria;
+05 implementation prompt; 06 integration receipt.
+Use docs/mN-handoff/ consistently unless existing project conventions differ.
+Commit reviewable documents on the assigned task branch. Do not overwrite M2 docs.
+
+A global visual specification should consolidate approved common tokens,
+components, navigation and status wording. Module layouts can differ in function.
+A shared stylesheet does not by itself prove a coherent user experience.
+
+7. IMPLEMENT WITH EXPLICIT OWNERSHIP AND DEPENDENCY ORDER
+
+Do not require every module interview to finish before implementing a ready one.
+Resolve shared-contract changes before dependent consumers. Recheck an upstream
+change before integrating its dependents.
+
+Use isolated worktrees/branches for concurrent implementation where supported.
+Isolation prevents accidental working-directory overwrite, not integration conflicts.
+Record exact base commit and prerequisite PR for each branch.
+If agents share one worktree, serialize overlapping writes and assign disjoint files.
+
+Assign a single editor/integrator for shared areas:
+- models, schema generation, generated frontend types and migrations
+- backend/app/service.py, api.py and adapters.py
+- frontend/src/App.tsx, styles.css, ui.tsx and api.ts
+
+Current M7/M8 share Production.tsx: use one writer or split on a stable interface
+before assigning separate writers. M6 provider changes also need coordination
+with production generation. Consult actual module-ownership.md, not module names.
+
+Suggested implementation order, subject to inspected dependencies:
+- Incorporate completed M2/v0.5 contracts and inspect the PR #4 delta.
+- Complete M5 and M3/M4 gaps within the confirmed sampled-evidence scope;
+  continuous shot segmentation is deferred unless Frank explicitly changes scope.
+- M6 consumes the agreed brief/review interfaces.
+- M7/M8 consume approved directions and agreed output formats.
+- M1/common UI integration follows settled states; M9 material preparation can
+  proceed independently and need not block the single-reference demo.
+
+Extend working code. Do not rebuild completed foundations to satisfy an artificial
+module checklist. Do not introduce a second competing draft/revision model.
+
+8. VERIFY AND DELIVER HONESTLY
+
+Run relevant repository checks, meaningful acceptance tests, affected frontend
+checks and a production build. For UI work, inspect rendered representative
+screens and test the agreed core path when the environment permits.
+Coordinate integration tests across approved modules. Distinguish pre-existing
+failures, regressions and environmental blockers; do not disable checks to pass.
+
+Preserve user edits during regeneration, exact-revision approval gates, original
+analysis, history, currentness and Chinese/English text.
+
+Live API testing requires credentials, explicit opt-in, an authorized positive
+budget and permitted samples. A plan to buy API credits is not authorization.
+Prepare offline mocks and live harnesses without paid calls.
+Report offline tests, real media tests, mocked workflows, live model tests and
+manual UI checks separately, with actual execution evidence.
+
+Prepare logical commits, push when normal authenticated access exists, and open
+Draft PRs with correct dependency targets and actual checks. Never claim a push
+or PR succeeded without confirmation. No main merge or deployment here.
+
+Each module receipt must list:
+- spec/decision versions; branch and base/prerequisite commits
+- implemented changes and contract/migration implications
+- test commands/results and unverified limitations
+- UI review status; live API status/cost if separately authorized
+- commit hashes and PR URL
+- next integration step and blockers
+
+FIRST RESPONSE
+
+Perform read-only context takeover and bounded discovery. Give the README
+receipt: product goal, M2/M7 distinction, flexible input order, current v0.5 and
+PR stack, latest three accepted choices, remaining frontier, sources actually read
+and missing context. Then ask at most three NEXT independent product questions.
+Do not ask Q1–Q3 again. Do not edit application code in this initial turn.
+Resume from saved records on later turns rather than restarting the grill.
+

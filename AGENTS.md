@@ -1,13 +1,39 @@
 # Video Anatomy — Agent Instructions
 
-Every coding agent must read this file and the relevant interface documents before starting a task. The repository now extends the preserved v0.1 documentation baseline with the v0.3 frame-based sample application. Read the current implementation and latest handoff before making readiness claims.
+Every coding agent must read this file and the relevant interface documents before starting a task. The repository now extends the preserved v0.1 documentation baseline with the v0.5 frame-based application and replaceable providers. Read the current implementation and latest handoff before making readiness claims.
 
 ## Read first
 
+The owner's 2026-10-18 request authorizes implementing and testing the workspace
+redesign and confirmed Structure S1-S11, with a total USD 3 live API/training
+budget. This supersedes the earlier discussion-only status below. Centralize
+paid calls through the shared persisted budget; never allocate USD 3 per agent
+or reset the ledger between modules. No main merge or deployment is authorized.
+
+The owner clarified on 2026-10-19 that USD 3 applies only to Cloud experiments,
+not the local client. Local launcher requests use non-blocking usage reporting:
+do not reapply the Cloud cap, old reservation holds or accounting-pause gate to
+client generation. Preserve the historical ledger without resetting it. Cloud
+experiment transports remain capped. Whisper is approved for timestamped speech;
+other local inference stays on the configured GPT-6 models.
+
+For the current UI/UX redesign discussion, start with
+`docs/handoff/workspace-redesign-review.md` and its linked design review. The owner
+requested product-flow review before implementation and selected UI UX Pro Max
+as the new design source, with a Glassmorphism preference. Proposed dependency
+changes are not confirmed merely because they appear in the prototype. All future
+installer/launcher text, package documentation and handoffs must be English.
+
+When the owner invokes grill-me, read `.agents/skills/grill-me/SKILL.md` and its
+local `grilling` dependency. The owner requires native interactive question boxes
+for all interview questions, never plain-text question lists. Preserve previously
+confirmed decisions. The current Structure discussion is product design; its
+dedicated product agent is requested but not yet implemented.
+
 1. `docs/project-brief.md`
 2. `docs/architecture.md`
-3. `docs/interfaces.md` and `contracts/v0.3.task-state.schema.json` when touching shared data (v0.1/v0.2 artifacts are historical snapshots)
-4. The current task and latest relevant handoff in `docs/handoff/`; start with `docs/handoff/skeleton-integration-and-branches.md` for baseline integration verification
+3. `docs/interfaces.md` and `contracts/v0.5.task-state.schema.json` when touching shared data (v0.1/v0.2/v0.3/v0.4 artifacts are historical snapshots)
+4. The current task and latest relevant handoff in `docs/handoff/`; start with `docs/handoff/m2-brief-experience.md` for M2 and `docs/handoff/bilingual-provider-contracts.md` for the provider foundation and actual verification
 5. `docs/branch-workflow.md` and `docs/module-ownership.md` for task naming, actual file boundaries and shared-file coordination
 6. `README_SETUP.md` for current setup and Cloud-to-local use. `docs/cloud-workflow.md` preserves the earlier documentation-only starter workflow; its old setup assumptions and prompts are historical.
 

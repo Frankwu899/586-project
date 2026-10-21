@@ -55,7 +55,7 @@ def test_readable_media_preserves_edits_approval_refs_and_storyboard_seconds(tmp
     original = deepcopy(legacy_payload)
     state = migrate_v02_task(legacy_payload, media_root)
     assert legacy_payload == original  # Conversion cannot mutate the source backup.
-    assert state.task.schema_version == "0.3.0"
+    assert state.task.schema_version == "0.6.0"
     assert state.task.version == legacy_payload["task"]["version"] + 1
     assert state.videos[0].frame_timing.frame_count == 200
     assert state.videos[0].frame_timing.fps_numerator == 20
@@ -63,7 +63,16 @@ def test_readable_media_preserves_edits_approval_refs_and_storyboard_seconds(tmp
     converted = state.model_dump(mode="json")
     for collection in ("briefs", "directions", "feedback", "production_briefs", "storyboards", "jobs"):
         for before, after in zip(original[collection], converted[collection], strict=True):
-            assert after == {**before, "schema_version": "0.3.0"}
+            if collection == "briefs":
+                details = after.pop("claim_details")
+                assert [detail["statement"] for detail in details] == before["selling_points"]
+                assert all(detail["confirmation_origin"] == "legacy_unrecorded" for detail in details)
+            if collection == "directions":
+                assert after.pop("auxiliary_status") == "current"
+                assert after.pop("structure_handoff_id") is None
+            if collection in ("production_briefs", "storyboards"):
+                assert after.pop("bundle_id") is None
+            assert after == {**before, "schema_version": "0.6.0"}
     for before, after in zip(original["analyses"], converted["analyses"], strict=True):
         assert after["review"] == before["review"]
         assert after["corrections"] == before["corrections"]
@@ -71,6 +80,8 @@ def test_readable_media_preserves_edits_approval_refs_and_storyboard_seconds(tmp
         for collection in ("events", "segments"):
             for old_interval, new_interval in zip(before[collection], after[collection], strict=True):
                 old = dict(old_interval)
+                if collection == "events":
+                    old["visual_details"] = None
                 start, end = old.pop("start_seconds"), old.pop("end_seconds")
                 assert new_interval == {**old, "start_frame": round(start * 20),
                                         "end_frame": round(end * 20), "legacy_seconds": None}
@@ -97,7 +108,7 @@ def test_rows_added_after_startup_migrate_on_load(tmp_path, legacy_payload):
     store = TaskStore(tmp_path)
     original_raw = put_legacy(tmp_path, legacy_payload)
     state = store.list()[0]
-    assert state.task.schema_version == "0.3.0"
+    assert state.task.schema_version == "0.6.0"
     with sqlite3.connect(store.path) as db:
         assert db.execute("SELECT original_payload FROM task_migration_archive").fetchone()[0] == original_raw
 
@@ -172,7 +183,7 @@ def test_failed_migration_is_atomic_and_keeps_unmodified_original(tmp_path, lega
 
 
 def test_new_fixture_validates_and_old_sample_remains_seconds():
-    state = TaskState.model_validate_json((ROOT / "examples/v0.3.sample-task.json").read_text())
+    state = TaskState.model_validate_json((ROOT / "examples/v0.6.sample-task.json").read_text())
     assert state.videos[0].frame_timing.frame_count == 200
     old = json.loads((ROOT / "examples/v0.2.sample-task.json").read_text())
     assert old["task"]["schema_version"] == "0.2.0"
