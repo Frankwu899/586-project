@@ -1,5 +1,15 @@
 # Video Anatomy — v0.7 local workspace
 
+## v0.7.6 generation skill and team handoff
+
+[v0.7.6 documentation](docs/generation/v0.7.6/README.md) publishes the confirmed
+professional-generation rules for Structure, Ideas and Storyboard, together with
+[team assignments](docs/generation/v0.7.6/TEAM_HANDOFF.md), QA proposals and backend
+integration requirements. The [canonical skill](skills/video-anatomy-professional-generation/SKILL.md)
+is versioned 0.7.6. **It has not been connected to the backend; the runnable
+application remains v0.7.5.** See [Mac setup](MAC_APP.md) for current client behavior.
+
+
 For the macOS Finder launcher with in-page API setup, Keychain storage and repeat
 opening, use [MAC_APP.md](MAC_APP.md). For the Terminal/developer launcher, use
 [LOCAL_API.md](LOCAL_API.md). Classroom bundles do not preload private videos.
