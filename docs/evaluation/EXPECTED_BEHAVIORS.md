@@ -1,8 +1,6 @@
 # Video Anatomy v0.7.6 — Expected Behaviors & QA Test Cases
 
-**Project:** COMM 586 — Video Anatomy  
-**Owner:** Natalie — QA Metrics & Acceptance  
-**Document Version:** 1.0  
+**Project:** COMM 586 — Video Anatomy   
 **Specification:** Professional Generation Skill v0.7.6  
 **Related Document:** `QA_RUBRIC_v0.7.6.md`
 
@@ -610,7 +608,5 @@ Final release acceptance depends on verified test results and the team's agreed 
 - `QA_TEST_RESULTS.csv` — Recorded execution results
 - `REGRESSION_REPORT.md` — Version comparison and verified findings
 
-**Document Owner:** Natalie — QA Metrics & Acceptance  
-**Document Version:** 1.0
 
 This document defines the expected behaviors used to evaluate Video Anatomy v0.7.6. It does not represent completed test execution or verified application readiness.
