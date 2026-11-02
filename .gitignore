@@ -1,4 +1,6 @@
 .venv/
+.tools/
+.agents/skills/ui-ux-pro-max/
 __pycache__/
 *.py[cod]
 .pytest_cache/
