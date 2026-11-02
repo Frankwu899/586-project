@@ -1,8 +1,6 @@
 # Video Anatomy v0.7.6 — QA Rubric & Acceptance Criteria
 
-**Project:** COMM 586 — Video Anatomy  
-**Owner:** Natalie — QA Metrics & Acceptance  
-**Document Version:** 1.0  
+**Project:** COMM 586 — Video Anatomy   
 **Specification:** Professional Generation Skill v0.7.6  
 **Scope:** Structure, Ideas, Storyboard, and Cross-Module Quality Assurance
 
@@ -438,14 +436,10 @@ These materials define the relevant evaluation principles, module behaviors, exa
 
 ---
 
-## 15. Document Ownership
-
-**Maintained by:** Natalie — QA Metrics & Acceptance  
-**Document Version:** 1.0  
-**Applicable Specification:** Video Anatomy Professional Generation v0.7.6
+## 15. Document Scope
 
 This document establishes the QA rubric and acceptance criteria for the project's professional generation workflow.
 
 It provides a consistent basis for expected-behavior testing, deterministic validation, human review, defect reporting, and regression evaluation.
 
-**Scope clarification:** Completion of this rubric represents completion of the evaluation-framework document. It does not imply that the corresponding application implementation or regression testing has passed QA.
+Completion of this rubric does not imply that the corresponding application implementation or regression testing has passed QA.
