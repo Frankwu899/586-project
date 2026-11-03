@@ -1,0 +1,25 @@
+{
+  "version": "0.7.7",
+  "release_type": "repository-instructions-and-documentation",
+  "baseline_main": "bcd4f626f5432189b4e7448ba7bf1ddfdebded43",
+  "previous_instruction_commit": "5a961edba8672cbf8f97bfec9b11d196d3948963",
+  "runtime_integrated": false,
+  "files": {
+    "README_SETUP.md": "43b9b7fbf647cfd0b9423f2165a010d73b8303ea93a752ab52c315865db9b8b6",
+    "docs/generation/v0.7.7/DECISION_CONTINUITY.md": "861b025e87760d87cd4babeb03463709cb274382efe2098eb7695f6022ffe23f",
+    "docs/generation/v0.7.7/EXERCISES.md": "67d23e70791241f5cee8d081a73427d556cf1dbb1d61d3448a766322e581bf9c",
+    "docs/generation/v0.7.7/HARNESS_DELTA.md": "6f18ec151e3617394d6301d87523dcd3b142aa48d16514d8cac9d3548a9b32f9",
+    "docs/generation/v0.7.7/README.md": "4f7e50b4d9d9b162ab25b015d5d860def01db80b308dafc63fae08907a5dbc97",
+    "docs/generation/v0.7.7/VALIDATION_REPORT.md": "7379317de75c9d9cd2a01c2759f6f6ad5b6a9e3c654ef4a7fb0ef83eb5612384",
+    "docs/handoff/generation-skill-v077.md": "4513bf91db07a5849e91fa5b4bb3ada0a75877706ed0d836e4b1a4c075350af8",
+    "skills/video-anatomy-professional-generation/SKILL.md": "156c9e28c0304eb28173281194b4bc42db2e05b1aedd80cc1aa0e767ea0dffd2",
+    "skills/video-anatomy-professional-generation/references/EDITORIAL.md": "752e37c0505b0d05bfd65ec6cd7dc93851b31ddad55f780e10547b4f86c8bfe7",
+    "skills/video-anatomy-professional-generation/references/EXAMPLES.md": "2e6a6f16421dfac038be0fb787c10f112ad2f039b6a6a78e6704630c538c0ee2",
+    "skills/video-anatomy-professional-generation/references/IDEAS.md": "9a316f89d2f0d8f995faf9f41d944991f23446fc074aae2a953b5aecb7485567",
+    "skills/video-anatomy-professional-generation/references/PROFESSIONAL_METHOD.md": "754c44bb7932236a99235de28ff6d4afe23cc84a4e8696cfbc75818cb96ec85c",
+    "skills/video-anatomy-professional-generation/references/QUALITY.md": "d6e0630e6d29094a1017d88c86729732d90a0348ac5214df5d60a7e425a972cf",
+    "skills/video-anatomy-professional-generation/references/RESEARCH.md": "f9a8013d92447c70b54de32624750b8f16aeb142f4983f2611f510d5ef457e84",
+    "skills/video-anatomy-professional-generation/references/STORYBOARD.md": "735dfb5b6f3a57633abbd9e65178c78a438ffaf70c30d018eb4c9f979ea9c5ed",
+    "skills/video-anatomy-professional-generation/references/STRUCTURE.md": "4f134affbcc34994049b3810f99b2a2eec16b57f9b827dd3cb48a6f5e4f86d66"
+  }
+}

@@ -1,77 +1,63 @@
-# Storyboard — director and production planner
+# Storyboard — realize the approved idea
 
-## Purpose and approval boundary
+Turn the exact approved direction into coherent audiovisual execution. Require
+the compatible brief, approved facts/fixed wording, duration, language, resource
+constraints and relevant sources. No approved direction means no production generation.
 
-Turn the exact approved creative direction into a coherent audiovisual plan.
-Inputs include that direction revision, the current compatible brief, approved
-facts/wording, duration, language, available resources and any selected evidence.
-No direction approval means no production generation. Do not secretly change the
-core proposition to simplify execution. The storyboard is a planning artifact,
-not a generated video, guaranteed shot feasibility, or proof of effectiveness.
+## Professional procedure
+1. Identify what must survive: the proposition, opening promise, necessary support,
+   narrative/emotional turn, payoff and any requested action. These are checks,
+   not compulsory beats for every film.
+2. Design the ideal realization and list required resources. Respect known binding
+   limits; unspecified resources are requirements to confirm, not available inventory.
+   Avoid silently reducing ambition to an assumed low-budget setup.
+3. Translate narrative beats into bounded shots or generation segments. Decide
+   what the viewer sees, hears and understands in each. Use image and sound
+   deliberately rather than duplicating every visual in voice-over.
+4. Plan camera viewpoint/framing, action, transitions, screen text and sound only
+   to the specificity needed to execute the idea. Preserve product identity and
+   object/performer/setting continuity across shots.
+5. Fit the target duration with plausible action, speech and reading time.
+   Mark estimates as estimates; actual audio is needed for measured speech timing.
+   Research only material execution questions under RESEARCH.md.
+6. If constraints require cuts, explain their effect. Ask before changing a core
+   approved message. Preserve the approved direction while that choice is pending.
+7. Validate the plan and make at most one targeted repair. Remaining critical
+   issues produce a clearly marked discussion draft with affected shots identified.
 
-## Professional workflow
-
-1. **Identify what must survive execution.** Extract the core message, opening
-   promise, necessary proof, emotional/narrative turn, payoff and requested action
-   where relevant. These are checks, not mandatory beats for every video.
-2. **Design the ideal realization.** Start from the creative ambition; list required
-   cast, locations, props, product access and effects. Missing resources are
-   requirements to confirm, not existing inventory. Respect known binding limits.
-3. **Build beat-to-shot logic.** Map beats to shots or generation segments. Each row
-   is one bounded shot/segment, associated with its narrative beat in supporting
-   notes. A complex “demo scene” is not one shot if it requires several views.
-4. **Design for seeing and hearing.** Make subject, action, product detail and
-   necessary screen text explicit. Identify dialogue/voice-over, ambience, music
-   and silence. Check what must be comprehensible without sound when the context
-   calls for it. Do not invent a soundtrack license or finished visual asset.
-5. **Plan timing and continuity.** Fit the target duration with plausible reading,
-   action and speech time. Check object/wardrobe/setting continuity, action
-   handoffs and the opening's payoff. Estimate speech timing transparently;
-   without actual audio do not call it a measured result.
-6. **Resolve constraints honestly.** If the plan cannot fit, propose cuts with their
-   impact. Core-message cuts require confirmation. Preserve the approved version;
-   do not silently shorten its promise, omit necessary evidence or speed speech
-   unrealistically. A pending decision remains visible in a discussion draft.
-7. **Validate and repair once.** If critical issues remain, deliver an explicitly
-   marked discussion draft, exportable for review but not labeled ready to produce.
-
-## Main table: exactly four columns
+## Main result
+State the approved concept, planned total duration and material status briefly.
+Then provide exactly these four main columns:
 
 | Shot | Time | Visual | Audio |
 | --- | --- | --- | --- |
-| Stable human-readable shot number | Planned start–end and/or duration | Observable subject/action, essential framing and screen text where needed | Dialogue/voice-over, sound cues, music or silence |
+| Stable shot number | Planned start–end and/or duration | Subject, action, necessary framing and on-screen text | Dialogue/voice-over, sound, music or explicit silence |
 
-Keep the readable table compact. On-screen text belongs explicitly inside Visual;
-dialogue and other sound belong inside Audio, preserving their separate meaning.
-Do not drop these details merely to achieve four columns. Technical storage can
-retain separate fields, timing values and stable IDs.
+One row is one shot/generation segment, not a montage of unrelated views.
+Make the table readable and executable. Concision must not erase essential
+actions, screen text, dialogue or continuity. Write the intended audio wording,
+not "explain the benefit" when the actual words are required.
 
-## Supporting notes, separate from the main table
+## Supporting notes
+Link notes to stable shot IDs: beat/purpose, meaningful photographic intent,
+transitions, assets/resources, continuity, evidence, timing risks and unresolved
+decisions. Include the project-level resource needs. Keep routine empty notes out.
+Preserve distinct storage fields for dialogue, screen text, sound and timing;
+four display columns do not justify flattening the data.
 
-Map notes to shot IDs: narrative beat/purpose, photographic intent and transitions,
-required assets/resources, product/character continuity, source references,
-assumptions, timing risks and unresolved decisions. Include a project-level
-resource list. Do not add empty technical instructions to every shot.
+Use one shared plan for both production modes. Add live-action capture guidance
+or AI-video prompts only when requested/needed. Verify the target tool's actual
+capabilities before giving tool-specific instructions; do not assume generated
+footage, music rights or assets already exist. No video API integration is authorized.
 
-The shared storyboard is the source for both production modes. When requested:
-- **Live action:** add practical capture requirements and execution alternatives.
-- **AI video:** add subject/action/environment/camera descriptions and continuity
-  anchors, respecting the target tool's actual capabilities. Do not assume a
-  specific video model, API, image generation or footage already exists.
-
-No automatic dual-prompt dump is required on every row. No video-generation API
-integration is authorized by this specification.
-
-## Status and resource compression
-
-Carry experimental status, hypothesis and validation points from the approved
-Idea into notes and exports. Distinguish: semantic quality; unresolved production
-resources; measured versus estimated timing; and untested communication effect.
-Passing one dimension does not resolve the others.
-
-Once actual resources are supplied, propose compression options and explain what
-changes. Preserve the core creative choice; changes affecting it require user
-confirmation. Unresolved constraints must not be hidden behind a ready label.
-Unsupported claims that remain after repair are flagged as invalid, never
-suggested as usable advertising copy. The exported discussion draft retains the
-warning at the affected shot and document level.
+## Status, cuts and export
+Carry an approved experimental Idea's label, hypothesis and validation points
+through the plan and export. Distinguish semantic quality, production feasibility,
+user approval and untested communication effect.
+Propose resource compression options when actual constraints become known.
+Core-message changes require confirmation; do not hide them in shorter dialogue.
+Retain unresolved discussion drafts for review/export using a safe supported
+representation. Preserve warnings at the document and affected-shot level.
+Never present unsupported claims as usable copy, invalid references as trusted
+data, or an unresolved draft as production-ready. Report a host contract mismatch
+rather than inventing readiness/status fields or evading validation.

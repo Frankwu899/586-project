@@ -1,13 +1,19 @@
 # Video Anatomy — v0.7 local workspace
 
-## v0.7.6 generation skill and team handoff
+## v0.7.7 professional generation skills
 
-[v0.7.6 documentation](docs/generation/v0.7.6/README.md) publishes the confirmed
-professional-generation rules for Structure, Ideas and Storyboard, together with
-[team assignments](docs/generation/v0.7.6/TEAM_HANDOFF.md), QA proposals and backend
-integration requirements. The [canonical skill](skills/video-anatomy-professional-generation/SKILL.md)
-is versioned 0.7.6. **It has not been connected to the backend; the runnable
-application remains v0.7.5.** See [Mac setup](MAC_APP.md) for current client behavior.
+The [current instruction package](docs/generation/v0.7.7/README.md) revises
+Structure, Ideas and Storyboard around professional judgment, focused contextual
+research and concise output. The [canonical skill](skills/video-anatomy-professional-generation/SKILL.md)
+is versioned 0.7.7. **The package is not connected to the backend.**
+The application remains the v0.7.5 baseline with later merged UI and QA changes.
+See [integration gaps](docs/generation/v0.7.7/HARNESS_DELTA.md) and
+[actual validation](docs/generation/v0.7.7/VALIDATION_REPORT.md).
+
+The [v0.7.6 decisions and team handoff](docs/generation/v0.7.6/README.md)
+are historical documentation. Their manifest hashes refer to the original
+instruction commit `5a961edba8672cbf8f97bfec9b11d196d3948963`, not current
+canonical skill files. See [Mac setup](MAC_APP.md) for client behavior.
 
 
 For the macOS Finder launcher with in-page API setup, Keychain storage and repeat
