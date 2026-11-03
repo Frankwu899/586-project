@@ -30,24 +30,38 @@ function VisualSummary({ event }: { event: EvidenceEvent }) {
   </dl>;
 }
 
-export default function AnalysisReview({ taskId, analysis, frameTiming, mutate, busy, seek, canSeek, onPendingChange, inspectorTarget, timelineTarget, currentFrame = 0, onRetryMissing }: {
+interface AnalysisReviewProps {
   taskId: string; analysis: AnalysisResult; frameTiming?: FrameTiming | null; mutate: Mutate; busy: boolean;
   seek: (frame: number) => void; canSeek: boolean; onPendingChange?: (pending: boolean) => void;
   inspectorTarget?: HTMLElement | null; timelineTarget?: HTMLElement | null; currentFrame?: number; onRetryMissing?: () => void;
-}) {
+  onSelect?: () => void; readOnly?: boolean; externalActionError?: string;
+}
+type AnalysisDraft = ReturnType<typeof useEditorDraft<AnalysisEditorContent>>;
+
+export default function AnalysisReview(props: AnalysisReviewProps) {
+  // Historical evidence must never attach to or flush the current correction editor.
+  return props.readOnly ? <AnalysisReviewContent {...props} /> : <EditableAnalysisReview {...props} />;
+}
+
+function EditableAnalysisReview(props: AnalysisReviewProps) {
+  const { taskId, analysis } = props;
+  const draft = useEditorDraft<AnalysisEditorContent>({ taskId, scope: 'analysis', baseRefs: { analysis: { id: analysis.analysis_id, revision: analysis.revision } }, initialContent: { events: analysis.events, segments: analysis.segments } });
+  return <AnalysisReviewContent {...props} draft={draft} />;
+}
+
+function AnalysisReviewContent({ analysis, frameTiming, mutate, busy, seek, canSeek, onPendingChange, inspectorTarget, timelineTarget, currentFrame = 0, onRetryMissing, onSelect, draft, externalActionError }: AnalysisReviewProps & { draft?: AnalysisDraft }) {
   const { t } = useI18n();
   const analysisRef = { id: analysis.analysis_id, revision: analysis.revision };
-  const draft = useEditorDraft<AnalysisEditorContent>({ taskId, scope: 'analysis', baseRefs: { analysis: analysisRef }, initialContent: { events: analysis.events, segments: analysis.segments } });
-  const { events, segments } = draft.content;
+  const { events, segments } = draft?.content ?? analysis;
   const [editing, setEditing] = useState<string[]>([]);
   const [actionError, setActionError] = useState('');
   const [acting, setActing] = useState(false);
   const [discardRequested, setDiscardRequested] = useState(false);
-  const corrections = analysisCorrections(analysis, draft.content);
+  const corrections = analysisCorrections(analysis, draft?.content ?? analysis);
   const dirty = corrections.event_edits.length + corrections.segment_edits.length > 0;
-  const pending = dirty || draft.pending || draft.conflict;
-  const editable = analysis.status === 'succeeded' || analysis.status === 'partial';
-  const locked = busy || acting || draft.loading;
+  const pending = Boolean(draft && (dirty || draft.pending || draft?.conflict));
+  const editable = Boolean(draft) && (analysis.status === 'succeeded' || analysis.status === 'partial');
+  const locked = busy || acting || Boolean(draft?.loading);
   const hasFrameTiming = Boolean(frameTiming && analysis.frame_count !== null);
   const [selectedId, setSelectedId] = useState(events[0]?.event_id ?? '');
   const selected = events.find((event) => event.event_id === selectedId) ?? events[0];
@@ -57,7 +71,7 @@ export default function AnalysisReview({ taskId, analysis, frameTiming, mutate, 
     const end = frameTiming && item.end_frame !== null ? frameTiming.frame_boundaries_seconds[item.end_frame] : item.legacy_seconds?.end_seconds ?? start;
     return { left: `${Math.min(99.5, start / duration * 100)}%`, width: `${Math.max(.3, (end - start) / duration * 100)}%` };
   };
-  const select = (event: EvidenceEvent) => { setSelectedId(event.event_id); if (canSeek && event.start_frame !== null) seek(event.start_frame); };
+  const select = (event: EvidenceEvent) => { setSelectedId(event.event_id); onSelect?.(); if (canSeek && event.start_frame !== null) seek(event.start_frame); };
   const groupedWords = repeatedTextGroups(events);
   const wordsAtSample = selected?.kind === 'on_screen_text' ? events.filter((event) => event.kind === 'on_screen_text' && event.start_frame === selected.start_frame && event.legacy_seconds?.start_seconds === selected.legacy_seconds?.start_seconds) : [];
   const uniqueTextPoints = events.filter((event, index) => event.kind === 'on_screen_text' && !events.slice(0, index).some((prior) => prior.kind === 'on_screen_text' && prior.start_frame === event.start_frame && prior.legacy_seconds?.start_seconds === event.legacy_seconds?.start_seconds));
@@ -65,10 +79,10 @@ export default function AnalysisReview({ taskId, analysis, frameTiming, mutate, 
 
   useEffect(() => { onPendingChange?.(pending); }, [onPendingChange, pending]);
 
-  const updateEvent = (id: string, patch: Partial<Pick<EvidenceEvent, 'text' | 'description' | 'visual_details'>>) => draft.setContent({
-    ...draft.content, events: events.map((event) => event.event_id === id ? { ...event, ...patch } : event),
+  const updateEvent = (id: string, patch: Partial<Pick<EvidenceEvent, 'text' | 'description' | 'visual_details'>>) => draft?.setContent({
+    ...draft!.content, events: events.map((event) => event.event_id === id ? { ...event, ...patch } : event),
   });
-  const toggleRole = (id: string, role: Role) => draft.setContent({ ...draft.content, segments: segments.map((segment) => {
+  const toggleRole = (id: string, role: Role) => draft?.setContent({ ...draft!.content, segments: segments.map((segment) => {
     if (segment.segment_id !== id) return segment;
     const next = role === 'other' ? ['other'] : segment.roles.includes(role) ? segment.roles.filter((item) => item !== role) : [...segment.roles.filter((item) => item !== 'other'), role];
     return { ...segment, roles: (next.length ? next : ['other']) as ContentSegment['roles'] };
@@ -79,7 +93,8 @@ export default function AnalysisReview({ taskId, analysis, frameTiming, mutate, 
     finally { setActing(false); }
   };
   const apply = () => run(async () => {
-    const saved = await draft.flush();
+    if (!draft) return;
+    const saved = await draft!.flush();
     if (saved.conflict) throw new Error(t("The saved analysis changed. Resolve the draft conflict before applying corrections."));
     if (!await mutate('/analysis/correct', { analysis_ref: analysisRef, expected_editor_version: saved.draft_version, ...corrections })) throw new Error(t("Corrections were not applied. Your draft is retained; resolve the error and retry."));
   });
@@ -116,34 +131,33 @@ export default function AnalysisReview({ taskId, analysis, frameTiming, mutate, 
         <legend>{t("Correct this observation")}</legend>
         {editableText && <Field label={event.kind === 'speech' ? t("Recognized speech") : t("Recognized visible text")} hint={t("Keep the original language. Correct recognition errors without adding a new claim.")}><textarea aria-label={t("Recognized text · {event}", { event: event.event_id })} value={event.text ?? ''} onChange={(change) => updateEvent(event.event_id, { text: change.target.value })} /></Field>}
         {event.kind === 'visual_action' && <><Field label={t("What is visible")}><textarea aria-label={t("Visual description · {event}", { event: event.event_id })} value={event.description ?? ''} onChange={(change) => updateEvent(event.event_id, { description: change.target.value })} /></Field><details><summary>{t("Correct subjects, actions or product labels")}</summary><VisualDetailsEditor eventId={event.event_id} value={event.visual_details} onChange={(visual_details) => updateEvent(event.event_id, { visual_details })} /></details></>}
-        <p className="muted">{t("Automatically kept as a draft. Apply all corrections below to update the saved analysis.")}</p>
       </fieldset>}
-      <details className="m5-source-details"><summary>{event.kind === 'visual_action' ? t("Observed details & source") : t("Source & timing")}</summary>
+      <details className="m5-source-details"><summary>{event.kind === 'visual_action' ? t("Observed details") : t("Timing details")}</summary>
         {event.kind === 'visual_action' && <VisualSummary event={event} />}
         {editableText && event.description && <p>{event.description}</p>}
-        <p className="muted">{event.source} · {event.method}</p><p className="muted">{exactRange(event)}</p>
-        <p className="muted">{t("The recorded interval locates this evidence; sampled visuals do not establish a continuous shot or action duration.")}</p>
+        <p className="muted">{exactRange(event)}</p>
+        <details className="m5-diagnostics"><summary>{t("Diagnostics")}</summary><p>{event.source} · {event.method}</p></details>
       </details>
     </article>;
   };
 
   const inspector = <section className="m5 m5-inspector" aria-label={t("Selected annotation")}>
-    <div className="m5-inspector-heading"><strong>{t("Selected annotation")}</strong><Badge warning={!analysis.review.user_confirmed}>{analysis.review.user_confirmed ? t("Reviewed") : t("Review")}</Badge></div>
-    {(analysis.error || actionError || draft.error) && <p role="alert" className="error">{analysis.error?.message || actionError || draft.error}</p>}
-    <AnalysisCoverage analysis={analysis} onRetry={onRetryMissing} busy={locked || pending} />
+    <div className="m5-inspector-heading"><strong>{t("Selected annotation")}</strong><Badge warning={!analysis.review.user_confirmed}>{!draft ? t("Previous analysis") : analysis.review.user_confirmed ? t("Reviewed") : t("Review")}</Badge></div>
+    {(externalActionError || actionError || draft?.error) && <p role="alert" className="error">{externalActionError || actionError || draft?.error}</p>}
+    {draft && <AnalysisCoverage analysis={analysis} onRetry={onRetryMissing} busy={locked || pending} />}
     {wordsAtSample.length > 1 && <label className="m5-text-selector">{t("Text at this sample")}<select aria-label={t("Visible text at selected sample")} value={selected.event_id} onChange={(event) => setSelectedId(event.target.value)}>{wordsAtSample.map((item) => <option key={item.event_id} value={item.event_id}>{item.text}</option>)}</select></label>}
-    {draft.error && <button type="button" className="secondary" disabled={busy || acting || draft.saving} onClick={() => void run(() => draft.loading ? draft.reload() : draft.flush())}>{draft.loading ? t("Retry loading corrections") : t("Retry draft save")}</button>}
+    {draft?.error && <button type="button" className="secondary" disabled={busy || acting || draft?.saving} onClick={() => void run(() => draft!.loading ? draft!.reload() : draft!.flush())}>{draft?.loading ? t("Retry loading corrections") : t("Retry draft save")}</button>}
     {selected ? eventView(selected, events.findIndex((event) => event.event_id === selected.event_id)) : <p className="m5-empty">{analysis.empty_result_reason ?? t("No observations available. Check extraction coverage.")}</p>}
-    {selectedWordGroup && selectedWordGroup.length > 1 && <details className="m5-repeat-group"><summary>{t('Same text at {count} sampled points', { count: selectedWordGroup.length })}</summary><p className="muted">{t("Grouped for review, not removed. Visibility between these points is unknown.")}</p><div className="actions">{selectedWordGroup.map((event) => <button key={event.event_id} type="button" className="secondary" onClick={() => select(event)} aria-pressed={event.event_id === selected.event_id}>{timeLabel(event)}</button>)}</div></details>}
+    {selectedWordGroup && selectedWordGroup.length > 1 && <details className="m5-repeat-group"><summary>{t('Same text at {count} sampled points', { count: selectedWordGroup.length })}</summary><div className="actions">{selectedWordGroup.map((event) => <button key={event.event_id} type="button" className="secondary" onClick={() => select(event)} aria-pressed={event.event_id === selected.event_id}>{timeLabel(event)}</button>)}</div></details>}
     {selected && segments.filter((segment) => segment.evidence_ids.includes(selected.event_id)).map((segment) => <details className="m5-role-sections" key={segment.segment_id}><summary>{t("Possible role")} · {segment.roles.map((role) => t(roleLabels[role])).join(', ')}</summary><p>{segment.interpretation}</p><fieldset disabled={locked || !editable}><legend>{t("Content role interpretation")}</legend><div className="roles">{(Object.keys(roleLabels) as Role[]).map((role) => <label key={role}><input type="checkbox" checked={segment.roles.includes(role)} onChange={() => toggleRole(segment.segment_id, role)} />{t(roleLabels[role])}</label>)}</div></fieldset></details>)}
     <details className="m5-provenance"><summary>{t("Coverage and source")}</summary><p>{analysis.origin.description}</p><div className="m5-coverage">{(Object.keys(analysis.coverage) as EvidenceEvent['kind'][]).map((kind) => <div key={kind}><span>{t(kindLabels[kind])}</span><strong>{t(coverageLabels[analysis.coverage[kind]])}</strong></div>)}</div><p>{t("{count} recorded corrections · Revision {revision}. Original observations remain in history.", { count: analysis.corrections.length, revision: analysis.revision })}</p></details>
-    <div className="m5-draft-state" role="status" aria-live="polite">{draft.loading ? t("Restoring corrections…") : draft.saving ? t("Saving draft…") : pending ? t("Correction draft saved separately") : analysis.review.user_confirmed ? t("Reviewed revision saved") : t("No unsaved corrections")}</div>
-    {draft.conflict && <p className="notice">{t("The saved analysis changed. Your draft is retained; discard it explicitly to load the saved version.")}</p>}
+    {draft && (draft.loading || draft.saving || pending) && <div className="m5-draft-state" role="status" aria-live="polite">{draft.loading ? t("Restoring corrections…") : draft.saving ? t("Saving draft…") : t("Corrections pending · apply to update analysis")}</div>}
+    {draft?.conflict && <p className="notice">{t("The saved analysis changed. Your draft is retained; discard it explicitly to load the saved version.")}</p>}
     {editable && <div className="m5-review-actions">
-      {dirty && <button type="button" disabled={locked || draft.conflict} onClick={() => void apply()}>{acting ? t("Saving…") : t("Save analysis corrections")}</button>}
-      <button type="button" disabled={locked || pending || analysis.review.user_confirmed || !hasFrameTiming || analysis.status !== 'succeeded'} onClick={() => void run(async () => { await draft.flush(); if (!await mutate('/analysis/confirm', { analysis_ref: analysisRef })) throw new Error(t("Review could not be saved. Your analysis is retained.")); })}>{analysis.review.user_confirmed ? t("Analysis reviewed") : t("Use this reviewed analysis")}</button>
+      {dirty && <button type="button" disabled={locked || draft?.conflict} onClick={() => void apply()}>{acting ? t("Saving…") : t("Save analysis corrections")}</button>}
+      <button type="button" disabled={locked || pending || analysis.review.user_confirmed || !hasFrameTiming || analysis.status !== 'succeeded'} onClick={() => void run(async () => { await draft!.flush(); if (!await mutate('/analysis/confirm', { analysis_ref: analysisRef })) throw new Error(t("Review could not be saved. Your analysis is retained.")); })}>{analysis.review.user_confirmed ? t("Analysis reviewed") : t("Use this reviewed analysis")}</button>
       {pending && <button type="button" className="text-button" disabled={locked} onClick={() => setDiscardRequested(true)}>{t("Discard corrections")}</button>}
-      {discardRequested && <div className="notice" role="group" aria-label={t("Confirm discard corrections")}><p>{t("Discard this draft? Applied revisions remain in history.")}</p><button type="button" disabled={locked} onClick={() => void run(async () => { await draft.discard(); setDiscardRequested(false); setEditing([]); })}>{t("Discard draft changes")}</button><button type="button" className="secondary" onClick={() => setDiscardRequested(false)}>{t("Keep editing")}</button></div>}
+      {discardRequested && <div className="notice" role="group" aria-label={t("Confirm discard corrections")}><p>{t("Discard this draft? Applied revisions remain in history.")}</p><button type="button" disabled={locked} onClick={() => void run(async () => { await draft!.discard(); setDiscardRequested(false); setEditing([]); })}>{t("Discard draft changes")}</button><button type="button" className="secondary" onClick={() => setDiscardRequested(false)}>{t("Keep editing")}</button></div>}
     </div>}
   </section>;
   const mark = (event: EvidenceEvent, point: boolean) => <button key={event.event_id} type="button"
@@ -159,7 +173,7 @@ export default function AnalysisReview({ taskId, analysis, frameTiming, mutate, 
       if (next) { select(next); const buttons = key.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('.timeline-mark'); buttons?.[Math.max(0, index + (key.key === 'ArrowRight' ? 1 : -1))]?.focus(); }
     }}>{!point && <span>{event.text ?? event.description}</span>}</button>;
   const timeline = <section className="m5-timeline" aria-label={t("Video evidence timeline")}>
-    <div className="timeline-heading"><strong>{t("Video timeline")}</strong><span>{t("Dots: sampled observations · Bars: timed speech · Roles: interpretation")}</span><span>{t('{count} observations', { count: events.length })}</span></div>
+    <div className="timeline-heading"><strong>{t("Video timeline")}</strong><details className="timeline-help"><summary>{t("About timing")}</summary><p>{t("Dots mark sampled visual evidence; bars mark timed audio. Roles are interpretations.")}</p></details><span>{t('{count} observations', { count: events.length })}</span></div>
     <div className="timeline-ruler"><span>{t("Seek")}</span><div><input type="range" aria-label={t("Seek reference frame")} min={0} max={Math.max(0, (frameTiming?.frame_count ?? 1) - 1)} value={currentFrame} disabled={!canSeek || !frameTiming} onChange={(event) => seek(Number(event.target.value))} /><div className="timeline-ticks">{Array.from({ length: 7 }, (_, index) => <span key={index}>{clock(duration * index / 6)}</span>)}</div></div></div>
     <div className="timeline-lanes">
       <div className="timeline-lane"><span>{t("Visuals")}</span><div className="timeline-track">{events.filter((event) => event.kind === 'visual_action').map((event) => mark(event, true))}{!events.some((event) => event.kind === 'visual_action') && <EmptyChannel analysis={analysis} kind="visual_action" />}</div></div>

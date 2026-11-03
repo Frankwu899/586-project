@@ -30,13 +30,14 @@ async function edit(page: Page, text: string) {
   return correction;
 }
 
-test('timeline fits desktop windows, selects one inspector, and supports keyboard seeking', async ({ page, request }) => {
+test('timeline stays reachable, selects one inspector, and supports keyboard seeking', async ({ page, request }) => {
   const state = await sample(request);
   await open(page, state);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 768 }]) {
     await page.setViewportSize(viewport);
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `/tmp/video-anatomy-timeline-${viewport.width}.png` });
+    await page.locator('.reference-timeline-slot').scrollIntoViewIfNeeded();
     const timeline = await page.locator('.reference-timeline-slot').boundingBox();
     expect(timeline!.y + timeline!.height).toBeLessThanOrEqual(viewport.height);
     await expect(page.locator('.m5-observation')).toHaveCount(1);
@@ -109,4 +110,97 @@ test('content-area preview saves a reversible source-coordinate crop without rec
   const saved: TaskState = await (await request.get(`/api/tasks/${state.task.task_id}`)).json();
   expect(saved.jobs).toHaveLength(0);
   expect(saved.videos[0].content_sha256).toBe(state.videos[0].content_sha256);
+});
+
+
+test('empty and importing Timeline share dark surfaces and one progress announcement', async ({ page, request }) => {
+  const fixture = await sample(request);
+  const media = await request.get(`/api/tasks/${fixture.task.task_id}/media/${fixture.task.current_video_id}`);
+  const state: TaskState = await (await request.post('/api/tasks', { data: { title: 'Timeline empty and import states' } })).json();
+  await page.addInitScript((id) => localStorage.setItem('video-anatomy-task', id), state.task.task_id);
+  await page.goto('/');
+  const placeholder = page.locator('.media-placeholder');
+  await expect(placeholder.getByRole('button', { name: 'Import video', exact: true })).toBeVisible();
+  const contrast = await placeholder.evaluate((element) => {
+    const luminance = (color: string) => color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map((component) => {
+      const value = component / 255;
+      return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+    }).reduce((total, value, index) => total + value * [.2126, .7152, .0722][index], 0);
+    const style = getComputedStyle(element);
+    const a = luminance(style.color); const b = luminance(style.backgroundColor);
+    return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+  });
+  expect(contrast).toBeGreaterThanOrEqual(4.5);
+  let releaseImport!: () => void;
+  const importing = new Promise<void>((resolve) => { releaseImport = resolve; });
+  await page.route(`**/api/tasks/${state.task.task_id}/video`, async (route) => { await importing; await route.continue(); });
+  await placeholder.getByRole('button', { name: 'Import video', exact: true }).click();
+  await page.getByLabel('Reference video file', { exact: true }).setInputFiles({ name: 'import-state-fixture.mp4', mimeType: 'video/mp4', buffer: await media.body() });
+  await page.getByRole('button', { name: 'Upload reference', exact: true }).click();
+  try {
+    await expect(page.getByRole('status').filter({ hasText: 'Importing video…' })).toHaveCount(1);
+    await expect(page.getByText('Importing video…', { exact: true })).toHaveCount(1);
+    await expect(page.locator('.reference-operation-feedback')).toHaveCSS('overflow-y', 'visible');
+  } finally { releaseImport(); }
+  await expect(page.getByLabel('Reference video player', { exact: true })).toBeVisible();
+  await expect(page.getByText('Importing video…', { exact: true })).toHaveCount(0);
+});
+
+test('analysis retry keeps evidence visible and a failed result exposes previous evidence read only', async ({ page, request }) => {
+  const state = await sample(request);
+  const failed = structuredClone(state);
+  const error = { code: 'fixture_unavailable', message: 'Analysis unavailable in this test.', retryable: true };
+  const previous = failed.analyses[0];
+  failed.analyses.push({ ...previous, analysis_id: 'failed-analysis-fixture', status: 'failed', events: [], segments: [], error });
+  failed.task.current_analysis = { id: 'failed-analysis-fixture', revision: previous.revision };
+  failed.task.version += 1;
+  failed.jobs.push({ ...failed.jobs[failed.jobs.length - 1], job_id: 'failed-job-fixture', status: 'failed', error });
+  let finished = false;
+  await page.route(`**/api/tasks/${state.task.task_id}`, async (route) => route.fulfill({ json: finished ? failed : state }));
+  await page.route(`**/api/tasks/${state.task.task_id}/operations`, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    await route.fulfill({ json: { operation_id: 'retry-visibility-fixture', status: 'running', result: null, error: null } });
+  });
+  await page.route(`**/api/tasks/${state.task.task_id}/operations/retry-visibility-fixture`, async (route) => route.fulfill({ json: { operation_id: 'retry-visibility-fixture', status: finished ? 'succeeded' : 'running', result: finished ? failed : null, error: null } }));
+  await open(page, state);
+  await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Analyze again', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm new analysis', exact: true }).click();
+  await expect(page.getByText('Analyzing video…', { exact: true })).toHaveCount(1);
+  await expect(page.locator('.m5-observation-copy')).toHaveText(previous.events[0].description!);
+  finished = true;
+  await expect(page.getByRole('alert').filter({ hasText: error.message })).toHaveCount(1);
+  await expect(page.getByText('Showing previous analysis · read only', { exact: true })).toBeVisible();
+  await expect(page.locator('.m5-observation-copy')).toHaveText(previous.events[0].description!);
+  await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Correct visual observation/ })).toHaveCount(0);
+  await expect(page.getByText('Analyzing video…', { exact: true })).toHaveCount(0);
+});
+
+test('evidence panel resizes, reopens from a selected mark, and joins narrow reading flow', async ({ page, request }) => {
+  const state = await sample(request);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, state);
+  const divider = page.getByRole('separator', { name: 'Resize evidence panel', exact: true });
+  await divider.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(divider).toHaveAttribute('aria-valuenow', '380');
+  await page.keyboard.press('Home');
+  await expect(divider).toHaveAttribute('aria-valuenow', '360');
+  await page.getByRole('button', { name: 'Hide details', exact: true }).click();
+  await expect(page.locator('#reference-inspector')).not.toBeVisible();
+  await page.locator('.timeline-mark.visual_action').first().click();
+  await expect(page.locator('#reference-inspector')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.reference-inspector-content')).toHaveCSS('overflow-y', 'visible');
+  await expect(page.locator('.reference-inspector-content')).toHaveCSS('max-height', 'none');
+  await expect(divider).not.toBeVisible();
+  const order = await page.locator('.reference-editor-grid').evaluate((element) => {
+    const video = element.querySelector('.reference-viewer')!.getBoundingClientRect();
+    const timeline = element.querySelector('.reference-timeline-slot')!.getBoundingClientRect();
+    const evidence = element.querySelector('.reference-inspector')!.getBoundingClientRect();
+    return video.bottom <= timeline.top && timeline.bottom <= evidence.top;
+  });
+  expect(order).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

@@ -26,12 +26,12 @@ export default function AnalysisCoverage({ analysis, onRetry, busy }: { analysis
   const incomplete = incompleteChannels(analysis);
   if (!incomplete.length) return null;
   return <section className="analysis-channel-status" aria-label={t('Coverage and source')}>
-    <p>{t('Partial analysis. Check the channel status below.')}</p>
+    <p><strong>{t('Analysis incomplete')}</strong></p>
     <ul>{incomplete.map((kind) => <li key={kind}>
       <strong>{t(channelLabels[kind])}</strong>
       <span>{analysis.extraction_failures?.[kind]?.message ?? t(analysis.coverage[kind] === 'failed' ? 'Extraction failed' : kind === 'speech' ? 'Speech has not been transcribed for this analysis.' : 'Not analyzed')}</span>
     </li>)}</ul>
     <ConnectionHelp message={incomplete.map((kind) => analysis.extraction_failures?.[kind]?.message ?? '').join(' ')} />
-    {onRetry && retryableChannels(analysis).length > 0 && <><button type="button" className="secondary" disabled={busy} onClick={onRetry}>{t('Retry missing analysis')}</button><small>{t('Completed channels are reused when the source and settings match.')}</small></>}
+    {onRetry && retryableChannels(analysis).length > 0 && <button type="button" className="secondary" disabled={busy} onClick={onRetry}>{t('Retry missing analysis')}</button>}
   </section>;
 }

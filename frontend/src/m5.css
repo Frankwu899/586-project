@@ -214,3 +214,67 @@
   .research-timeline .frame-controls output { font-size: 9px; }
   .content-area-dialog { width: calc(100vw - 20px); padding: 12px; }
 }
+
+/* Reading layout: media and time stay coordinated; evidence can use its own
+   panel on a wide window. Short/narrow windows use the main reading scroll. */
+.research-timeline.reading-timeline { height:auto; min-height:0; overflow:visible; padding:8px; gap:12px; }
+.research-timeline.reading-timeline .reference-toolbar { flex-wrap:wrap; align-items:center; }
+.research-timeline.reading-timeline .reference-toolbar .actions { flex-wrap:wrap; flex-shrink:1; }
+.research-timeline.reading-timeline .reference-toolbar strong { white-space:normal; overflow-wrap:anywhere; }
+.research-timeline.reading-timeline .reference-editor-grid { grid-template-columns:minmax(0,1fr) var(--reference-inspector-width,360px); grid-template-rows:auto auto; align-items:start; gap:14px; flex:none; min-height:0; }
+.research-timeline.reading-timeline.inspector-closed .reference-editor-grid { grid-template-columns:minmax(0,1fr); }
+.research-timeline.reading-timeline .reference-viewer { grid-column:1; grid-row:1; min-height:0; border-radius:10px; }
+.research-timeline.reading-timeline .reference-video-stage { width:100%; aspect-ratio:16/9; max-height:480px; min-height:180px; flex:none; }
+.research-timeline.reading-timeline .reference-video-stage video { width:100%; height:100%; object-fit:contain; }
+.research-timeline.reading-timeline .frame-controls { height:auto; flex-wrap:wrap; flex-basis:auto; min-height:44px; padding:7px 10px; }
+.research-timeline.reading-timeline .frame-controls output { font-size:12px; }
+.research-timeline.reading-timeline .frame-controls button { font-size:12px; min-height:32px; }
+.research-timeline.reading-timeline .reference-timeline-slot { grid-column:1; grid-row:2; overflow-x:auto; overflow-y:visible; }
+.research-timeline.reading-timeline .m5-timeline { min-height:220px; height:auto; min-width:530px; }
+.research-timeline.reading-timeline .timeline-lane { height:30px; min-height:28px; flex:none; }
+.research-timeline.reading-timeline .timeline-heading { height:auto; min-height:24px; flex-wrap:wrap; align-items:start; }
+.research-timeline.reading-timeline .timeline-heading span { font-size:12px; }
+.research-timeline.reading-timeline .timeline-ticks { font-size:11px; }
+.research-timeline.reading-timeline .timeline-help { font-size:12px; color:var(--m2-muted); }
+.research-timeline.reading-timeline .timeline-help p { max-width:36ch; margin:8px 0; line-height:1.5; }
+.research-timeline.reading-timeline .reference-inspector { position:relative; top:auto; grid-column:2; grid-row:1 / span 2; min-width:0; max-height:none; overflow:visible; background:var(--m2-surface); }
+.research-timeline.reading-timeline .reference-inspector-content { max-height:min(720px,calc(100dvh - 220px)); overflow:auto; border-radius:inherit; }
+.research-timeline.reading-timeline .reference-resize-handle { position:absolute; z-index:10; inset:0 auto 0 -10px; width:12px; touch-action:none; cursor:col-resize; }
+.research-timeline.reading-timeline .reference-resize-handle::after { content:''; position:absolute; inset:12px 5px; border-left:2px solid transparent; }
+.research-timeline.reading-timeline .reference-resize-handle:hover::after,.research-timeline.reading-timeline .reference-resize-handle:focus-visible::after { border-color:var(--m2-accent); }
+.research-timeline.reading-timeline .reference-resize-handle:focus-visible { outline:2px solid var(--m2-accent); outline-offset:1px; }
+.research-timeline.reading-timeline .m5-inspector-heading { position:static; min-height:44px; margin-bottom:12px; padding-block:12px; background:transparent; }
+.research-timeline.reading-timeline .m5-inspector .m5-observation-copy { font-size:16px; line-height:1.65; }
+.research-timeline.reading-timeline .m5-inspector .m5-uncertainty { font-size:13px; }
+.research-timeline.reading-timeline .m5-inspector .m5-draft-state { font-size:13px; padding:8px 0; }
+.research-timeline.reading-timeline .m5-inspector .m5-review-actions button { font-size:13px; }
+.research-timeline.reading-timeline .m5-diagnostics { margin-top:12px; font-size:12px; color:var(--m2-muted); overflow-wrap:anywhere; }
+.research-timeline.reading-timeline .media-placeholder { min-height:240px; height:auto; width:100%; gap:14px; padding:28px 20px; border:0; background:var(--m2-paper); color:var(--m2-ink); }
+.research-timeline.reading-timeline .media-placeholder p { color:var(--m2-muted); }
+.research-timeline.reading-timeline .media-placeholder > span { font-size:28px; color:var(--m2-muted); }
+.research-timeline.reading-timeline .reference-operation-feedback { max-height:none; overflow:visible; flex:none; }
+.research-timeline.reading-timeline .reference-operation-feedback > * { margin:0; padding:10px 12px; font-size:14px; line-height:1.5; }
+.research-timeline.reading-timeline .reference-operation-feedback .error,.research-timeline.reading-timeline .reference-operation-feedback .notice { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.research-timeline.reading-timeline .local-operation { background:var(--m2-paper); color:var(--m2-muted); }
+.research-timeline.reading-timeline .reference-language-note,.research-timeline.reading-timeline .reference-history-note { margin:0; color:var(--m2-muted); font-size:13px; }
+.research-timeline.reading-timeline .timeline-empty { padding:18px; min-height:90px; }
+.research-timeline.reading-timeline .timeline-empty p { margin:0; font-size:14px; }
+.research-timeline.reading-timeline .timeline-skeleton { display:grid; gap:12px; }
+.research-timeline.reading-timeline .timeline-skeleton i { display:block; height:12px; border-radius:3px; background:var(--m2-line); }
+.research-timeline.reading-timeline .timeline-skeleton i:nth-child(2) { width:70%; }
+.research-timeline.reading-timeline .timeline-skeleton i:nth-child(3) { width:85%; }
+.research-timeline.reading-timeline .analysis-channel-status { background:var(--m2-paper); color:var(--m2-ink); border-color:var(--m2-line); font-size:13px; padding:10px 12px; }
+.research-timeline.reading-timeline .analysis-channel-status li span { font-size:13px; line-height:1.5; }
+.research-timeline.reading-timeline .analysis-channel-status button { width:auto; min-height:32px; font-size:13px; }
+.research-timeline.reading-timeline.without-video .reference-editor-grid { grid-template-rows:auto; }
+@media (max-width:900px), (max-height:700px) {
+  .research-timeline.reading-timeline { padding:6px 0; }
+  .research-timeline.reading-timeline .reference-editor-grid { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto; width:100%; min-height:0; }
+  .research-timeline.reading-timeline .reference-inspector { grid-column:1; grid-row:3; max-height:none; overflow:visible; }
+  .research-timeline.reading-timeline .reference-inspector-content { max-height:none; overflow:visible; }
+  .research-timeline.reading-timeline .reference-resize-handle { display:none; }
+  .research-timeline.reading-timeline .reference-toolbar .actions { width:100%; }
+  .research-timeline.reading-timeline .reference-video-stage { max-height:420px; }
+  .research-timeline.reading-timeline .frame-controls { justify-content:center; }
+  .research-timeline.reading-timeline .frame-controls output { flex-basis:100%; order:-1; text-align:center; }
+}

@@ -13,6 +13,7 @@ const minimum = {
 
 async function create(page: Page, title: string): Promise<TaskState> {
   await page.goto('/');
+  if (!await page.locator('.task-sidebar').isVisible()) await page.locator('.sidebar-toggle').click();
   await page.getByLabel('New task title', { exact: true }).fill(title);
   const response = page.waitForResponse((item) => item.request().method() === 'POST' && new URL(item.url()).pathname === '/api/tasks');
   await page.getByRole('button', { name: 'Create task', exact: true }).click();
@@ -34,6 +35,7 @@ test('empty and partial inputs have no defaults, survive reopening, and fit desk
   const initial = await create(page, 'Partial bilingual M2 draft');
   await expect(page.getByRole('heading', { name: 'Shape the work.', exact: true })).toBeVisible();
   await area(page, 'reference');
+  await page.getByRole('button', { name: 'Import video', exact: true }).click();
   await expect(page.getByLabel('Reference video file', { exact: true })).toBeEnabled();
   await area(page, 'inputs');
   for (const width of [1440, 1024, 390, 320]) {
@@ -258,6 +260,7 @@ test('reference processing response does not block editing or replace independen
   await expect(page.getByLabel('Product', { exact: true })).toHaveValue('Typed while recognition response pending');
   await area(page, 'reference');
   await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeEnabled();
+  await page.unrouteAll({ behavior: 'wait' });
   await page.reload();
   await editBrand(page);
   await expect(page.getByLabel('Product', { exact: true })).toHaveValue('Typed while recognition response pending');
@@ -367,6 +370,7 @@ test('a delayed Apply response cannot return the user to a task they have left',
 test('saved tasks restore their own last work area after switching and browser refresh', async ({ page }) => {
   await create(page, 'Workspace position source');
   await area(page, 'reference');
+  await page.getByRole('button', { name: 'Import video', exact: true }).click();
   await expect(page.getByLabel('Reference video file', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.locator('#area-reference')).toBeVisible();
@@ -445,6 +449,7 @@ test('deleting reference media keeps historical work and pending brand inputs; r
   expect(state.analyses).toEqual(beforeDelete.analyses);
   expect(state.task.mode).toBe('real');
   await expect(page.getByRole('button', { name: 'Start analysis', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Source media', exact: true }).click();
   const uploadDetails = page.locator('.reference-sources details').filter({ has: page.getByText('Import another reference', { exact: true }) });
   if (!await uploadDetails.evaluate((element) => element.hasAttribute('open'))) await uploadDetails.locator('summary').click();
   await page.getByLabel('Reference video file', { exact: true }).setInputFiles({ name: 'second-reference.mp4', mimeType: 'video/mp4', buffer: mediaBytes });

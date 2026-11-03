@@ -30,6 +30,33 @@ async function openProduction(page: Page, state: TaskState) {
   await expect(page.getByLabel('Production title', { exact: true })).toBeEnabled();
 }
 
+test('production gives the actual prerequisite and opens its editor while preserving existing materials', async ({ page, request }) => {
+  const empty: TaskState = await (await request.post('/api/tasks', { data: { title: 'Production prerequisite navigation' } })).json();
+  await page.goto('/');
+  await page.evaluate((taskId) => { localStorage.setItem('video-anatomy-task', taskId); localStorage.setItem(`video-anatomy-area:${taskId}`, 'production'); }, empty.task.task_id);
+  await page.reload();
+  const prerequisite = page.locator('.production-prerequisite');
+  await expect(prerequisite).toContainText('Complete project context before generating.');
+  await expect(page.getByRole('button', { name: 'Generate production materials', exact: true })).toBeDisabled();
+  await prerequisite.getByRole('button', { name: 'Complete project context', exact: true }).click();
+  await expect(page.locator('.context-drawer')).toBeVisible();
+
+  const state = await prepared(request, 'Production with reference corrections');
+  const draft = await (await request.get(`/api/tasks/${state.task.task_id}/editors/analysis`)).json();
+  const visual = draft.content.events.find((event: { kind: string }) => event.kind === 'visual_action');
+  visual.description += ' A retained user correction.';
+  const response = await request.post(`/api/tasks/${state.task.task_id}/editors/analysis`, { data: { expected_draft_version: draft.draft_version, base_refs: draft.base_refs, content: draft.content } });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  await openProduction(page, state);
+  await expect(prerequisite).toHaveCount(1);
+  await expect(prerequisite).toContainText('Save or discard reference corrections before generating.');
+  await expect(prerequisite).not.toContainText('context changes');
+  await expect(page.getByLabel('Production title', { exact: true })).toBeEnabled();
+  await prerequisite.getByRole('button', { name: 'Review timeline corrections', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Timeline', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: 'Save analysis corrections', exact: true })).toBeVisible();
+});
+
 test('production draft survives reopening, save-and-export uses new text, failed saves never download old text', async ({ page, request }) => {
   const state = await prepared(request, `Production export acceptance ${Date.now()}`);
   const otherTitle = `Another saved task ${Date.now()}`;
@@ -44,17 +71,20 @@ test('production draft survives reopening, save-and-export uses new text, failed
   await expect(page.getByLabel('Shot 1 visuals', { exact: true })).toHaveValue('中文 close-up: hand places cup in a commuter bag.');
   await page.reload();
   await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('通勤杯 — saved export checkpoint');
+  await page.locator('.production-export-bar > summary').click();
   await page.getByRole('button', { name: 'Storyboard CSV', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Save changes before exporting?' })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   let downloadCount = 0; page.on('download', () => { downloadCount += 1; });
   await page.route('**/outputs/edit', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Controlled save failure' } }) }));
+  await page.locator('.production-export-bar > summary').click();
   await page.getByRole('button', { name: 'Storyboard CSV', exact: true }).click();
   await page.getByRole('button', { name: 'Save and export', exact: true }).click();
   await expect(page.getByText('Production changes could not be saved. Your draft is retained. Nothing was exported.')).toBeVisible();
   expect(downloadCount).toBe(0);
   await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('通勤杯 — saved export checkpoint');
   await page.unroute('**/outputs/edit');
+  await page.locator('.production-export-bar > summary').click();
   await page.getByRole('button', { name: 'Storyboard CSV', exact: true }).click();
   const downloaded = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save and export', exact: true }).click();
@@ -72,6 +102,7 @@ test('saved PDF preview, long bilingual print layout, historical/deleted-source 
   const longText = '近景，手将杯子放入通勤包侧袋。保留真实产品细节，不夸大产品性能。 Close-up: place the cup in the side pocket. '.repeat(22);
   await page.getByLabel('Production title', { exact: true }).fill('通勤的一天 / Production plan');
   await page.getByLabel('Shot 1 visuals', { exact: true }).fill(longText);
+  await page.locator('.production-export-bar > summary').click();
   await page.getByRole('button', { name: 'Production PDF', exact: true }).click();
   await page.getByRole('button', { name: 'Save and export', exact: true }).click();
   const preview = page.frameLocator('iframe[title="Saved production document"]');
@@ -101,6 +132,7 @@ test('saved PDF preview, long bilingual print layout, historical/deleted-source 
   expect(deleted.ok(), await deleted.text()).toBeTruthy();
   await page.reload();
   await expect(page.getByText(/Reference media deleted; playback unavailable/).first()).toBeVisible();
+  await page.locator('.production-export-bar > summary').click();
   await page.getByRole('button', { name: 'Export historical CSV', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Export a historical version?' })).toBeVisible();
   const download = page.waitForEvent('download');

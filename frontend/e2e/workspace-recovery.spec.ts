@@ -48,7 +48,7 @@ test('a hidden recovered conflict never traps area navigation or discards anothe
   // Changing task still requires durable saving or explicit conflict resolution.
   await page.getByRole('complementary', { name: 'Saved tasks' }).getByRole('button', { name: new RegExp(other.task.title) }).click();
   await expect(page.getByRole('heading', { name: state.task.title, exact: true })).toBeVisible();
-  await expect(page.locator('.sidebar-error')).toContainText('newer saved draft');
+  await expect(page.locator('.workspace > [role=alert]')).toContainText('newer saved draft');
 
   // Viewing another area is safe: all editors stay mounted with their local text.
   await area(page, 'inputs');

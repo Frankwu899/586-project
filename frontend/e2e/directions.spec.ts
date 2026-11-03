@@ -140,3 +140,34 @@ test('a retained direction draft can be copied and discarded after new brand inp
   expect((await response).ok()).toBeTruthy();
   await expect(page.getByRole('button', { name: 'Generate two new sample directions', exact: true })).toBeEnabled();
 });
+
+test('Production explains only the approved direction draft and returns to its editor', async ({ page, request }) => {
+  let state = await readyTask(request, 'Production draft scope');
+  const approved = state.directions[0];
+  state = await update(request, state, `/directions/${approved.direction_id}/approve`, {
+    direction_revision: approved.revision, brief_ref: state.task.current_brief, analysis_ref: state.task.current_analysis,
+  });
+  await openDirections(page, state);
+  const alternate = page.getByRole('article', { name: 'Direction B', exact: true });
+  await alternate.getByText('Read full direction and edit', { exact: true }).click();
+  await alternate.getByLabel('Hook', { exact: true }).fill('An unrelated direction draft.');
+  await page.getByRole('button', { name: 'Production', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Generate production materials', exact: true })).toBeEnabled();
+  await expect(page.getByText('Resolve the selected idea draft before generating.', { exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Ideas', exact: true }).click();
+  const selected = page.getByRole('article', { name: 'Direction A', exact: true });
+  await selected.getByText('Read full direction and edit', { exact: true }).click();
+  await selected.getByLabel('Hook', { exact: true }).fill('A pending edit to the approved direction.');
+  await page.getByRole('button', { name: 'Production', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Generate production materials', exact: true })).toBeDisabled();
+  await expect(page.getByText('Resolve the selected idea draft before generating.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Review idea draft', exact: true }).click();
+  await expect(page.locator('#area-directions')).toBeVisible();
+  await expect(selected.getByLabel('Hook', { exact: true })).toHaveValue('A pending edit to the approved direction.');
+  await selected.getByRole('button', { name: 'Discard draft changes', exact: true }).click();
+  await selected.getByRole('button', { name: 'Discard draft', exact: true }).click();
+  await expect(selected.getByLabel('Hook', { exact: true })).toHaveValue(approved.hook);
+  await page.getByRole('button', { name: 'Production', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Generate production materials', exact: true })).toBeEnabled();
+});
