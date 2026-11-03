@@ -1,5 +1,8 @@
 # Shared team server
 
+For a guided setup without managing your own server, start with
+[RENDER_SETUP.md](RENDER_SETUP.md) and its prepared deployment link.
+
 This deployment serves the React application and FastAPI backend at one HTTPS
 address. The owner configures one OpenAI key in the hosting service's secret
 settings. Teammates sign in with a separate workspace username/password; they do
@@ -64,7 +67,7 @@ frontend, Git, Docker build arguments, image layers or a distributed ZIP:
 | `OPENAI_API_KEY` | Owner's project API key; secret |
 | `VIDEO_TEAM_PASSWORD` | Separate randomly generated password, at least 32 characters; secret |
 | `VIDEO_TEAM_USERNAME` | Team login name; defaults to `team` |
-| `VIDEO_PUBLIC_ORIGIN` | Exact HTTPS origin, e.g. `https://workspace.example.com`; no path |
+| `VIDEO_PUBLIC_ORIGIN` | Exact HTTPS origin; optional on Render, where the assigned URL is detected automatically |
 | `VIDEO_ANATOMY_DATA_DIR` | `/data/library` by default |
 | `PORT` | `8000` by default |
 
@@ -103,6 +106,7 @@ and the absent key controls, then run an explicitly authorized small real API
 check with the owner's account. Configuration tests do not establish provider
 access, generation quality, transcription quality or cost efficiency.
 
-No hosting provider or server has been selected, no real key has been installed,
-and no public deployment is claimed by this document. The v0.7.7 professional
+Render is offered as a prepared setup option. No hosting purchase has been
+approved, no real key has been installed, and no public deployment is claimed
+by this document. The v0.7.7 professional
 generation instruction package remains separate from runtime prompt integration.

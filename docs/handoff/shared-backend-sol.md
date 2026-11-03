@@ -88,3 +88,26 @@ Before rollout: rerun browser checks and build the Docker image on a capable
 host; inspect required PR checks/reviews; deploy only to the chosen host; verify
 restart persistence and HTTPS access; then authorize a bounded real API check.
 The current request authorizes preparing this PR, not merging it into main.
+
+## Guided hosting follow-up — November 3, 2026
+
+The owner has an API account/key but no hosting account or server and requested
+direct setup help. Added a Render Blueprint and `RENDER_SETUP.md` with a setup
+link for this integration branch. The owner must still sign in, authorize access
+to the private repository, privately enter the key and approve hosting charges.
+No host was created, no secret was received and no charge was authorized here.
+
+The proposed service uses 1 CPU / 2 GB and a 5 GB persistent disk, approximately
+$26.25/month at the published rates checked today, excluding API charges and
+applicable extras. Auto-deploys from commits are disabled. Render generates a
+separate team password and the backend detects Render's assigned HTTPS origin.
+An explicit public-origin setting takes precedence for future custom domains.
+Container startup initializes only the mounted directory ownership and drops
+to UID 10001 before running the application.
+
+Follow-up checks: 26 shared-server tests passed (four new origin-policy cases),
+Python lint passed, and `render.yaml` validated against Render's published JSON
+schema. Container entrypoint compilation passed. The full backend/frontend
+counts above belong to the preceding revision; those full suites were not
+repeated for this hosting-only follow-up. Docker build, mounted-disk ownership
+on Render, browser UI, public deployment and real API access remain unverified.

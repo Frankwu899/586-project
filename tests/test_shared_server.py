@@ -8,6 +8,8 @@ from scripts.shared_server import create_shared_app, shared_settings
 
 @pytest.fixture
 def configured(monkeypatch, tmp_path):
+    monkeypatch.delenv("RENDER", raising=False)
+    monkeypatch.delenv("RENDER_EXTERNAL_URL", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-server-key-for-offline-tests")
     monkeypatch.setenv("VIDEO_TEAM_PASSWORD", "test-only-team-password-with-32-characters")
     monkeypatch.setenv("VIDEO_PUBLIC_ORIGIN", "https://workspace.example")
@@ -114,3 +116,35 @@ def test_preferences_keep_key_and_model(configured):
         assert app.state.service.provider_settings.research_model == "gpt-6.1-sol"
         assert app.state.service.provider_settings.api_key == "sk-fake-server-key-for-offline-tests"
     assert shared_settings(configured).analysis_language == "Chinese"
+
+
+def test_render_origin_is_detected_and_still_restricts_host(configured, monkeypatch):
+    monkeypatch.delenv("VIDEO_PUBLIC_ORIGIN")
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://workspace.example")
+    with client(create_shared_app()) as c:
+        assert c.get("/api/tasks").status_code == 200
+        assert c.get("/api/tasks", headers={"Host": "attacker.example"}).status_code == 403
+
+
+def test_explicit_origin_overrides_platform_default(configured, monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://old-host.example")
+    with client(create_shared_app()) as c:
+        assert c.get("/api/tasks").status_code == 200
+        assert c.get("/api/tasks", headers={"Host": "old-host.example"}).status_code == 403
+
+
+def test_platform_origin_is_not_trusted_off_render(configured, monkeypatch):
+    monkeypatch.delenv("VIDEO_PUBLIC_ORIGIN")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://workspace.example")
+    with pytest.raises(ValueError, match="VIDEO_PUBLIC_ORIGIN"):
+        create_shared_app()
+
+
+def test_render_origin_still_requires_https(configured, monkeypatch):
+    monkeypatch.delenv("VIDEO_PUBLIC_ORIGIN")
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "http://workspace.example")
+    with pytest.raises(ValueError, match="HTTPS origin"):
+        create_shared_app()

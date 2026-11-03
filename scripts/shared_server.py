@@ -26,6 +26,15 @@ def required(name: str) -> str:
     return value
 
 
+def public_origin() -> str:
+    explicit = os.environ.get("VIDEO_PUBLIC_ORIGIN", "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    if os.environ.get("RENDER") == "true":
+        return required("RENDER_EXTERNAL_URL").rstrip("/")
+    return required("VIDEO_PUBLIC_ORIGIN").rstrip("/")
+
+
 def shared_settings(data_dir: Path) -> ProviderSettings:
     # This deployment is pinned to the owner's selected baseline. Stale model
     # environment overrides must not silently select another reasoning model.
@@ -46,7 +55,7 @@ def shared_settings(data_dir: Path) -> ProviderSettings:
 
 
 def create_shared_app():
-    origin = required("VIDEO_PUBLIC_ORIGIN").rstrip("/")
+    origin = public_origin()
     url = urlsplit(origin)
     local_http = url.scheme == "http" and url.hostname in {"127.0.0.1", "localhost"}
     if (url.scheme != "https" and not local_http) or not url.hostname or url.path or url.query or url.fragment or url.username or url.password:
@@ -116,5 +125,5 @@ if __name__ == "__main__":
     # ingress; no arbitrary X-Forwarded-* headers are trusted by this process.
     with library_lock(Path(required("VIDEO_ANATOMY_DATA_DIR"))):
         application = create_shared_app()
-        host = "127.0.0.1" if required("VIDEO_PUBLIC_ORIGIN").startswith("http:") else "0.0.0.0"
+        host = "127.0.0.1" if public_origin().startswith("http:") else "0.0.0.0"
         uvicorn.run(application, host=host, port=int(os.getenv("PORT", "8000")), proxy_headers=False)

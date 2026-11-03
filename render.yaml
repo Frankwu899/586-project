@@ -1,0 +1,27 @@
+# Creates paid resources only after the owner approves deployment in Render.
+services:
+  - type: web
+    name: video-anatomy-team
+    runtime: docker
+    plan: 1c-2g
+    region: oregon
+    branch: feat/integration/shared-backend-sol
+    dockerfilePath: ./Dockerfile.shared
+    dockerContext: .
+    autoDeployTrigger: 'off'
+    healthCheckPath: /healthz
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: VIDEO_TEAM_PASSWORD
+        generateValue: true
+      - key: VIDEO_TEAM_USERNAME
+        value: team
+      - key: VIDEO_ANATOMY_DATA_DIR
+        value: /data/library
+      - key: PORT
+        value: '8000'
+    disk:
+      name: video-anatomy-data
+      mountPath: /data
+      sizeGB: 5

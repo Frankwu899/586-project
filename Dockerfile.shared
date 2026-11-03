@@ -16,7 +16,8 @@ COPY contracts/ ./contracts/
 COPY data/ ./data/
 COPY --from=frontend /build/frontend/dist ./frontend/dist/
 RUN useradd --uid 10001 --create-home app && mkdir /data && chown app:app /data
-USER app
+# The entrypoint initializes mount ownership, then drops to UID 10001 before
+# importing or running the web application.
 ENV VIDEO_ANATOMY_DATA_DIR=/data/library PORT=8000 PYTHONUNBUFFERED=1
 EXPOSE 8000
-CMD ["python", "-m", "scripts.shared_server"]
+CMD ["python", "-m", "scripts.shared_container"]
