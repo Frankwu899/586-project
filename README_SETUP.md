@@ -1,5 +1,21 @@
 # Video Anatomy — v0.7 local workspace
 
+## v0.7.7 professional generation skills
+
+The [current instruction package](docs/generation/v0.7.7/README.md) revises
+Structure, Ideas and Storyboard around professional judgment, focused contextual
+research and concise output. The [canonical skill](skills/video-anatomy-professional-generation/SKILL.md)
+is versioned 0.7.7. **The package is not connected to the backend.**
+The application remains the v0.7.5 baseline with later merged UI and QA changes.
+See [integration gaps](docs/generation/v0.7.7/HARNESS_DELTA.md) and
+[actual validation](docs/generation/v0.7.7/VALIDATION_REPORT.md).
+
+The [v0.7.6 decisions and team handoff](docs/generation/v0.7.6/README.md)
+are historical documentation. Their manifest hashes refer to the original
+instruction commit `5a961edba8672cbf8f97bfec9b11d196d3948963`, not current
+canonical skill files. See [Mac setup](MAC_APP.md) for client behavior.
+
+
 For the macOS Finder launcher with in-page API setup, Keychain storage and repeat
 opening, use [MAC_APP.md](MAC_APP.md). For the Terminal/developer launcher, use
 [LOCAL_API.md](LOCAL_API.md). Classroom bundles do not preload private videos.
