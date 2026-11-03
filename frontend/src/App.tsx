@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import type { M2Draft, TaskState } from './generated/contracts';
 import { operationErrorMessage, request } from './api';
-import ApiConnection, { ApiConnectionButton, ConnectionHelp } from './ApiConnection';
+import ApiConnection, { ApiConnectionButton, ConnectionHelp, WorkspaceModeLabel } from './ApiConnection';
 import BriefEditor, { type M2EditorStatus } from './BriefEditor';
 import Directions from './Directions';
 import Production from './Production';
@@ -30,6 +30,7 @@ registerTranslations({
   'Start with a video. Or an idea.': '从视频或创意开始。',
   'Create a project to research a reference, explore ideas, or prepare a production.': '新建项目，研究参考视频、探索创意或准备制作内容。',
   'Explore the sample workspace': '探索示例工作区', 'Fictional sample · no API calls': '虚构示例 · 无需 API 调用',
+  'Dismiss': '关闭提示',
   'Ready': '就绪', 'Video Anatomy · Local preview': 'Video Anatomy · 本地预览',
   '{count} operation running': '{count} 项操作进行中', '{count} operations running': '{count} 项操作进行中',
   'Activity center': '活动中心', ' · Complete': ' · 已完成', 'No operations yet.': '暂无操作。',
@@ -86,14 +87,23 @@ function Workspace({ state, config, mutate, activities, onApplied, flushRef, m2S
   const [researchTab, setResearchTab] = useState<'timeline' | 'structure'>(() => recalled(`video-anatomy-research:${state.task.task_id}`) === 'structure' ? 'structure' : 'timeline');
   const [contextOpen, setContextOpen] = useState(false);
   const [analysisPending, setAnalysisPending] = useState(false);
+  const [directionPending, setDirectionPending] = useState(false);
   const seekRef = useRef<((frame: number) => void) | null>(null);
+  const readingRef = useRef<HTMLDivElement>(null);
+  const readingPositions = useRef<Record<string, number>>({});
+  const readingKey = area === 'reference' ? researchTab : area;
+  useLayoutEffect(() => {
+    if (readingRef.current) readingRef.current.scrollTop = readingPositions.current[readingKey] ?? 0;
+  }, [readingKey]);
   const brief = state.briefs.find((item) => item.brief_id === state.task.current_brief?.id && item.revision === state.task.current_brief.revision);
-  const m2Blocked = m2Status.loading || m2Status.pending || m2Status.unsaved || m2Status.legacyReviewRequired || !brief;
+  const m2Blocked = Boolean(m2Status.error) || m2Status.loading || m2Status.pending || m2Status.unsaved || m2Status.legacyReviewRequired || !brief;
   const referenceBusy = activities.some((item) => item.running && scopeOf(item.path) === 'reference');
   const creativeBusy = activities.some((item) => item.running && scopeOf(item.path) === 'creative');
   const productionBusy = activities.some((item) => item.running && scopeOf(item.path) === 'production');
-  const referenceError = activities.find((item) => scopeOf(item.path) === 'reference' && item.error)?.error;
-  const approvedDirection = state.directions.find((item) => item.direction_id === state.task.selected_direction?.id && item.revision === state.task.selected_direction.revision);
+  const productionGenerating = activities.some((item) => item.running && item.path === '/outputs/generate');
+  const productionError = activities.find((item) => scopeOf(item.path) === 'production' && item.error)?.error;
+  const correctionError = activities.find((item) => ['/analysis/correct', '/analysis/confirm'].includes(item.path) && item.error)?.error;
+  const referenceError = activities.find((item) => scopeOf(item.path) === 'reference' && !['/analysis/correct', '/analysis/confirm'].includes(item.path) && item.error)?.error;
   const navigate = (next: Area) => {
     setContextOpen(false); setArea(next); remember(`video-anatomy-area:${state.task.task_id}`, next);
     void flush().catch((failure: unknown) => onError(failure instanceof Error ? failure.message : 'Draft save failed. Your text is retained.'));
@@ -106,6 +116,7 @@ function Workspace({ state, config, mutate, activities, onApplied, flushRef, m2S
       const next = areas.find((item) => `#${item.id}` === href || `#${item.id}-heading` === href)?.id;
       if (!next) return;
       event.preventDefault(); setContextOpen(false); setArea(next); remember(`video-anatomy-area:${state.task.task_id}`, next);
+      if (next === 'reference') { setResearchTab('timeline'); remember(`video-anatomy-research:${state.task.task_id}`, 'timeline'); }
     };
     document.addEventListener('click', handleLink);
     return () => document.removeEventListener('click', handleLink);
@@ -117,15 +128,15 @@ function Workspace({ state, config, mutate, activities, onApplied, flushRef, m2S
   const areaScope = area === 'directions' ? 'creative' : area === 'production' ? 'production' : researchTab === 'structure' ? 'structure' : 'reference';
   // Research panels display actionable errors beside their own controls.
   // Keep them in Activity history without stacking a second global warning.
-  const visibleActivity = activities.filter((item) => (scopeOf(item.path) === areaScope || (areaScope === 'structure' && item.path === '/recognize')) && (item.running || (item.error && areaScope !== 'reference' && areaScope !== 'structure')));
+  const visibleActivity = activities.filter((item) => scopeOf(item.path) === areaScope && areaScope === 'creative' && (item.running || item.error));
   return <>
-    <div className="workspace-heading"><div><h1>{state.task.title}</h1><span className="saved-state">{state.task.mode === 'sample' ? t('Fictional sample · ') : ''}{t('Saved · v{version}', { version: state.task.version })}</span></div><button className="secondary context-toggle" type="button" onClick={() => setContextOpen(true)}>{t('Project context')}{m2Status.unsaved ? t(' · Saving') : m2Status.pending ? t(' · Draft') : ''}</button></div>
+    <div className="workspace-heading"><div><h1>{state.task.title}</h1></div><button className="secondary context-toggle" type="button" onClick={() => setContextOpen(true)}>{t('Project context')}{m2Status.unsaved ? t(' · Saving') : m2Status.pending ? t(' · Draft') : ''}</button></div>
     <nav className="workspace-tabs" aria-label={t('Workspaces')}>{areas.map((item) => <button key={item.id} id={`tab-${item.id}`} type="button" aria-current={area === item.id ? 'page' : undefined} aria-controls={`area-${item.id}`} onClick={() => navigate(item.id)}>{t(item.title)}</button>)}</nav>
-    {visibleActivity.map((activity) => <div key={`${activity.path}:${activity.started}`} className={`workspace-feedback ${activity.error ? 'error' : 'notice'}`} role={activity.error ? 'alert' : 'status'}>{activity.running && <span className="spinner" aria-hidden="true" />}{activity.error ? t(activity.error) : t('{activity}… You can keep working in another area.', { activity: t(activity.label) })}<ConnectionHelp message={activity.error} /></div>)}
-    <div className="workspace-body">
-      <div id="area-reference" className="workspace-area research-area" hidden={area !== 'reference'} aria-labelledby="tab-reference"><div className="research-tabs" role="tablist" aria-label={t('Research view')} onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); const next = researchTab === 'timeline' ? 'structure' : 'timeline'; selectResearchTab(next); document.getElementById(`${next}-tab`)?.focus(); }}><button type="button" role="tab" id="timeline-tab" tabIndex={researchTab === 'timeline' ? 0 : -1} aria-selected={researchTab === 'timeline'} aria-controls="timeline-panel" onClick={() => selectResearchTab('timeline')}>{t('Timeline')}</button><button type="button" role="tab" id="structure-tab" tabIndex={researchTab === 'structure' ? 0 : -1} aria-selected={researchTab === 'structure'} aria-controls="structure-panel" onClick={() => selectResearchTab('structure')}>{t('Structure')}</button></div><div id="timeline-panel" role="tabpanel" aria-labelledby="timeline-tab" className="research-panel" hidden={researchTab !== 'timeline'}><ReferenceWorkspace state={state} config={config} mutate={mutate} busy={referenceBusy} actionError={referenceError} seekRef={seekRef} onPendingChange={setAnalysisPending} /></div><div id="structure-panel" role="tabpanel" aria-labelledby="structure-tab" className="research-panel" hidden={researchTab !== 'structure'}><StructureWorkspace state={state} mutate={mutate} onSeekEvidence={seekEvidence} onUseInIdeas={() => navigate('directions')} onActivity={onStructureActivity} /></div></div>
-      <div id="area-directions" className="workspace-area scroll-workspace" hidden={area !== 'directions'} aria-labelledby="tab-directions">{m2Blocked && <p className="context-hint">{t('Add brand facts when you are ready to generate.')} <button className="text-button" type="button" onClick={() => setContextOpen(true)}>{t('Open project context')}</button></p>}<Directions state={state} mutate={mutate} busy={creativeBusy} m2Blocked={m2Blocked} analysisBlocked={analysisPending} onSeekEvidence={seekEvidence} /></div>
-      <div id="area-production" className="workspace-area scroll-workspace" hidden={area !== 'production'} aria-labelledby="tab-production"><Production state={state} mutate={mutate} busy={productionBusy} m2Blocked={m2Blocked || (Boolean(approvedDirection?.analysis_ref) && analysisPending)} /></div>
+    {visibleActivity.map((activity) => <div key={`${activity.path}:${activity.started}`} className={`workspace-feedback ${activity.error ? 'error' : 'notice'}`} role={activity.error ? 'alert' : 'status'}>{activity.running && <span className="spinner" aria-hidden="true" />}{activity.error ? t(activity.error) : `${t(activity.label)}…`}<ConnectionHelp message={activity.error} /></div>)}
+    <div className="workspace-body" ref={readingRef} tabIndex={0} role="region" aria-label={t('Workspace content')} onScroll={(event) => { readingPositions.current[readingKey] = event.currentTarget.scrollTop; }}>
+      <div id="area-reference" className="workspace-area research-area" hidden={area !== 'reference'} aria-labelledby="tab-reference"><div className="research-tabs" role="tablist" aria-label={t('Research view')} onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); const next = researchTab === 'timeline' ? 'structure' : 'timeline'; selectResearchTab(next); document.getElementById(`${next}-tab`)?.focus(); }}><button type="button" role="tab" id="timeline-tab" tabIndex={researchTab === 'timeline' ? 0 : -1} aria-selected={researchTab === 'timeline'} aria-controls="timeline-panel" onClick={() => selectResearchTab('timeline')}>{t('Timeline')}</button><button type="button" role="tab" id="structure-tab" tabIndex={researchTab === 'structure' ? 0 : -1} aria-selected={researchTab === 'structure'} aria-controls="structure-panel" onClick={() => selectResearchTab('structure')}>{t('Structure')}</button></div><div id="timeline-panel" role="tabpanel" aria-labelledby="timeline-tab" className="research-panel" hidden={researchTab !== 'timeline'}><ReferenceWorkspace state={state} config={config} mutate={mutate} busy={referenceBusy} actionError={referenceError} correctionError={correctionError} seekRef={seekRef} onPendingChange={setAnalysisPending} /></div><div id="structure-panel" role="tabpanel" aria-labelledby="structure-tab" className="research-panel" hidden={researchTab !== 'structure'}><StructureWorkspace state={state} mutate={mutate} onSeekEvidence={seekEvidence} onUseInIdeas={() => navigate('directions')} onActivity={onStructureActivity} /></div></div>
+      <div id="area-directions" className="workspace-area scroll-workspace" hidden={area !== 'directions'} aria-labelledby="tab-directions"><Directions state={state} mutate={mutate} busy={creativeBusy} m2Blocked={m2Blocked} analysisBlocked={analysisPending} onSeekEvidence={seekEvidence} onSelectedPendingChange={setDirectionPending} /></div>
+      <div id="area-production" className="workspace-area scroll-workspace" hidden={area !== 'production'} aria-labelledby="tab-production"><Production state={state} mutate={mutate} busy={productionBusy} generating={productionGenerating} actionError={productionError} contextStatus={m2Status} analysisPending={analysisPending} directionPending={directionPending} onNavigate={(target) => { if (target === 'context') setContextOpen(true); else if (target === 'ideas') navigate('directions'); else { navigate('reference'); selectResearchTab('timeline'); } }} /></div>
     </div>
     <ContextDrawer open={contextOpen} onClose={() => setContextOpen(false)}><BriefEditor state={state} onApplied={onApplied} flushRef={flushRef} onStatusChange={onStatusChange} busy={false} />{state.briefs.length > 0 && <details className="history-drawer"><summary>{t('Context history · {count} revisions', { count: state.briefs.length })}</summary>{state.briefs.map((item) => <details key={`${item.brief_id}:${item.revision}`}><summary>{t('Context revision {revision}', { revision: item.revision })}</summary><pre>{JSON.stringify(item, null, 2)}</pre></details>)}</details>}</ContextDrawer>
   </>;
@@ -143,7 +154,13 @@ export default function App() {
   const [error, setError] = useState('');
   const [activities, setActivities] = useState<Record<string, Activity>>({});
   const [activityOpen, setActivityOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.matchMedia('(min-width: 1051px)').matches);
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1051px)');
+    const adaptSidebar = () => setSidebarOpen(desktop.matches);
+    desktop.addEventListener('change', adaptSidebar);
+    return () => desktop.removeEventListener('change', adaptSidebar);
+  }, []);
   const [languagePending, setLanguagePending] = useState(false);
   const activeId = useRef<string | null>(null);
   const activitiesRef = useRef(activities);
@@ -157,7 +174,7 @@ export default function App() {
   };
   const activate = (state: TaskState) => {
     if (activeId.current !== state.task.task_id) setM2Status({ pending: false, unsaved: false, loading: true, legacyReviewRequired: false, missing: [] });
-    activeId.current = state.task.task_id; remember('video-anatomy-task', state.task.task_id); setActive((previous) => previous?.task.task_id === state.task.task_id && previous.task.version > state.task.version ? previous : state); storeTask(state); setSidebarOpen(false);
+    activeId.current = state.task.task_id; remember('video-anatomy-task', state.task.task_id); setActive((previous) => previous?.task.task_id === state.task.task_id && previous.task.version > state.task.version ? previous : state); storeTask(state); if (!window.matchMedia('(min-width: 1051px)').matches) setSidebarOpen(false);
   };
   const flush = async () => { const id = activeId.current; const saveContext = flushRef.current; if (!m2Status.loading) await saveContext?.(); if (id) await flushEditorDrafts(id); };
   useEffect(() => {
@@ -316,14 +333,14 @@ export default function App() {
   const running = Object.values(activities).filter((item) => item.running);
   const failed = Object.values(activities).filter((item) => item.error);
   return <ApiConnection><div className={`desktop-app${sidebarOpen ? ' sidebar-open' : ''}`}>
-    <header className="app-header"><button type="button" className="secondary sidebar-toggle" aria-label={t('Projects')} aria-expanded={sidebarOpen} aria-controls="project-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button><a className="wordmark" href="#" onClick={(event) => event.preventDefault()} aria-label="Video Anatomy"><span className="brand-symbol" aria-hidden="true">◈</span> Video Anatomy</a><span className="header-label">{t('Local workspace')}</span><label className="app-language"><span>{t('Application language')}</span><select aria-label={t('Application language')} value={language} disabled={languagePending} onChange={(event) => { void changeLanguage(event.target.value as 'English' | 'Chinese'); }}><option value="English">English</option><option value="Chinese">中文</option></select></label><button type="button" className={`activity-toggle secondary ${running.length ? 'has-running' : ''}`} aria-expanded={activityOpen} onClick={() => setActivityOpen(!activityOpen)}>{running.length > 0 && <span className="spinner" aria-hidden="true" />}{t('Activity')}{running.length ? t(' · {count} running', { count: running.length }) : failed.length ? t(' · {count} needs attention', { count: failed.length }) : ''}</button><ApiConnectionButton /></header>
+    <header className="app-header"><button type="button" className="secondary sidebar-toggle" aria-label={t('Projects')} aria-expanded={sidebarOpen} aria-controls="project-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button><a className="wordmark" href="#" onClick={(event) => event.preventDefault()} aria-label="Video Anatomy"><span className="brand-symbol" aria-hidden="true">◈</span> Video Anatomy</a><span className="workspace-mode"><WorkspaceModeLabel /></span><label className="app-language"><span>{t('Application language')}</span><select aria-label={t('Application language')} value={language} disabled={languagePending} onChange={(event) => { void changeLanguage(event.target.value as 'English' | 'Chinese'); }}><option value="English">English</option><option value="Chinese">中文</option></select></label><button type="button" className={`activity-toggle secondary ${running.length ? 'has-running' : ''}`} aria-expanded={activityOpen} onClick={() => setActivityOpen(!activityOpen)}>{running.length > 0 && <span className="spinner" aria-hidden="true" />}{t('Activity')}{running.length ? t(' · {count} running', { count: running.length }) : failed.length ? t(' · {count} needs attention', { count: failed.length }) : ''}</button><ApiConnectionButton /></header>
     <main className="app-layout">
-      <ProjectSidebar tasks={tasks} trashed={trashed} active={active} title={title} onTitle={setTitle} loading={loading} navigating={navigating} error={error} busyIds={new Set(running.map((item) => item.taskId))} onOpen={openTask} onClose={closeTask} onCreate={createTask} onLoadTrash={loadTrash} onRename={(id, nextTitle) => projectCommand(id, 'rename', nextTitle)} onTrash={(id) => projectCommand(id, 'trash')} onRestore={(id) => projectCommand(id, 'restore')} />
+      <ProjectSidebar tasks={tasks} trashed={trashed} active={active} title={title} onTitle={setTitle} loading={loading} navigating={navigating} error="" busyIds={new Set(running.map((item) => item.taskId))} onOpen={openTask} onClose={closeTask} onCreate={createTask} onLoadTrash={loadTrash} onRename={(id, nextTitle) => projectCommand(id, 'rename', nextTitle)} onTrash={(id) => projectCommand(id, 'trash')} onRestore={(id) => projectCommand(id, 'restore')} />
       <div className="workspace">
+        {error && <div className="workspace-feedback error" role="alert">{t(error)}<ConnectionHelp message={error} /><button type="button" className="text-button" onClick={() => setError('')}>{t('Dismiss')}</button></div>}
         {active ? <Workspace key={active.task.task_id} state={active} config={config} mutate={mutate} activities={Object.values(activities).filter((item) => item.taskId === active.task.task_id)} onApplied={storeTask} flushRef={flushRef} m2Status={m2Status} onStatusChange={setM2Status} flush={flush} onError={setError} onStructureActivity={(isRunning, label, failure) => { const taskId = active.task.task_id; setActivities((previous) => { const key = `structure:${taskId}`; const old = previous[key]; if (old?.running === isRunning && old.label === label && old.error === failure) return previous; return { ...previous, [key]: { taskId, title: active.task.title, path: '/structure', label, running: isRunning, error: failure, started: old?.started ?? Date.now() } }; }); }} /> : <section className="studio-welcome"><div className="welcome-mark" aria-hidden="true">◈</div><h1>{t('Start with a video. Or an idea.')}</h1><p>{t('Create a project to research a reference, explore ideas, or prepare a production.')}</p><button type="button" className="secondary" disabled={navigating || loading} onClick={() => create(true)}>{t('Explore the sample workspace')}</button><small>{t('Fictional sample · no API calls')}</small></section>}
       </div>
     </main>
-    <footer className="app-status"><span>{running.length ? t(running.length === 1 ? '{count} operation running' : '{count} operations running', { count: running.length }) : t('Ready')}</span><span>{t('Video Anatomy · Local preview')}</span></footer>
     {activityOpen && <section className="activity-panel" aria-label={t('Activity center')}><div className="drawer-toolbar"><h2>{t('Activity')}</h2><button className="text-button" type="button" onClick={() => setActivityOpen(false)}>{t('Close')}</button></div>{Object.values(activities).length ? <ul>{Object.values(activities).map((item, index) => <li key={`${item.taskId}:${item.path}:${index}`}><strong>{item.title}</strong><p>{item.running ? <span className="spinner" aria-hidden="true" /> : null}{item.error ? t(item.error) : `${t(item.label)}${item.running ? '…' : t(' · Complete')}`}</p><button type="button" className="text-button" onClick={() => { void openTask(item.taskId); setActivityOpen(false); }}>{t('Open project')}</button></li>)}</ul> : <p className="muted">{t('No operations yet.')}</p>}</section>}
   </div></ApiConnection>;
 }

@@ -46,6 +46,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await editBrand(page);
   await expect(page.getByLabel('Product', { exact: true })).toHaveValue('LumaCup');
   await area(page, 'reference');
+  await page.getByRole('button', { name: 'Source media', exact: true }).click();
   await page.getByText('File details and history', { exact: true }).click();
   await expect(page.getByTestId('source-frame-rate')).toHaveText('20 fps · 200 source frames · constant rate');
   await expect(page.getByRole('button', { name: 'Previous frame', exact: true })).toBeDisabled();
@@ -150,12 +151,14 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   expect(state.storyboards).toHaveLength(2);
 
   const briefDownload = page.waitForEvent('download');
+  await page.locator('.production-export-bar > summary').click();
   await page.locator('.production-export-bar').getByRole('button', { name: 'Markdown', exact: true }).click();
   const brief = await briefDownload;
   const briefText = await readFile((await brief.path())!, 'utf8');
   expect(briefText).toContain('Morning production plan — reviewed');
   expect(briefText.toLowerCase()).toContain('sample');
   const csvDownload = page.waitForEvent('download');
+  await page.locator('.production-export-bar > summary').click();
   await page.getByRole('button', { name: 'Storyboard CSV', exact: true }).click();
   const csv = await csvDownload;
   const csvText = await readFile((await csv.path())!, 'utf8');
@@ -184,7 +187,8 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await area(page, 'inputs');
   await applyInputs(page);
   await area(page, 'production');
-  await expect(page.getByText('These materials are historical because their inputs or approved direction changed.', { exact: false })).toBeVisible();
+  await expect(page.locator('.production-toolbar').getByText('Historical version', { exact: true })).toBeVisible();
+  await expect(page.locator('.production-prerequisite').getByRole('button', { name: 'Choose and approve an idea', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Regenerate production materials', exact: true })).toBeDisabled();
   await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('Morning production plan — reviewed');
   await area(page, 'reference');
@@ -195,6 +199,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   await expect(page.locator('pre').filter({ hasText: 'LUMACUP\\nFICTIONAL SAMPLE' }).first()).toBeVisible();
 
   await area(page, 'production');
+  await page.locator('.production-export-bar > summary').click();
   await expect(page.getByRole('button', { name: 'Export historical CSV', exact: true })).toBeVisible();
   const historicalDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export historical CSV', exact: true }).click();
@@ -212,6 +217,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   state = await mutation(page, 'Regenerate production materials', '/outputs/generate');
   expect(state.production_briefs).toHaveLength(3);
   expect(state.production_briefs.at(-1)?.brief_ref).toEqual(state.task.current_brief);
+  await page.locator('.production-export-bar > summary').click();
   await expect(page.locator('.production-export-bar').getByRole('button', { name: 'Markdown', exact: true })).toBeVisible();
 
   // Re-upload the same bytes through ordinary intake. It must remain a real upload,
@@ -220,6 +226,7 @@ test('complete connected sample workflow, playable evidence, edits, exports and 
   expect(sampleMedia.ok()).toBeTruthy();
   await page.locator('.task-list button').filter({ hasText: 'Separate upload task' }).click();
   await area(page, 'reference');
+  await page.getByRole('button', { name: 'Import video', exact: true }).click();
   await page.getByLabel('Reference video file', { exact: true }).setInputFiles({ name: 'ordinary-upload.mp4', mimeType: 'video/mp4', buffer: await sampleMedia.body() });
   await mutation(page, 'Upload reference', '/video');
   state = await mutation(page, 'Start analysis', '/recognize', page.locator('body'), true);
@@ -240,10 +247,12 @@ test('uploaded video with a nonzero source timestamp steps through zero-based fr
     await page.getByLabel('New task title').fill('Shifted reference frame review');
     await mutation(page, 'Create task', '/tasks');
     await area(page, 'reference');
+    await page.getByRole('button', { name: 'Import video', exact: true }).click();
     await page.getByLabel('Reference video file', { exact: true }).setInputFiles(mediaPath);
     const state = await mutation(page, 'Upload reference', '/video');
     expect(state.videos[0].frame_timing?.media_start_seconds).toBe(2);
     expect(state.videos[0].duration_seconds).toBeCloseTo(0.5);
+    await page.getByRole('button', { name: 'Source media', exact: true }).click();
     await page.getByText('File details and history', { exact: true }).click();
     await expect(page.getByTestId('source-frame-rate')).toHaveText('24 fps · 12 source frames · constant rate');
     const video = page.locator('video');

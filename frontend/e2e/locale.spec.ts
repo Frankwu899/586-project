@@ -32,13 +32,15 @@ test('application locale covers context, Ideas and Production while retaining au
   await page.getByRole('button', { name: '创意', exact: true }).click();
   await expect(page.getByLabel('生成语言', { exact: true })).toHaveValue('English');
   await expect(page.getByText('创意笔记', { exact: true })).toBeVisible();
+  const notebookSaved = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/editors/idea'));
   await page.getByRole('textbox', { name: '创意', exact: true }).fill('My original idea 创意原文');
-  await expect(page.getByText('笔记已保存在此项目中', { exact: true })).toBeVisible();
+  expect((await notebookSaved).ok()).toBe(true);
+  await expect(page.getByText('笔记已保存在此项目中', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '制作', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '制作与交付', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '制作', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '生成制作材料', exact: true })).toBeDisabled();
   await page.reload();
-  await expect(page.getByRole('heading', { name: '制作与交付', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '制作', exact: true })).toBeVisible();
   await page.getByLabel('应用语言', { exact: true }).selectOption('English');
   await page.getByRole('button', { name: 'Ideas', exact: true }).click();
   await expect(page.getByLabel('Idea', { exact: true })).toHaveValue('My original idea 创意原文');

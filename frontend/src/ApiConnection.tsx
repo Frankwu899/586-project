@@ -13,6 +13,7 @@ interface ConnectionCheck {
   endpoint_permissions_verified: false;
 }
 interface ConnectionStatus {
+  mode?: 'shared';
   available: boolean;
   configured: boolean;
   key_source: 'keychain' | 'session' | 'environment' | 'none';
@@ -22,6 +23,12 @@ interface ConnectionStatus {
   last_check: ConnectionCheck | null;
 }
 const ConnectionContext = createContext<{ status: ConnectionStatus | null; open: () => void }>({ status: null, open: () => {} });
+
+export function WorkspaceModeLabel() {
+  const { status } = useContext(ConnectionContext);
+  const { t } = useI18n();
+  return <>{t(status?.mode === 'shared' ? 'Shared workspace' : 'Local workspace')}</>;
+}
 
 export function ApiConnectionButton() {
   const { t } = useI18n();
@@ -51,9 +58,10 @@ export default function ApiConnection({ children }: { children: ReactNode }) {
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     let cancelled = false;
-    // This route exists only in the local launcher, not the hosted/dev API.
+    // Hosted mode reports that credential controls are operator-managed.
     void request<ConnectionStatus>('/local/connection').then((value) => {
-      if (cancelled || !value.available) return;
+      if (cancelled) return;
+      if (!value.available) { setStatus(value); return; }
       setStatus(value); setRemember(value.can_remember); setCheck(value.last_check);
       if (!value.configured) setOpen(true);
     }).catch(() => { /* Older and development servers have no credential UI. */ });
@@ -84,7 +92,7 @@ export default function ApiConnection({ children }: { children: ReactNode }) {
     finally { setPending(''); }
   };
   return <ConnectionContext.Provider value={{ status, open: show }}>{children}
-    <dialog ref={dialog} className="connection-dialog" aria-labelledby="connection-title" onCancel={(event) => { event.preventDefault(); close(); }}>
+    {status?.available && <dialog ref={dialog} className="connection-dialog" aria-labelledby="connection-title" onCancel={(event) => { event.preventDefault(); close(); }}>
       <header><div><h2 id="connection-title">{t("API connection")}</h2><p>{t("Connect OpenAI to analyze videos and develop ideas.")}</p></div><button type="button" className="text-button" onClick={close} aria-label={t("Close API connection")}>{t("Close")}</button></header>
       {status && <form onSubmit={(event) => { event.preventDefault(); void perform('save'); }}>
         <p className="connection-current">{status.configured ? status.key_source === 'keychain' ? t("Current key: saved in macOS Keychain.") : status.key_source === 'environment' ? t("Current key: provided by your launcher environment.") : t("Current key: available for this session.") : t("No API key added yet.")}</p>
@@ -100,6 +108,6 @@ export default function ApiConnection({ children }: { children: ReactNode }) {
         {status.configured && <button type="button" className="text-button connection-forget" disabled={Boolean(pending)} onClick={() => void perform('forget')}>{t("Remove API key")}</button>}
       </form>}
       {open && <BudgetStatus />}
-    </dialog>
+    </dialog>}
   </ConnectionContext.Provider>;
 }

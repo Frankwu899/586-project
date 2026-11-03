@@ -28,7 +28,7 @@ export async function request<T>(path: string, body?: unknown): Promise<T> {
   const isFile = body instanceof FormData;
   const response = await fetch(`/api${path}`, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: body === undefined || isFile ? undefined : { 'Content-Type': 'application/json' },
+    headers: { 'X-Video-Anatomy-Request': '1', ...(body === undefined || isFile ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : isFile ? body : JSON.stringify(body),
   });
   const data = await response.json();

@@ -1,5 +1,7 @@
 # Video Anatomy — v0.7 local workspace
 
+For the owner-funded hosted team workspace, use [SHARED_SERVER.md](SHARED_SERVER.md). The local setup below retains per-machine credentials.
+
 ## v0.7.7 professional generation skills
 
 The [current instruction package](docs/generation/v0.7.7/README.md) revises

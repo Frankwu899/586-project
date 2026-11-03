@@ -71,6 +71,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     await fillInputs(page, briefFields);
     await applyInputs(page);
     await area(page, 'reference');
+    await page.getByRole('button', { name: 'Import video', exact: true }).click();
     await page.getByLabel('Reference video file', { exact: true }).setInputFiles(mediaPath);
     let state = await mutation(page, 'Upload reference', '/video');
     const source = state.videos[0];
@@ -159,6 +160,7 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     state = await mutation(page, 'Save production edits', '/outputs/edit');
     for (const [name, content] of [['Markdown', 'LumaCup 创意简报'], ['Storyboard CSV', '蓝色杯身 close-up']] as const) {
       const pending = page.waitForEvent('download');
+      await page.locator('.production-export-bar > summary').click();
       await page.locator('.production-export-bar').getByRole('button', { name, exact: true }).click();
       expect(await readFile((await (await pending).path())!, 'utf8')).toContain(content);
     }
@@ -178,7 +180,10 @@ test('mocked real providers: HEVC playback, bilingual corrections, approval, exp
     expect(state.storyboards.at(-1)?.currentness).toBe('outdated');
     expect(state.analyses.at(-1)?.review.user_confirmed).toBe(false);
     await area(page, 'production');
-    await expect(page.getByText('These materials are historical because their inputs', { exact: false })).toBeVisible();
+    await expect(page.locator('.production-toolbar').getByText('Historical version', { exact: true })).toBeVisible();
+    await expect(page.locator('.production-prerequisite').getByRole('button', { name: 'Choose and approve an idea', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Regenerate production materials', exact: true })).toBeDisabled();
+    await expect(page.getByLabel('Production title', { exact: true })).toHaveValue('LumaCup 创意简报 — 中英双语');
     await area(page, 'directions');
     await expect(page.getByRole('button', { name: 'Generate two new directions', exact: true })).toBeDisabled();
     expect(clientErrors).toEqual([]);
@@ -221,14 +226,14 @@ test('partial and legacy structured coverage stays visible without editable extr
   await page.goto('/');
   await area(page, 'reference');
   await selectEvidence(page, visual, analysis.events);
-  await page.getByText('Observed details & source', { exact: true }).click();
+  await page.getByText('Observed details', { exact: true }).click();
   await expect(page.getByText('Subject extraction failed in this UI fixture.', { exact: true })).toBeVisible();
   await expect(page.getByText('Not analyzed', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Checked; none found', { exact: true }).first()).toBeVisible();
   const legacy = analysis.events.find((event) => event.kind === 'visual_action' && event.event_id !== visual.event_id && !event.visual_details)!;
   expect(legacy).toBeTruthy();
   await selectEvidence(page, legacy, analysis.events);
-  await page.getByText('Observed details & source', { exact: true }).click();
+  await page.getByText('Observed details', { exact: true }).click();
   await expect(page.getByText('Structured visual details were not analyzed for this observation.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Use this reviewed analysis', exact: true })).toBeDisabled();
   await area(page, 'directions');

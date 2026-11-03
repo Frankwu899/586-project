@@ -46,3 +46,27 @@
 @media (max-width: 1100px) { .direction-grid { gap: 16px; } .direction-grid > .direction { padding: 18px; } .direction-grid > .direction.selected { padding: 17px; } }
 @media (max-width: 960px) { .direction-grid { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .directions-workspace { padding: 0 0 24px; } .direction-step { display: none; } .direction-heading { margin-bottom: 20px; } .direction-language { gap: 12px; } .direction-language > button { width: 100%; } .direction-empty { padding: 32px 20px; } .direction-empty h3 { font-size: 27px; } }
+
+/* Reading and editing share one flow; routine status has no reserved row. */
+.directions-workspace .direction-heading { margin-bottom: 12px; padding-bottom: 0; }
+.directions-workspace .direction-heading h2 { margin: 0; font-size: 22px; }
+.directions-workspace .direction-letter { font: 600 18px/1.5 system-ui,sans-serif; color: var(--m2-muted); }
+.directions-workspace .direction-badges { margin: 0 0 12px; font-size: 14px; color: var(--m2-muted); }
+.directions-workspace .direction-comparison dd { font-size: 16px; line-height: 1.65; }
+.directions-workspace .direction-comparison > div:first-child dd { font: 600 18px/1.55 system-ui,sans-serif; }
+.directions-workspace .direction-comparison dt { font-size: 13px; text-transform: none; letter-spacing: 0; }
+.directions-workspace .direction-language { align-items: end; padding: 16px 0; }
+.directions-workspace .direction-language .field > label,
+.directions-workspace .direction-language button,
+.directions-workspace .direction-language select { font-size: 14px; }
+.directions-workspace .direction-language > div { max-width: 300px; }
+.directions-workspace .direction-generation { border: 0; margin: 12px 0; padding: 0; }
+.directions-workspace .direction-generation button { font-size: 14px; }
+.direction-generation-notice { color: var(--m2-muted); font-size: 14px; margin: 0 0 20px; max-width: 70ch; }
+.direction-generation-notice a { white-space: normal; display: inline-block; padding-block: 4px; }
+.directions-workspace .direction-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-top: 16px; }
+.directions-workspace .direction-decision > p,
+.directions-workspace .direction-decision > .direction-acknowledgement { flex-basis: 100%; margin: 0; }
+.directions-workspace .idea-notebook .grid { margin-block: 8px; }
+.directions-workspace .idea-notebook textarea,
+.directions-workspace .direction-full textarea { font-size: 16px; line-height: 1.6; }

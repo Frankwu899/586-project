@@ -39,7 +39,7 @@ async function open(page: Page, state: TaskState) {
 }
 async function reachable(page: Page, selector: string) {
   const element = page.locator(selector);
-  await element.scrollIntoViewIfNeeded();
+  await element.evaluate(node => node.scrollIntoView({ block: 'center', inline: 'nearest' }));
   const box = await element.boundingBox();
   expect(box).not.toBeNull();
   const viewport = page.viewportSize()!;
@@ -54,7 +54,7 @@ test('research controls remain reachable across desktop, tablet and narrow windo
   await open(page, state);
   for (const size of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }, { width: 768, height: 1024 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(size);
-    await expect.poll(() => page.evaluate(() => document.body.scrollWidth <= innerWidth && document.body.scrollHeight <= innerHeight)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await reachable(page, '.reference-toolbar');
     await reachable(page, '.frame-controls');
     await reachable(page, '.reference-timeline-slot');
@@ -75,11 +75,13 @@ test('research controls remain reachable across desktop, tablet and narrow windo
       await expect(page.locator('.logic-node')).toHaveCount(3);
     }
     await reachable(page, '.structure-toolbar');
+    await page.getByRole('button', { name: 'Logic map', exact: true }).click();
+    await page.locator('.logic-node').first().click();
+    await reachable(page, '.structure-inspector .node-feedback button[type=submit]');
+    await page.getByRole('button', { name: 'Close details', exact: true }).click();
     await page.getByRole('button', { name: /Transferable methods/ }).click();
     await reachable(page, '.method-choice');
-    await page.locator('.structure-inspector .node-feedback button[type=submit]').scrollIntoViewIfNeeded();
-    await reachable(page, '.structure-inspector .node-feedback button[type=submit]');
-    await expect.poll(() => page.evaluate(() => document.body.scrollWidth <= innerWidth && document.body.scrollHeight <= innerHeight)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.getByRole('tab', { name: 'Timeline', exact: true }).click();
   }
 });

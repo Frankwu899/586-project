@@ -12,6 +12,7 @@ const translations: Record<string, string> = {
   'Not provided': '未提供', 'Not analyzed': '尚未分析', 'Loading…': '正在加载…', 'Saving…': '正在保存…',
   'English': 'English', 'Chinese': '中文', 'Research': '研究', 'Ideas': '创意', 'Production': '制作',
   'Timeline': '时间线', 'Structure': '结构', 'Project context': '项目背景', 'Projects': '项目',
+  'Shared workspace': '团队工作区',
   'New project': '新建项目', 'Project name': '项目名称', 'API connection': 'API 连接',
 };
 
