@@ -85,11 +85,12 @@ toggle and internal scrolling instead of stretching the entire page.
 
 ## Models, missing analysis and usage
 
-Visual analysis, Structure synthesis, Ideas, Production and input assistance use
-GPT-6.1 Sol. Bounded background research uses GPT-6 Luna. These models do not accept
+Visual analysis, Structure synthesis, Ideas, Production, input assistance and
+bounded background research all use GPT-6.1 Sol (`gpt-6.1-sol`). The local app
+pins this baseline even when older shell model settings are present. GPT-6 does not accept
 audio. The owner-approved speech exception uses Whisper (`whisper-1`) for
 transcription with segment timestamps. Speech analysis is enabled;
-all other inference keeps the GPT-6 models above. Existing speech, source wording
+all other inference keeps the Sol baseline above. Existing speech, source wording
 and compatible caches are retained. The key needs Audio Transcriptions access in
 addition to Responses access.
 
