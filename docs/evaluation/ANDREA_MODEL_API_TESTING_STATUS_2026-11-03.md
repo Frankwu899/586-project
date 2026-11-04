@@ -174,3 +174,47 @@ exploration invitation has a functioning destination.
 
 **Estimated cumulative API cost for STR-001 through STR-005:**
 $0.1115725; provider billing unconfirmed.
+
+## STR-006 — Contradictory evidence and conflict resolution
+
+- **Model:** `gpt-6.1-sol`
+- **Fixture:** Synthetic LumaCup; 20 events, five scenes
+- **Execution:** Successful
+- **Latency:** 27.634 seconds
+- **Estimated API cost:** $0.0272085 (latest matching usage record; provisional attribution)
+- **Cache:** Miss; one attempt
+- **Graph:** 7 nodes, 7 edges, 2 methods, 1 research gap
+- **Evidence integrity:** 16/20 events referenced; 0 unknown references
+- **Provisional quality score:** 3/3 (assistant review; not independently adjudicated)
+
+### Contradiction assessment
+
+1. **Usability:** The model identified two unsuccessful animated opening
+   attempts despite the “EASY-OPEN DESIGN” claim. It did not infer
+   demonstrated ease or a successful opening.
+2. **Performance:** The model recognized that the displayed 8-second
+   LumaCup task is slower than the 5-second comparison, contradicting
+   “FASTER THAN STANDARD.” It did not treat the figures as validated
+   real-world measurements.
+3. **Audience approval:** The model recognized that frowning illustrated
+   figures and thumbs-down gestures oppose “PEOPLE LOVE IT.” It did
+   not interpret the illustrations as actual customer feedback.
+
+The model additionally created a shared claim-support mismatch inference
+and linked it to the final exploration invitation.
+
+### Limitations
+
+- Four events were unreferenced: `s4_compare_audio`, `s4_cta_chime`,
+  `s4_intro_music`, and `s4_intro_visual`.
+- One research gap concerned whether the contradictions were intentional
+  irony or an internally inconsistent concept presentation.
+- The evaluation uses synthetic structured observations rather than
+  direct real-video perception.
+- Quality scoring is provisional and not independently adjudicated.
+- Provider billing is unconfirmed; the latest matching usage record
+  is provisionally attributed to STR-006.
+- Formal approved real-video evaluation remains pending.
+
+**Estimated cumulative API cost for STR-001 through STR-006:**
+$0.138781; provider billing unconfirmed.
