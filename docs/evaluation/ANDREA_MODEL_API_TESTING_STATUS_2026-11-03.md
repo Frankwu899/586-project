@@ -129,3 +129,48 @@ physical product test, or functional purchase destination.
 
 **Estimated cumulative API cost for STR-001 through STR-004:**
 $0.0860065; provider billing unconfirmed.
+
+## STR-005 — Evidence perturbation testing
+
+- **Model:** `gpt-6.1-sol`
+- **Fixture:** Controlled modification of STR-004; 20 events, five scenes
+- **Execution:** Successful; output schema validated
+- **Latency:** 26.372 seconds
+- **Estimated API cost:** $0.025566 (latest matching usage record; provisional attribution)
+- **Cache:** Miss; one attempt
+- **Graph:** 6 nodes, 5 edges, 2 methods, 2 research gaps
+- **Evidence integrity:** 19/20 known events referenced; 0 unknown references
+- **Provisional quality score:** 3/3 (assistant review; not independently adjudicated)
+
+### Controlled comparison against STR-004
+
+Three input observations were deliberately weakened:
+
+1. **Opening motion:** The model stopped asserting that the top visibly
+   opens, separates, or returns. It retained the on-screen easy-open
+   claim but explicitly distinguished it from demonstrated usability.
+2. **Speed comparison:** After the comparison heading became unreadable,
+   the model stopped attributing an explicit speed-superiority claim
+   to the video. The comparison node changed from a source claim
+   to an observation.
+3. **Audience approval:** After the popularity heading became unreadable,
+   the model described illustrated smiles and applause-like audio
+   as emotional cues rather than an explicit popularity claim.
+   This node also changed from a source claim to an observation.
+
+Two structured research gaps were generated, compared with zero in
+STR-004. They concerned unreadable overlays and whether the final
+exploration invitation has a functioning destination.
+
+### Limitations
+
+- The background-music event `s4_intro_music` remained unreferenced.
+- The model described the click as accompanying movement but did not
+  assert that it proved a physical mechanism.
+- The quality score is provisional and based on one controlled
+  synthetic comparison.
+- The internal cost estimate is not confirmed provider billing.
+- Formal evaluation on approved real video remains pending.
+
+**Estimated cumulative API cost for STR-001 through STR-005:**
+$0.1115725; provider billing unconfirmed.
