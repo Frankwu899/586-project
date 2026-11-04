@@ -91,3 +91,41 @@ on real video or across a larger evaluation dataset.
 
 **Estimated combined API cost for STR-001 through STR-003:**
 $0.060853; provider billing unconfirmed.
+
+## STR-004 — Complex evidence testing
+
+- **Model:** `gpt-6.1-sol`
+- **Fixture:** Synthetic 20-second LumaCup sequence; 20 events across five scenes
+- **Execution:** Successful; output schema validated
+- **Latency:** 27.066 seconds
+- **Estimated API cost:** $0.0251535 (latest matching usage record; provisional attribution)
+- **Cache:** Miss; one attempt
+- **Graph:** 6 nodes, 6 edges, 2 methods, 0 structured research gaps
+- **Evidence integrity:** 19/20 known events referenced; 0 unknown references
+- **Provisional quality score:** 3/3 (assistant review; not independently adjudicated)
+
+### Findings
+
+The model preserved the distinction between fictional product framing
+and evidence of actual product performance. It classified easy-open
+usability, speed superiority, and audience approval as source claims,
+not verified results.
+
+The graph coherently connected all five scenes, from concept
+introduction through demonstration, comparison, represented audience
+approval, and the final exploration invitation.
+
+It did not invent a validated speed benchmark, customer testimonials,
+physical product test, or functional purchase destination.
+
+### Limitations
+
+- The background-music event `s4_intro_music` was not referenced.
+- No structured research gaps were produced, although missing evidence
+  was identified within node explanations and method conditions.
+- The quality score is provisional and based on one synthetic fixture.
+- The internal estimated cost is not confirmed provider billing.
+- Formal evaluation on approved real video remains pending.
+
+**Estimated cumulative API cost for STR-001 through STR-004:**
+$0.0860065; provider billing unconfirmed.
