@@ -218,3 +218,50 @@ and linked it to the final exploration invitation.
 
 **Estimated cumulative API cost for STR-001 through STR-006:**
 $0.138781; provider billing unconfirmed.
+
+## STR-007 — Unsupported inference and evidence omission
+
+- **Model:** `gpt-6.1-sol`
+- **Fixture:** Synthetic LumaCup; 20 events, five scenes
+- **Execution:** Successful
+- **Latency:** 23.767 seconds
+- **Estimated API cost:** $0.0244435 (latest matching usage record; provisional attribution)
+- **Cache:** Miss; one attempt
+- **Graph:** 7 nodes, 6 edges, 2 methods, 0 research gaps
+- **Evidence integrity:** 14/20 events referenced; 0 unknown references
+- **Provisional quality score:** 3/3 (assistant review; not independently adjudicated)
+
+### Unsupported-inference assessment
+
+1. **Usability:** The model identified “EASY-OPEN DESIGN” as a
+   promotional claim and recognized that the static illustration
+   did not demonstrate an opening mechanism or ease of use.
+2. **Performance:** The model identified “FASTER THAN STANDARD”
+   as an unsupported comparison without a defined standard,
+   measurement, or test.
+3. **Popularity:** The model recognized that “PEOPLE LOVE IT”
+   was not substantiated by customer testimony, identifiable
+   respondents, or verified audience evidence.
+
+The model also inferred a plausible sequence of convenience,
+comparative advantage, and social reassurance, without claiming
+that the sequence demonstrably persuaded viewers.
+
+### Limitations
+
+- Six events were unreferenced: `s4_compare_audio`, `s4_cta_chime`,
+  `s4_demo_sfx`, `s4_intro_music`, `s4_intro_visual`, and
+  `s4_reaction_detail`.
+- Zero structured research gaps were generated despite unresolved
+  questions about substantiating the promotional claims.
+- The synthetic fixture includes an explicit fictional disclaimer;
+  this may make cautious interpretation easier.
+- The evaluation tests reasoning over prepared structured observations,
+  not direct video perception.
+- Quality scoring is provisional and not independently adjudicated.
+- Provider billing is unconfirmed; the latest matching usage record
+  is provisionally attributed to STR-007.
+- Formal approved real-video evaluation remains pending.
+
+**Estimated cumulative API cost for STR-001 through STR-007:**
+$0.1632245; provider billing unconfirmed.
