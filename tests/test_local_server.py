@@ -26,7 +26,7 @@ def test_speech_exception_restores_old_disabled_launchers_without_downgrading_ot
     settings = local_server.local_settings(tmp_path, "", allow_empty=True)
     assert settings.transcription_model == "whisper-1"
     assert settings.vision_model == settings.creative_model == settings.m2_model == settings.structure_model == "gpt-6.1-sol"
-    assert settings.research_model == "gpt-6-luna"
+    assert settings.research_model == "gpt-6.1-sol"
     assert settings.budget_path == tmp_path / "provider-budget.sqlite3"
 
 
@@ -116,10 +116,17 @@ def test_reference_import_is_real_unanalyzed_and_respects_deleted_media(built_ui
     assert len(after_deletion[0].videos) == 1
 
 
-def test_unsupported_model_fails_before_serving(built_ui, tmp_path, monkeypatch):
-    monkeypatch.setenv("OPENAI_VISION_MODEL", "not-reviewed-for-this-adapter")
-    with pytest.raises(ValueError, match="model"):
-        local_server.local_settings(tmp_path / "data", "sk-test")
+@pytest.mark.parametrize("old_model", ["gpt-6-luna", "not-reviewed-for-this-adapter"])
+def test_local_release_pins_sol_despite_saved_model_overrides(tmp_path, monkeypatch, old_model):
+    for capability in ("VISION", "CREATIVE", "M2", "STRUCTURE", "RESEARCH"):
+        monkeypatch.setenv(f"OPENAI_{capability}_MODEL", old_model)
+    settings = local_server.local_settings(tmp_path / "data", "sk-test")
+    for capability in ("vision", "creative", "m2", "structure", "research"):
+        assert getattr(settings, f"{capability}_model") == "gpt-6.1-sol"
+    assert settings.transcription_model == "whisper-1"
+    # Local baseline selection must not rewrite the operator's environment or
+    # constrain the independently configured Cloud evaluation harness.
+    assert local_server.ProviderSettings.from_env().research_model == old_model
 
 
 def test_desktop_token_protects_ui_and_api_without_disclosing_key(built_ui, tmp_path):

@@ -104,9 +104,11 @@ Real analysis, Structure research and AI generation can incur charges when
 requested. A fictional sample remains deterministic. Credentials being configured
 does not establish billing availability or model access.
 
-The current baseline is `gpt-6.1-sol` for visual analysis, Structure synthesis,
-Ideas, Production and input assistance, with `gpt-6-luna` for bounded background
-retrieval. The owner-approved audio exception uses `whisper-1` for transcription
+The local app pins `gpt-6.1-sol` for visual analysis, Structure synthesis,
+Ideas, Production, input assistance and bounded background retrieval, including
+when an older shell still contains Luna or other model overrides. Separately
+invoked Cloud evaluation retains independently selected models. The
+owner-approved audio exception uses `whisper-1` for transcription
 with segment timestamps. Speech is enabled; no other capability falls
 back to an older model. Existing speech and compatible caches are retained.
 The launcher defaults to zero automatic retries. Provider

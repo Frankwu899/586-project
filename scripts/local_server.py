@@ -60,6 +60,12 @@ def local_settings(data_dir: Path, api_key: str, *, allow_empty=False) -> Provid
         # A failed first experiment must not silently start another paid attempt.
         max_retries=int(os.getenv("OPENAI_MAX_RETRIES", "0")),
         analysis_language=read_preferences(data_dir / "app-preferences.json").language,
+        # The owner selected one baseline for the distributed local app. Do not
+        # let old shell/model settings silently retain Luna or another model.
+        # Cloud evaluation still selects its models through ProviderSettings.
+        vision_model="gpt-6.1-sol", creative_model="gpt-6.1-sol",
+        m2_model="gpt-6.1-sol", structure_model="gpt-6.1-sol",
+        research_model="gpt-6.1-sol",
         # The owner approved dedicated timestamped speech. Restore it even if
         # an older launch environment still carries the v0.7.3 disabled value.
         transcription_model="whisper-1",
