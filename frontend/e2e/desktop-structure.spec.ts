@@ -10,7 +10,7 @@ async function sampleTask(api: APIRequestContext, title: string) {
   return await sample.json() as TaskState;
 }
 
-test('research is a bounded workspace and Structure analyzes without a separate Timeline step', async ({ page, request }) => {
+test('research scrolls within its reader and Structure analyzes without a separate Timeline step', async ({ page, request }) => {
   const state = await sampleTask(request, 'Structure workspace smoke');
   await page.addInitScript((id) => localStorage.setItem('video-anatomy-task', id), state.task.task_id);
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -24,9 +24,11 @@ test('research is a bounded workspace and Structure analyzes without a separate 
   await expect(page.getByText('Fictional sample', { exact: true }).last()).toBeVisible();
   const heights = await page.evaluate(() => ({ body: document.body.scrollHeight, viewport: window.innerHeight }));
   expect(heights.body).toBeLessThanOrEqual(heights.viewport);
+  await expect(page.getByRole('complementary', { name: 'Selected structure node' })).toHaveCount(0);
   await page.locator('.logic-node').last().click();
   await expect(page.getByRole('complementary', { name: 'Selected structure node' }).getByText('Inference', { exact: true })).toBeVisible();
-  await expect(page.getByText('An interpretation of the available evidence, not a verified intent or measured effect.')).toBeVisible();
+  await expect(page.getByText('An interpretation of the available evidence, not a verified intent or measured effect.')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close details', exact: true }).click();
   await page.getByRole('button', { name: /Transferable methods/ }).click();
   await page.locator('.method-choice input').check();
   await page.getByRole('button', { name: 'Use in Ideas · 1', exact: true }).click();
@@ -43,7 +45,7 @@ test('research is a bounded workspace and Structure analyzes without a separate 
   await page.setViewportSize({ width: 1440, height: 900 });
   expect(await page.evaluate(() => document.body.scrollHeight <= innerHeight)).toBe(true);
   await page.getByRole('button', { name: 'Logic map', exact: true }).click();
-  await page.screenshot({ path: '/workspace/video-anatomy-artifacts/workspace-structure.png' });
+  await page.screenshot({ path: test.info().outputPath('workspace-structure.png') });
   await page.setViewportSize({ width: 1024, height: 800 });
   expect(await page.evaluate(() => document.body.scrollHeight <= innerHeight && document.body.scrollWidth <= innerWidth)).toBe(true);
 });

@@ -6,7 +6,7 @@ import { Field } from './ui';
 import { M2DraftSession } from './m2DraftSession';
 import M2Proposals from './M2Proposals';
 
-export type M2EditorStatus = { pending: boolean; unsaved: boolean; loading: boolean; legacyReviewRequired: boolean; missing: string[] };
+export type M2EditorStatus = { pending: boolean; unsaved: boolean; loading: boolean; legacyReviewRequired: boolean; missing: string[]; error?: string };
 type Props = {
   state: TaskState;
   onApplied: (state: TaskState) => void;
@@ -88,11 +88,11 @@ export default function BriefEditor({ state, onApplied, flushRef, onStatusChange
 
   useEffect(() => {
     const current = session.current;
-    onStatusChange({ pending: current?.pending ?? false, unsaved: current?.dirty ?? false, loading: !current, legacyReviewRequired: current?.current.legacy_review_required ?? false, missing: current ? missing(current.current).map((key) => labels[key]) : [] });
+    onStatusChange({ pending: current?.pending ?? false, unsaved: current?.dirty ?? false, loading: !current, legacyReviewRequired: current?.current.legacy_review_required ?? false, missing: current ? missing(current.current).map((key) => labels[key]) : [], error: current?.error || loadError });
     if (!current?.dirty || current.error) return;
     const timer = window.setTimeout(() => { void current.flush().catch(() => undefined); }, 500);
     return () => window.clearTimeout(timer);
-  }, [renderVersion, onStatusChange]);
+  }, [renderVersion, onStatusChange, loadError]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
