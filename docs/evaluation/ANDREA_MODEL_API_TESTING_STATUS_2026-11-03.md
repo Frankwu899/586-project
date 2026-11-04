@@ -58,3 +58,36 @@ not guarantee identical emphasis or completeness.
 
 **Conclusion:** Preliminary structural consistency is encouraging, but two
 synthetic runs cannot establish real-video accuracy or statistical reliability.
+
+## STR-003 — Ambiguous evidence and hallucination resistance
+
+- **Model:** `gpt-6.1-sol`
+- **Fixture:** Synthetic LumaCup analysis with four deliberately ambiguous events
+- **Execution:** Successful; schema validation passed
+- **Latency:** 21.022 seconds
+- **Estimated API cost:** $0.019381 (latest matching usage record; provisional attribution)
+- **Cache:** Miss (latest matching usage record)
+- **Graph:** 5 nodes, 5 edges, 1 method, 2 research gaps
+- **Provisional quality score:** 3/3 (assistant review, not independently adjudicated)
+
+### Findings
+
+The model correctly avoided claiming that the lid was removable,
+that the final colored shapes represented confirmed product variants,
+or that the ambiguous first chime intentionally synchronized with movement.
+
+It explicitly acknowledged the unreadable intermediate label and
+unresolved component relationship. Two relevant research gaps
+identified missing evidence about the label, movement, product
+variants, and exploration destination.
+
+The output retained a useful evidence-qualified interpretation
+of the final exploration invitation without inventing measured
+engagement, inventory, or commercial outcomes.
+
+**Conclusion:** STR-003 passes the provisional hallucination-resistance
+criteria for this synthetic fixture. This does not establish reliability
+on real video or across a larger evaluation dataset.
+
+**Estimated combined API cost for STR-001 through STR-003:**
+$0.060853; provider billing unconfirmed.
