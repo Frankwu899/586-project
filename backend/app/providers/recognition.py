@@ -357,9 +357,32 @@ class ProviderRecognitionAdapter:
                             else:
                                 speech = []
                                 for chunk in prepared.audio_chunks:
-                                    local_attempts += 1
-                                    raw = provider.transcribe(chunk, metadata=metadata)
-                                    speech.extend(self._normalize_speech(raw, chunk, video.duration_seconds))
+                                    chunk_key = hashlib.sha256(json.dumps({"speech_key": speech_key,
+                                        "start": chunk.start_seconds, "end": chunk.end_seconds}, sort_keys=True).encode()).hexdigest()
+                                    chunk_path = self.settings.cache_dir / "speech-chunks" / f"{chunk_key}.json" if self.settings.cache_dir else None
+                                    spans = None
+                                    if chunk_path and chunk_path.is_file():
+                                        try:
+                                            spans = self._validate_cached_speech(json.loads(chunk_path.read_text(encoding="utf-8")), video.duration_seconds)
+                                            if any(span["start"] < chunk.start_seconds or span["end"] > chunk.end_seconds for span in spans):
+                                                spans = None
+                                        except (OSError, ValueError, TypeError, KeyError):
+                                            spans = None
+                                    if spans is None:
+                                        local_attempts += 1
+                                        raw = provider.transcribe(chunk, metadata=metadata)
+                                        spans = self._normalize_speech(raw, chunk, video.duration_seconds)
+                                        if chunk_path:
+                                            try:
+                                                chunk_path.parent.mkdir(parents=True, exist_ok=True)
+                                                temporary = chunk_path.with_suffix(f".{uuid4().hex}.tmp")
+                                                temporary.write_text(json.dumps(spans, ensure_ascii=False), encoding="utf-8")
+                                                temporary.replace(chunk_path)
+                                            except OSError:
+                                                records.append({**metadata, "failure_code": "speech_chunk_cache_write_failed", "usage": None})
+                                    else:
+                                        cache_status = "partial_hit" if local_attempts else "hit"
+                                    speech.extend(spans)
                         if cached and cache_status == "miss":
                             cache_status = "hit"
                     except (ProviderError, ValidationError, ValueError, TypeError, KeyError) as exc:
@@ -369,9 +392,9 @@ class ProviderRecognitionAdapter:
                             visual = None
                         else:
                             errors["speech"] = failure
-                            # The source speech cache contains a complete transcript;
-                            # do not cache an incomplete sequence after a chunk fails.
-                            speech = None
+                            # Retain usable completed chunks, without representing
+                            # their partial transcript as a complete source cache.
+                            speech = speech or None
                     provider_records = transport.records[before_count:] if transport else []
                     records.extend(provider_records)
                     if not provider_records:
@@ -383,7 +406,7 @@ class ProviderRecognitionAdapter:
                             "usage_explanation": "No provider-reported usage for cached/skipped/alternate-provider result."})
                     elif failure and capability != "vision":
                         records[-1]["failure_code"] = failure.code
-                if speech is not None and speech_cache_path and cached_speech is None and self.transcription_provider.model != "disabled":
+                if speech is not None and "speech" not in errors and speech_cache_path and cached_speech is None and self.transcription_provider.model != "disabled":
                     try:
                         speech_cache_path.parent.mkdir(parents=True, exist_ok=True)
                         temporary = speech_cache_path.with_suffix(f".{uuid4().hex}.tmp")

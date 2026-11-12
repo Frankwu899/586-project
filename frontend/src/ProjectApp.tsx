@@ -1,0 +1,84 @@
+import { useEffect, useState } from 'react';
+import ApiConnection, { ApiConnectionButton, ConnectionHelp } from './ApiConnection';
+import { Brand, Icon, Badge, date, type SourceAction } from './project/Common';
+import { call, fileUrl, useProjectController } from './project/client';
+import type { Project, SourceRef } from './project/contracts';
+import Overview from './project/Overview';
+import Resources from './project/Resources';
+import AnalysisView from './project/AnalysisView';
+import ContentPlan from './project/ContentPlan';
+import ProductionView from './project/ProductionView';
+import './project/workspace.css';
+
+const destinations = [ ['overview', 'Overview'], ['resources', 'Resources'], ['discover', 'Discover'], ['analysis', 'Analysis'], ['content', 'Content plan'], ['production', 'Production'] ] as const;
+
+function Dashboard({ projects, loading, onOpen, onRefresh, onError }: { projects: Project[]; loading: boolean; onOpen: (id: string) => Promise<void>; onRefresh: () => Promise<void>; onError: (message: string) => void }) {
+  const [view, setView] = useState<'projects' | 'trash'>('projects');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('updated');
+  const [command, setCommand] = useState<{ kind: 'create' | 'rename' | 'trash'; project?: Project } | null>(null);
+  const [title, setTitle] = useState('');
+  const [pending, setPending] = useState(false);
+  const projectCommand = async (item: Project, action: 'duplicate' | 'restore' | 'trash') => {
+    setPending(true);
+    try { const next = await call<Project>(`/${item.id}/${action}`, { expected_version: item.version }); await onRefresh(); if (action === 'duplicate') await onOpen(next.id); }
+    catch (failure) { onError(failure instanceof Error ? failure.message : 'Project action failed.'); }
+    finally { setPending(false); }
+  };
+  const submit = async () => {
+    if (!command || pending) return;
+    if (command.kind === 'trash' && command.project) { await projectCommand(command.project, 'trash'); setCommand(null); return; }
+    if (!title.trim()) return;
+    setPending(true);
+    try {
+      const next = command.kind === 'create' ? await call<Project>('', { title: title.trim() }) : await call<Project>(`/${command.project!.id}`, { title: title.trim(), expected_version: command.project!.version }, 'PATCH');
+      setCommand(null); await onRefresh(); if (command.kind === 'create') await onOpen(next.id);
+    } catch (failure) { onError(failure instanceof Error ? failure.message : 'Could not save project.'); }
+    finally { setPending(false); }
+  };
+  const filtered = projects.filter(item => Boolean(item.trashed_at) === (view === 'trash') && item.title.toLowerCase().includes(query.toLowerCase())).sort((a, b) => sort === 'name' ? a.title.localeCompare(b.title) : b.updated_at.localeCompare(a.updated_at));
+  return <div className="va-dashboard"><aside className="va-rail"><nav aria-label="Project library"><button className={view === 'projects' ? 'active' : ''} onClick={() => setView('projects')}><Icon name="projects" />Projects</button><button className={view === 'trash' ? 'active' : ''} onClick={() => setView('trash')}><Icon name="trash" />Trash</button></nav><div className="va-rail-bottom"><ApiConnectionButton /><span>Stored on this computer</span></div></aside>
+    <main className="va-dashboard-main"><div className="va-page-heading"><div><h1>{view === 'trash' ? 'Project trash' : 'Your projects'}</h1><p>{view === 'trash' ? 'Your files and saved work are retained until restored.' : 'A workspace for every creative assignment.'}</p></div><button className="va-primary" onClick={() => { setTitle(''); setCommand({ kind: 'create' }); }}><Icon name="plus" />New project</button></div>
+      <div className="va-dashboard-tools"><label className="va-search"><Icon name="search" /><input aria-label="Search projects" placeholder="Search projects" value={query} onChange={event => setQuery(event.target.value)} /></label><select aria-label="Sort projects" value={sort} onChange={event => setSort(event.target.value)}><option value="updated">Recently updated</option><option value="name">Project name</option></select><span className="va-muted">{filtered.length} {filtered.length === 1 ? 'project' : 'projects'}</span></div>
+      {loading ? <p role="status">Opening your project library…</p> : <div className="va-project-grid">{filtered.map(item => {
+        const thumbnail = item.resources.find(resource => resource.thumbnail_path || resource.kind === 'image');
+        const status = item.packs.length ? 'Production' : item.contents.length ? 'Planning' : item.resources.length ? 'Research' : 'Draft';
+        return <article className="va-project-card" key={item.id}><button className="va-project-open" onClick={() => void onOpen(item.id)} disabled={Boolean(item.trashed_at)} aria-label={`Open ${item.title}`}><div className={`va-project-cover tint-${item.title.length % 4}`}>{thumbnail ? <img src={fileUrl(item.id, thumbnail.id, thumbnail.thumbnail_path ? 'thumbnail' : 'original')} alt="" /> : <Icon name={status === 'Production' ? 'production' : 'projects'} size={55} />}</div><div className="va-project-card-copy"><h2>{item.title}</h2><Badge>{status}</Badge><p>{item.resources.length} resources · {item.contents.length} videos</p><small>Updated {date(item.updated_at)}</small></div></button>
+          {item.trashed_at ? <button className="va-restore" disabled={pending} onClick={() => void projectCommand(item, 'restore')}>Restore project</button> : <details className="va-card-menu" onClick={event => { if ((event.target as HTMLElement).closest('button')) event.currentTarget.open = false; }}><summary aria-label={`Actions for ${item.title}`}>•••</summary><div><button onClick={() => { setTitle(item.title); setCommand({ kind: 'rename', project: item }); }}>Rename</button><button disabled={pending} onClick={() => void projectCommand(item, 'duplicate')}>Duplicate</button><button className="va-danger" onClick={() => setCommand({ kind: 'trash', project: item })}>Move to Trash</button></div></details>}
+        </article>;
+      })}{view === 'projects' && !query && <button className="va-new-card" onClick={() => { setTitle(''); setCommand({ kind: 'create' }); }}><Icon name="plus" size={45} /><span>Create a project</span></button>}</div>}
+      {!loading && !filtered.length && (query || view === 'trash') && <p className="va-muted">{query ? 'No projects match your search.' : 'Trash is empty.'}</p>}
+    </main>
+    {command && <div className="va-modal-backdrop" onClick={() => !pending && setCommand(null)}><section className="va-modal" role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape' && !pending) setCommand(null); }}><form onSubmit={event => { event.preventDefault(); void submit(); }}><h2 id="project-dialog-title">{command.kind === 'create' ? 'Create a project' : command.kind === 'rename' ? 'Rename project' : `Move “${command.project?.title}” to Trash?`}</h2>{command.kind === 'trash' ? <p>The project, original files, and all saved work will be kept. Restore it from Trash at any time.</p> : <label>Project name<input autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder="Name your creative assignment" required /></label>}<div className="va-actions"><button type="button" onClick={() => setCommand(null)} disabled={pending}>Cancel</button><button className="va-primary" disabled={pending || (command.kind !== 'trash' && !title.trim())}>{pending ? 'Saving…' : command.kind === 'trash' ? 'Move to Trash' : command.kind === 'create' ? 'Create project' : 'Save name'}</button></div></form></section></div>}
+  </div>;
+}
+
+function Application() {
+  const controller = useProjectController();
+  const { project, mutate, saving, error } = controller;
+  const [area, setArea] = useState('overview');
+  const [source, setSource] = useState<SourceRef | null>(null);
+  const [settings, setSettings] = useState(false);
+  const [activity, setActivity] = useState(false);
+  const [migrationErrors, setMigrationErrors] = useState<string[]>([]);
+  useEffect(() => { void call<{ migration_errors: string[]; library_errors?: string[] }>('/capabilities').then(value => setMigrationErrors([...(value.migration_errors ?? []), ...(value.library_errors ?? [])])).catch(() => { /* Main project request reports connection errors. */ }); }, []);
+  useEffect(() => { if (project) setArea(destinations.some(([id]) => id === project.workspace) ? project.workspace : 'overview'); }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const navigate = (next: string) => { setArea(next); void mutate('', { workspace: next }, 'PATCH'); };
+  const onSource: SourceAction = value => { setSource(value); navigate(value.resource_id ? 'resources' : 'overview'); };
+  const activeJobs = project?.jobs.filter(job => ['queued', 'running'].includes(job.status)) ?? [];
+  return <div className="va-app"><header className="va-topbar"><Brand />{project && <div className="va-project-heading"><strong>{project.title}</strong><span className="va-save-state" role="status">{error ? 'Save needs attention' : saving ? 'Saving…' : <><Icon name="check" size={15} />Saved locally</>}</span></div>}<div className="va-topbar-actions">{project && <button className="va-activity-toggle" onClick={() => setActivity(value => !value)}>{activeJobs.length ? <span className="va-spinner" /> : <Icon name="analysis" size={17} />}Activity{activeJobs.length > 0 && <Badge>{activeJobs.length}</Badge>}</button>}<button className="va-icon-button" aria-label="Settings" onClick={() => setSettings(value => !value)}><Icon name="settings" /></button><span className="va-avatar">VA</span></div></header>
+    {error && <div className="va-global-error" role="alert"><span>{error}</span><ConnectionHelp message={error} /><button className="va-icon-button" aria-label="Dismiss error" onClick={() => controller.setError('')}><Icon name="close" size={17} /></button></div>}
+    {migrationErrors.map((message, index) => <div className="va-global-error" role="alert" key={index}><span>{message}</span><a href="?legacy=1">Open preserved legacy workspace</a></div>)}
+    {settings && <section className="va-settings va-glass"><h2>Settings</h2><ApiConnectionButton /><p>Language and vision: <strong>gpt-6.1-sol</strong><br />Speech transcription: <strong>Whisper</strong></p><p>Your key is stored locally. Selected context and media are sent to the configured provider for requested processing. Model access is checked when requested.</p>{project && <button onClick={() => { if (window.confirm('Clear rebuildable thumbnails, previews, and prepared media? Originals, transcripts, corrections, and saved work will remain.')) void mutate('/cache/clear'); }}>Clear derived cache</button>}<a href="?legacy=1">Open preserved legacy workspace</a><button onClick={() => setSettings(false)}>Close settings</button></section>}
+    {!project ? <Dashboard projects={controller.projects} loading={controller.loading} onOpen={controller.open} onRefresh={controller.refreshList} onError={controller.setError} /> : <div className="va-workspace" key={project.id}><aside className="va-rail"><button className="va-all-projects" onClick={() => void controller.close()}><Icon name="back" />All projects</button><h2 className="va-rail-title">{project.title}</h2><nav aria-label="Project destinations">{destinations.map(([id, label]) => <button key={id} className={area === id ? 'active' : ''} aria-current={area === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon name={id} />{label}</button>)}</nav><div className="va-rail-bottom"><ApiConnectionButton /><span>{project.resources.length} local resources</span></div></aside><main className="va-workspace-main">
+      <div hidden={area !== 'overview'}><Overview project={project} mutate={mutate} onSource={onSource} /></div>
+      <div hidden={area !== 'resources'}><Resources project={project} mutate={mutate} source={source} onAnalyze={() => navigate('analysis')} /></div>
+      <div hidden={area !== 'discover'} className="va-discovery"><h1>Discover</h1><p>Reserved — awaiting Frank’s specification.</p></div>
+      <div hidden={area !== 'analysis'}><AnalysisView project={project} onSource={onSource} onResources={() => navigate('resources')} /></div>
+      <div hidden={area !== 'content'}><ContentPlan project={project} mutate={mutate} onSource={onSource} onProduction={() => navigate('production')} /></div>
+      <div hidden={area !== 'production'}><ProductionView project={project} mutate={mutate} onSource={onSource} onContent={() => navigate('content')} /></div>
+    </main>{activity && <aside className="va-activity va-glass"><div className="va-section-heading"><h2>Activity</h2><button aria-label="Close activity" className="va-icon-button" onClick={() => setActivity(false)}><Icon name="close" /></button></div>{!project.jobs.length && <p className="va-muted">No processing yet.</p>}{project.jobs.slice().reverse().map(job => <article key={job.id}><div><strong>{job.kind.replaceAll('_', ' ')}</strong><Badge tone={job.status === 'failed' ? 'warning' : ''}>{job.status}</Badge></div><p>{job.progress}</p>{job.error && <p className="va-error">{job.error}</p>}</article>)}</aside>}</div>}
+  </div>;
+}
+
+export default function ProjectApp() { return <ApiConnection><Application /></ApiConnection>; }

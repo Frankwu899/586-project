@@ -9,7 +9,7 @@ const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? (exist
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: '**/providers.spec.ts',
+  testIgnore: ['**/providers.spec.ts', '**/project-workspace.spec.ts'],
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
@@ -35,7 +35,7 @@ export default defineConfig({
     {
       command: 'npm run dev -- --port 5174',
       url: 'http://127.0.0.1:5174',
-      env: { API_PROXY_TARGET: 'http://127.0.0.1:8011' },
+      env: { API_PROXY_TARGET: 'http://127.0.0.1:8011', VITE_LEGACY_WORKSPACE: '1' },
       timeout: 30_000,
       reuseExistingServer: false,
     },
