@@ -1,5 +1,29 @@
 # Video Anatomy — Agent Instructions
 
+## Current 1.8 baseline
+
+The owner's November 12, 2026 baseline and explicit implementation request
+supersede the older single-reference, form-intake, and three-workspace scope
+below. Read `docs/project-workspace-1.8.md` and
+`docs/handoff/project-workspace-1.8.md` first. The default app now uses project
+folders, conversation-derived briefs, optional series/standalone content,
+multiple references, and four-document production packs. Legacy task APIs and
+the `?legacy=1` workspace remain available for continuity.
+
+Discovery is **Reserved — awaiting Frank’s specification.** Keep its destination
+empty; only the shared local-file import boundary exists. Do not add discovery
+search, download, ranking, or model behavior. Editing, rendering, AI video
+generation, and social publishing remain outside 1.8. Preserve local keys and
+the `gpt-6.1-sol` application baseline, with separate timestamped transcription.
+No live-quality or Mac-delivery claim follows from offline checks.
+
+New contracts live in `backend/app/project_workspace/models.py`; regenerate
+`contracts/v1.8.project.schema.json` and `frontend/src/project/contracts.ts`
+together. Preserve historical task contracts. Coordinate edits to these shared
+models and `project_workspace/api.py` before parallel work. Draft scopes and the
+brief draft have independent concurrency versions; do not rebase stale draft
+writes merely because background jobs changed the aggregate version.
+
 Every coding agent must read this file and the relevant interface documents before starting a task. The repository now extends the preserved v0.1 documentation baseline with the v0.5 frame-based application and replaceable providers. Read the current implementation and latest handoff before making readiness claims.
 
 ## Read first

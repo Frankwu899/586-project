@@ -145,7 +145,7 @@ def _prepare_audio(path: Path, video: VideoAsset, directory: Path,
 
 @contextmanager
 def prepare_media(media_path: Path, video: VideoAsset, settings: PreparationSettings | None = None,
-                  media_settings: MediaSettings | None = None, content_region=None):
+                  media_settings: MediaSettings | None = None, content_region=None, frame_indices=None):
     settings = settings or PreparationSettings()
     media_settings = media_settings or MediaSettings.from_env()
     path = Path(media_path)
@@ -162,7 +162,10 @@ def prepare_media(media_path: Path, video: VideoAsset, settings: PreparationSett
     region = ContentRegion.model_validate(content_region) if content_region is not None else ContentRegion(source_sha256=digest)
     if region.source_sha256 != digest:
         raise MediaError("region_source_changed", "The content area belongs to different source bytes.")
-    indices = sample_frame_indices(video.frame_timing, settings.max_frames)
+    indices = sample_frame_indices(video.frame_timing, settings.max_frames) if frame_indices is None else tuple(frame_indices)
+    if (not indices or len(indices) > settings.max_frames or list(indices) != sorted(set(indices))
+            or any(type(index) is not int or not 0 <= index < video.frame_timing.frame_count for index in indices)):
+        raise MediaError("invalid_frame_selection", "Prepared frame indices must be unique, ordered source frames within the sampling limit.")
     with tempfile.TemporaryDirectory(prefix="video-anatomy-prepared-") as temporary:
         directory = Path(temporary)
         select = "+".join(f"eq(n\\,{index})" for index in indices)

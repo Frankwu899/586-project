@@ -31,7 +31,7 @@ export default defineConfig({
     },
     {
       command: 'npm run dev -- --port 5175', url: 'http://127.0.0.1:5175',
-      env: { API_PROXY_TARGET: 'http://127.0.0.1:8012' },
+      env: { API_PROXY_TARGET: 'http://127.0.0.1:8012', VITE_LEGACY_WORKSPACE: '1' },
       timeout: 30_000, reuseExistingServer: false,
     },
   ],

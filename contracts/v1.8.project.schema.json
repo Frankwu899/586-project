@@ -1,0 +1,1566 @@
+{
+  "$defs": {
+    "Analysis": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "content_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Id"
+        },
+        "inputs": {
+          "$ref": "#/$defs/InputManifest"
+        },
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "differences": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Differences",
+          "type": "array"
+        },
+        "opportunities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Opportunities",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "needs_review": {
+          "default": false,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "content_id",
+        "inputs",
+        "conclusion",
+        "findings",
+        "differences",
+        "opportunities",
+        "sources",
+        "limitations",
+        "created_at",
+        "needs_review"
+      ],
+      "title": "Analysis",
+      "type": "object"
+    },
+    "BriefRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "facts": {
+          "items": {
+            "$ref": "#/$defs/Fact"
+          },
+          "title": "Facts",
+          "type": "array"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "revision",
+        "facts",
+        "created_at"
+      ],
+      "title": "BriefRevision",
+      "type": "object"
+    },
+    "ContentItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "series_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Series Id"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "inputs": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InputManifest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "needs_review": {
+          "default": false,
+          "title": "Needs Review",
+          "type": "boolean"
+        },
+        "selection": {
+          "$ref": "#/$defs/Selection"
+        },
+        "directions": {
+          "items": {
+            "$ref": "#/$defs/Direction"
+          },
+          "title": "Directions",
+          "type": "array"
+        },
+        "approved_direction_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved Direction Id"
+        },
+        "approved_direction_revision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved Direction Revision"
+        }
+      },
+      "required": [
+        "id",
+        "series_id",
+        "title",
+        "description",
+        "inputs",
+        "needs_review",
+        "selection",
+        "directions",
+        "approved_direction_id",
+        "approved_direction_revision"
+      ],
+      "title": "ContentItem",
+      "type": "object"
+    },
+    "Direction": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "concept": {
+          "title": "Concept",
+          "type": "string"
+        },
+        "hook": {
+          "default": "",
+          "title": "Hook",
+          "type": "string"
+        },
+        "narrative": {
+          "default": "",
+          "title": "Narrative",
+          "type": "string"
+        },
+        "cta": {
+          "default": "",
+          "title": "Cta",
+          "type": "string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/InputManifest"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "approved": {
+          "default": false,
+          "title": "Approved",
+          "type": "boolean"
+        },
+        "approved_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        },
+        "needs_review": {
+          "default": false,
+          "title": "Needs Review",
+          "type": "boolean"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "title",
+        "concept",
+        "hook",
+        "narrative",
+        "cta",
+        "inputs",
+        "sources",
+        "approved",
+        "approved_at",
+        "needs_review",
+        "created_at"
+      ],
+      "title": "Direction",
+      "type": "object"
+    },
+    "EvidenceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "speech",
+            "on_screen_text",
+            "visual",
+            "sound"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        },
+        "end_seconds": {
+          "minimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "start_frame": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Frame"
+        },
+        "end_frame": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Frame"
+        },
+        "interpretation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interpretation"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "text",
+        "start_seconds",
+        "end_seconds",
+        "start_frame",
+        "end_frame",
+        "interpretation"
+      ],
+      "title": "EvidenceEvent",
+      "type": "object"
+    },
+    "EvidenceRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/EvidenceEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "coverage": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Coverage",
+          "type": "object"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "processor": {
+          "default": "",
+          "title": "Processor",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "reviewed": {
+          "default": false,
+          "title": "Reviewed",
+          "type": "boolean"
+        },
+        "correction_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correction Note"
+        }
+      },
+      "required": [
+        "revision",
+        "events",
+        "coverage",
+        "limitations",
+        "processor",
+        "created_at",
+        "reviewed",
+        "correction_note"
+      ],
+      "title": "EvidenceRevision",
+      "type": "object"
+    },
+    "ExtractedBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "original_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original Text"
+        }
+      },
+      "required": [
+        "id",
+        "locator",
+        "text",
+        "original_text"
+      ],
+      "title": "ExtractedBlock",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "status": {
+          "default": "suggested",
+          "enum": [
+            "suggested",
+            "confirmed",
+            "unresolved",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "origin": {
+          "default": "conversation",
+          "enum": [
+            "conversation",
+            "document",
+            "research",
+            "manual",
+            "legacy"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "permitted_for_use": {
+          "default": false,
+          "title": "Permitted For Use",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "value",
+        "status",
+        "origin",
+        "sources",
+        "permitted_for_use"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "InputManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "brief_revision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brief Revision"
+        },
+        "selection_revision": {
+          "default": 1,
+          "title": "Selection Revision",
+          "type": "integer"
+        },
+        "resource_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resource Ids",
+          "type": "array"
+        },
+        "evidence_revisions": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Evidence Revisions",
+          "type": "object"
+        },
+        "direction_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction Id"
+        },
+        "direction_revision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction Revision"
+        },
+        "instruction_version": {
+          "default": "1.8.0",
+          "title": "Instruction Version",
+          "type": "string"
+        },
+        "instruction_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instruction Digest"
+        },
+        "context_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Digest"
+        },
+        "claim_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Claim Ids",
+          "type": "array"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        }
+      },
+      "title": "InputManifest",
+      "type": "object",
+      "required": [
+        "brief_revision",
+        "selection_revision",
+        "resource_ids",
+        "evidence_revisions",
+        "direction_id",
+        "direction_revision",
+        "instruction_version",
+        "instruction_digest",
+        "context_digest",
+        "claim_ids",
+        "model"
+      ]
+    },
+    "Job": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "resource_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resource Id"
+        },
+        "content_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Id"
+        },
+        "status": {
+          "default": "queued",
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "partial",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "progress": {
+          "default": "Queued",
+          "title": "Progress",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "resource_id",
+        "content_id",
+        "status",
+        "progress",
+        "error",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "Job",
+      "type": "object"
+    },
+    "Message": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant",
+            "system"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "resource_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resource Ids",
+          "type": "array"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "status": {
+          "default": "saved",
+          "enum": [
+            "saved",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "text",
+        "resource_ids",
+        "created_at",
+        "status"
+      ],
+      "title": "Message",
+      "type": "object"
+    },
+    "ProductionPack": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "content_id": {
+          "title": "Content Id",
+          "type": "string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/InputManifest"
+        },
+        "production_brief": {
+          "title": "Production Brief",
+          "type": "string"
+        },
+        "script": {
+          "title": "Script",
+          "type": "string"
+        },
+        "storyboard": {
+          "title": "Storyboard",
+          "type": "string"
+        },
+        "shot_list": {
+          "title": "Shot List",
+          "type": "string"
+        },
+        "shots": {
+          "items": {
+            "$ref": "#/$defs/ProductionShot"
+          },
+          "title": "Shots",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "needs_review": {
+          "default": false,
+          "title": "Needs Review",
+          "type": "boolean"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "content_id",
+        "inputs",
+        "production_brief",
+        "script",
+        "storyboard",
+        "shot_list",
+        "shots",
+        "sources",
+        "needs_review",
+        "created_at"
+      ],
+      "title": "ProductionPack",
+      "type": "object"
+    },
+    "ProductionShot": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "start_seconds": {
+          "minimum": 0,
+          "title": "Start Seconds",
+          "type": "number"
+        },
+        "end_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "End Seconds",
+          "type": "number"
+        },
+        "visual": {
+          "title": "Visual",
+          "type": "string"
+        },
+        "dialogue": {
+          "default": "",
+          "title": "Dialogue",
+          "type": "string"
+        },
+        "on_screen_text": {
+          "default": "",
+          "title": "On Screen Text",
+          "type": "string"
+        },
+        "sound": {
+          "default": "",
+          "title": "Sound",
+          "type": "string"
+        },
+        "notes": {
+          "default": "",
+          "title": "Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "start_seconds",
+        "end_seconds",
+        "visual",
+        "dialogue",
+        "on_screen_text",
+        "sound",
+        "notes"
+      ],
+      "title": "ProductionShot",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "document",
+            "video",
+            "audio",
+            "image",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "role": {
+          "default": "reference",
+          "enum": [
+            "reference",
+            "document",
+            "asset"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "origin": {
+          "default": "upload",
+          "enum": [
+            "upload",
+            "discovery",
+            "legacy"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Url"
+        },
+        "provenance": {
+          "default": "",
+          "title": "Provenance",
+          "type": "string"
+        },
+        "original_path": {
+          "title": "Original Path",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "mime_type": {
+          "default": "application/octet-stream",
+          "title": "Mime Type",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "status": {
+          "default": "stored",
+          "enum": [
+            "stored",
+            "processing",
+            "ready",
+            "partial",
+            "failed",
+            "unsupported",
+            "missing"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/ExtractedBlock"
+          },
+          "title": "Blocks",
+          "type": "array"
+        },
+        "extraction_revision": {
+          "default": 1,
+          "title": "Extraction Revision",
+          "type": "integer"
+        },
+        "extraction_history": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Extraction History",
+          "type": "array"
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "thumbnail_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thumbnail Path"
+        },
+        "playback_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Playback Path"
+        },
+        "media_metadata": {
+          "additionalProperties": true,
+          "title": "Media Metadata",
+          "type": "object"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRevision"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "role",
+        "origin",
+        "source_url",
+        "provenance",
+        "original_path",
+        "sha256",
+        "size_bytes",
+        "mime_type",
+        "created_at",
+        "status",
+        "error",
+        "warnings",
+        "blocks",
+        "extraction_revision",
+        "extraction_history",
+        "duration_seconds",
+        "thumbnail_path",
+        "playback_path",
+        "media_metadata",
+        "evidence"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "Selection": {
+      "additionalProperties": false,
+      "properties": {
+        "revision": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "resource_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resource Ids",
+          "type": "array"
+        }
+      },
+      "title": "Selection",
+      "type": "object",
+      "required": [
+        "revision",
+        "resource_ids"
+      ]
+    },
+    "Series": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "concept": {
+          "default": "",
+          "title": "Concept",
+          "type": "string"
+        },
+        "inputs": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InputManifest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "needs_review": {
+          "default": false,
+          "title": "Needs Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "concept",
+        "inputs",
+        "needs_review"
+      ],
+      "title": "Series",
+      "type": "object"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "resource_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resource Id"
+        },
+        "message_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message Id"
+        },
+        "locator": {
+          "default": "",
+          "title": "Locator",
+          "type": "string"
+        },
+        "excerpt": {
+          "default": "",
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "evidence_revision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Revision"
+        },
+        "extraction_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extraction Revision"
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Id"
+        },
+        "start_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Seconds"
+        },
+        "end_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Seconds"
+        }
+      },
+      "title": "SourceRef",
+      "type": "object",
+      "required": [
+        "resource_id",
+        "message_id",
+        "locator",
+        "excerpt",
+        "url",
+        "evidence_revision",
+        "extraction_revision",
+        "event_id",
+        "start_seconds",
+        "end_seconds"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.8.0",
+      "default": "1.8.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "default": "Untitled project",
+      "title": "Title",
+      "type": "string"
+    },
+    "version": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    },
+    "trashed_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Trashed At"
+    },
+    "duplicated_from": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duplicated From"
+    },
+    "legacy_task_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Legacy Task Id"
+    },
+    "workspace": {
+      "default": "overview",
+      "title": "Workspace",
+      "type": "string"
+    },
+    "active_content_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active Content Id"
+    },
+    "conversation_draft": {
+      "default": "",
+      "title": "Conversation Draft",
+      "type": "string"
+    },
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/Message"
+      },
+      "title": "Messages",
+      "type": "array"
+    },
+    "brief_draft": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Brief Draft",
+      "type": "array"
+    },
+    "brief_draft_version": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Brief Draft Version",
+      "type": "integer"
+    },
+    "unresolved": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved",
+      "type": "array"
+    },
+    "briefs": {
+      "items": {
+        "$ref": "#/$defs/BriefRevision"
+      },
+      "title": "Briefs",
+      "type": "array"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/Resource"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "selection": {
+      "$ref": "#/$defs/Selection"
+    },
+    "analyses": {
+      "items": {
+        "$ref": "#/$defs/Analysis"
+      },
+      "title": "Analyses",
+      "type": "array"
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/Series"
+      },
+      "title": "Series",
+      "type": "array"
+    },
+    "contents": {
+      "items": {
+        "$ref": "#/$defs/ContentItem"
+      },
+      "title": "Contents",
+      "type": "array"
+    },
+    "packs": {
+      "items": {
+        "$ref": "#/$defs/ProductionPack"
+      },
+      "title": "Packs",
+      "type": "array"
+    },
+    "jobs": {
+      "items": {
+        "$ref": "#/$defs/Job"
+      },
+      "title": "Jobs",
+      "type": "array"
+    },
+    "editor_drafts": {
+      "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Editor Drafts",
+      "type": "object"
+    },
+    "editor_draft_versions": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Editor Draft Versions",
+      "type": "object"
+    }
+  },
+  "title": "Project",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "version",
+    "created_at",
+    "updated_at",
+    "trashed_at",
+    "duplicated_from",
+    "legacy_task_id",
+    "workspace",
+    "active_content_id",
+    "conversation_draft",
+    "messages",
+    "brief_draft",
+    "brief_draft_version",
+    "unresolved",
+    "briefs",
+    "resources",
+    "selection",
+    "analyses",
+    "series",
+    "contents",
+    "packs",
+    "jobs",
+    "editor_drafts",
+    "editor_draft_versions"
+  ]
+}

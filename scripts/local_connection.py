@@ -77,6 +77,12 @@ def set_keychain_disabled(preference_path: Path | None, disabled: bool):
 
 
 def running_work(service) -> bool:
+    workspace = getattr(service, "project_workspace", None)
+    if workspace is not None and any(
+        job.status in ("queued", "running")
+        for project in workspace.store.list() for job in project.jobs
+    ):
+        return True
     if any(job.status in ("pending", "running") for task in service.store.list() for job in task.jobs):
         return True
     with sqlite3.connect(service.store.path) as db:

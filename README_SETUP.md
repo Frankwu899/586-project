@@ -1,4 +1,21 @@
-# Video Anatomy — v0.7 local workspace
+# Video Anatomy — 1.8 local project workspace
+
+The default application is the 1.8 project workspace. Start with the
+[implemented architecture and operating limits](docs/project-workspace-1.8.md)
+and [current handoff](docs/handoff/project-workspace-1.8.md). The local setup,
+user-provided API key, and Python/FFmpeg requirements below remain applicable.
+
+Projects open into a card dashboard and contain Overview, Resources, Discover,
+Analysis, Content plan, and Production. Discovery is reserved and empty.
+Imported sources and project state live in project-owned local folders. Existing
+tasks are copied into projects with their source library retained; `?legacy=1`
+opens the preserved earlier workspace. No hosted storage or shared API key is
+required. Local OCR for scans/images additionally uses Tesseract and, for scanned
+PDFs, Poppler's `pdftoppm`; missing tools produce visible extraction limitations.
+
+The new project generation path loads the professional instruction package at
+runtime. The older v0.7 descriptions below document the retained legacy path,
+whose embedded prompts and contracts have not been silently replaced.
 
 ## v0.7.7 professional generation skills
 

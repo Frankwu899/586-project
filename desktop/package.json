@@ -1,6 +1,6 @@
 {
   "name": "video-anatomy-desktop",
-  "version": "0.7.0",
+  "version": "1.8.0",
   "private": true,
   "description": "Local Video Anatomy workspace with an authenticated bundled backend",
   "author": "Video Anatomy team",

@@ -1,4 +1,15 @@
-# Interface contract — v0.7.0
+# Interface contracts — projects 1.8 and retained tasks 0.7
+
+The default project application uses `/api/projects` and the canonical
+`backend/app/project_workspace/models.py` contract. See
+[Project workspace 1.8](project-workspace-1.8.md) for source ownership,
+conversation/brief adoption, independent draft concurrency, selections,
+evidence corrections, content hierarchy, production manifests, and migration.
+Generate/check its schema with `scripts/export_project_contracts.py` and its
+TypeScript response types with `frontend/scripts/project-contracts.mjs`.
+
+The contract below remains the supported legacy `/api/tasks` boundary. It does
+not describe the default project's intake, navigation, or reference cardinality.
 
 `backend/app/models.py` is the maintained task-record definition. Pydantic performs runtime and semantic validation; `scripts/export_contracts.py` generates `contracts/v0.7.task-state.schema.json`, `v0.7.analysis.schema.json`, `v0.7.m2.schema.json`, `v0.7.editors.schema.json` and `v0.7.structure.schema.json`. Structure endpoint models live in `backend/app/structure_models.py`. Frontend task types are generated from the merged M2/editor bundles into `frontend/src/generated/contracts.ts`; Structure has a separate client boundary. Change models, generated artifacts, validators and consumers together.
 

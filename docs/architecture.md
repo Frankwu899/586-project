@@ -1,5 +1,11 @@
 # Architecture — independent task inputs and evidence v0.6
 
+Historical task architecture follows. The current 1.8 project architecture is
+documented in [Project workspace 1.8](project-workspace-1.8.md), with per-project
+SQLite, locally owned sources, conversation-derived briefs, multiple references,
+optional series, and complete production packs. The legacy implementation is
+retained for data continuity; its global pointers are not the new project model.
+
 React/Vite/TypeScript serves the browser workspace; FastAPI/Python owns the persistent task workflow. Pydantic v2 models define the v0.6 shared contract. Deterministic sample adapters remain separate from configurable OpenAI recognition/creative adapters. Without credentials, real recognition returns an explicit unconfigured result. Historical stack and frame-timing decisions remain in `docs/decisions/skeleton-v0.2.md`, `docs/decisions/frame-timing-v0.3.md`, and `docs/handoff/frame-timing-review.md`; current boundaries are documented in `docs/interfaces.md` and actual checks in the latest handoff.
 
 ## Modules and boundaries
