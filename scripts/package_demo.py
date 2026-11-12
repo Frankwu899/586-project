@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCAL_FILES = {"LOCAL_API.md", "MAC_APP.md", "requirements.lock", "requirements.in", "pyproject.toml",
                "Start Video Anatomy.command", "Start Video Anatomy.cmd", ".env.example"}
 LOCAL_DIRS = {"backend", "scripts", "contracts", "data", "desktop"}
+RUNTIME_SKILL = ("skills", "video-anatomy-professional-generation")
+RELEASE_DOCS = {"docs/project-workspace-1.8.md", "docs/handoff/project-workspace-1.8.md"}
 EXCLUDED_PARTS = {".git", ".agents", ".local-data", ".venv", "node_modules", "__pycache__",
                   "runtime", "release", "build", "test-results", "playwright-report"}
 
@@ -28,7 +30,9 @@ def distributable(path: Path, *, local_api: bool) -> bool:
     if local_api:
         if relative.as_posix() == "scripts/package_citation_fix.py":
             return False  # Historical patch generator is not a current launcher.
-        return relative.as_posix() in LOCAL_FILES or relative.parts[0] in LOCAL_DIRS or relative.parts[:2] == ("frontend", "dist")
+        return (relative.as_posix() in LOCAL_FILES or relative.as_posix() in RELEASE_DOCS
+                or relative.parts[0] in LOCAL_DIRS
+                or relative.parts[:2] in {("frontend", "dist"), RUNTIME_SKILL})
     return True
 
 
@@ -58,7 +62,9 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     bundle_root = (Path("Video Anatomy.app/Contents/Resources/app") if args.mac_app else
                    Path("video-anatomy-local" if args.local_api else "video-anatomy-demo"))
-    manifest = {"private_reference_included": bool(args.private_reference), "files": {}}
+    manifest = {"application_version": "1.8.0", "source_commit": subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "private_reference_included": bool(args.private_reference), "files": {}}
     with zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(set(paths)):
             if path.is_file() and not path.is_symlink() and distributable(path, local_api=args.local_api):

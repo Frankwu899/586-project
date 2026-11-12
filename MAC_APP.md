@@ -1,4 +1,4 @@
-# Video Anatomy for your Mac
+# Video Anatomy 1.8.0 for your Mac
 
 This ZIP contains **Video Anatomy.app**, a Finder launcher for the local browser
 workspace. It uses the Python 3.12 and FFmpeg already installed on your Mac; it is
@@ -21,7 +21,7 @@ still require a real Mac acceptance run. The app is not signed or notarized.
    choose **Save key**. Keep **Remember on this Mac** selected to store
    it in the macOS login Keychain. Allow Keychain access if macOS asks. The key is
    not saved in the app, task database, browser storage, logs or ZIP.
-5. Reopen the saved task and start analysis once. To reopen after closing the
+5. Open or create a project. To reopen after closing the
    browser, double-click the same app again. It reconnects to the existing local
    server instead of starting a second copy. Restarting the Mac starts a new
    server next time and reloads the saved Keychain credential.
@@ -37,8 +37,12 @@ If Python or FFmpeg is missing, install Homebrew and run this **once** in Termin
 brew install python@3.12 ffmpeg
 ```
 
-No case video is preloaded. Import the video you choose. Existing tasks and media
-remain in `~/Library/Application Support/Video Anatomy/`, shared with v0.7.
+No case video is preloaded. Import the videos and documents you choose. Projects
+and media remain in `~/Library/Application Support/Video Anatomy/`, shared with
+v0.7. Back up that entire folder with the old app stopped before upgrading.
+Version 1.8 imports legacy work once into independent project folders while
+retaining the old task library. Each new project's originals, conversations,
+briefs, corrected evidence and output history live under `projects/<id>/`.
 The historical `provider-budget.sqlite3` ledger is preserved but no longer
 limits client requests. No ledger reset or key replacement is needed. Launcher/runtime logs are under
 `~/Library/Caches/Video Anatomy/` and contain no API key.
@@ -70,18 +74,20 @@ restart. Finish running operations before changing or forgetting the key.
 
 ## Workspace controls and language
 
-Use **New project** to create a workspace. Each project's **•••** menu offers
-Open project, Rename project and Move to Trash. **Close project** is below the
-project list. Deletion moves a project to **Trash**;
-Restore returns its drafts, videos and history. It does not erase source files.
-Running work must finish before deletion. Closing a project saves its draft.
+Use **New project** on the project-card dashboard. Project actions include
+Rename, Duplicate and Move to Trash. Restore from Trash retains saved work;
+duplicates own independent local files. **All projects** returns to the dashboard
+and flushes pending drafts. Running work must finish before deletion.
 
-The app starts in English. Change **App language** to Chinese to update the
-interface and newly generated Research explanations. Saved analyses keep their
-original language; explicitly generate a new version to change it. Original
-speech and visible text remain verbatim. Ideas' **Generation language** remains
-independent. Panels adapt to window size; narrower windows use the Projects
-toggle and internal scrolling instead of stretching the entire page.
+The English 1.8 workspace has Overview, Resources, Discover, Analysis, Content
+plan and Production. Describe the assignment in Overview, review the suggested
+brief and explicitly apply confirmed facts. Choose local references in Resources
+and use **Analyze selected**. Content can belong to a series or stand alone;
+approve a direction before producing its four-document production pack.
+
+Discovery is **Reserved — awaiting Frank’s specification.** The previous bilingual
+workspace remains available by adding `?legacy=1` to the local address. Its
+post-import edits do not synchronize into the independent 1.8 project.
 
 ## Models, missing analysis and usage
 
@@ -94,13 +100,14 @@ all other inference keeps the Sol baseline above. Existing speech, source wordin
 and compatible caches are retained. The key needs Audio Transcriptions access in
 addition to Responses access.
 
-Visuals and visible text are extracted in small batches. If one fails, completed
-batches remain usable; **Retry missing analysis** reuses validated cached results.
-It creates a new analysis revision rather than overwriting reviewed history.
-Structure displays a limitation when its source analysis is incomplete.
+Visuals and visible text are extracted in small batches. Completed results remain
+usable after partial failure. **Retry recognition** retries one resource without
+changing the selected references; **Rebuild media preview** handles local playback
+preparation separately. Recognition preserves user corrections and reports
+incomplete evidence. Clear cache retains originals and corrected evidence.
 
 **API connection** shows **API usage** and **No client-side spending cap** in
-v0.7.5. The USD 3 allowance applies only to separately run Cloud experiments.
+the local launcher. The USD 3 allowance applies only to separately run Cloud experiments.
 Local generation does not reserve experiment funds, require budget token
 prechecks, or stop because of an old accounting pause or unresolved reservation.
 Recorded estimates are informational and may be incomplete; they are not an
