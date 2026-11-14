@@ -1,4 +1,7 @@
-# Video Anatomy 1.8.0 for your Mac
+# Video Anatomy 1.8.1 for your Mac
+
+This is the shared testing candidate. Read **RELEASE NOTES.md** for the testing
+checklist and record the version/commit shown in About with every bug report.
 
 This ZIP contains **Video Anatomy.app**, a Finder launcher for the local browser
 workspace. It uses the Python 3.12 and FFmpeg already installed on your Mac; it is

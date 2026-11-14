@@ -1,5 +1,11 @@
 # Video Anatomy 1.8 project workspace
 
+For the 1.8.1 candidate's changes to analysis graphs/current-result presentation,
+legacy Structure recovery, exploratory generation and speech retries, see
+[release notes](releases/1.8.1.md) and [verification handoff](handoff/project-workspace-1.8.1.md).
+The stricter exploratory-generation gates described below are the original 1.8.0
+behavior; final-production confirmation remains required in 1.8.1.
+
 This document describes the implemented 1.8 workspace and its engineering
 boundaries. The owner's current product baseline supersedes historical
 single-reference, required-form, and Discovery-exclusion specifications. The

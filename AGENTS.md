@@ -2,6 +2,13 @@
 
 ## Current 1.8 baseline
 
+For the 1.8.1 shared testing candidate, also read `docs/releases/1.8.1.md` and
+`docs/handoff/project-workspace-1.8.1.md`. Exploratory ideas may use references
+without a confirmed profile; tailored final production retains confirmation and
+approval gates. Visual-only continuation is explicit and recorded. Show one
+current successful analysis per scope, preserving history and failed-replacement
+recovery. PR #17 is an unmerged dependency, not permission to merge either PR.
+
 The owner's November 12, 2026 baseline and explicit implementation request
 supersede the older single-reference, form-intake, and three-workspace scope
 below. Read `docs/project-workspace-1.8.md` and

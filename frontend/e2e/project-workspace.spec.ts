@@ -113,7 +113,12 @@ test('a stale second-tab autosave retains local text without overwriting a newer
   const other = await context.newPage();
   for (const tab of [page, other]) {
     await tab.goto('/');
-    await tab.getByRole('button', { name: `Open ${title}`, exact: true }).click();
+    await tab.waitForLoadState('networkidle');
+    // 1.8.1 restores the selected project in a new tab. Open from the grid
+    // only when there is no remembered project yet.
+    if (!await tab.getByRole('button', { name: 'All projects', exact: true }).count()) {
+      await tab.getByRole('button', { name: `Open ${title}`, exact: true }).click();
+    }
     await expect(tab.getByLabel('Describe your assignment')).toBeVisible();
   }
   let release!: () => void;

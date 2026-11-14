@@ -35,6 +35,11 @@ class Synthesis:
                 "findings": ["Observed: a product appears. Interpretation: it introduces the solution."],
                 "differences": [], "opportunities": ["Adapt the problem-solution progression."],
                 "limitations": ["Sparse frames cannot establish complete pacing."],
+                "structures": [{"resource_id": item["resource_id"], "summary": "A spoken promise introduces the reference.",
+                    "nodes": [{"id": "moment_one", "label": "Spoken promise", "detail": "The source introduces a promise in speech.",
+                               "kind": "interpretation", "citations": [{"resource_id": item["resource_id"],
+                                   "event_id": item["evidence"]["events"][0]["id"], "reason": "Source moment"}]}],
+                    "edges": []} for item in self.context["references"] if item["evidence"] and item["evidence"]["events"]],
                 "citations": [{"resource_id": resource["resource_id"],
                                "event_id": "invented" if self.bad_citation else resource["evidence"]["events"][0]["id"],
                                "reason": "Observed product introduction"}]}
@@ -138,6 +143,80 @@ def test_invalid_timing_and_invented_citations_do_not_commit(workspace):
     with pytest.raises(WorkflowError, match="outside the selected"):
         service.analyze(project.id, [first])
     assert len(store.get(project.id).analyses) == 1
+
+
+def test_structure_is_resource_scoped_and_citations_use_saved_source_timing(workspace):
+    _, project, service, _, _ = workspace
+    result = service.analyze(project.id, [resource.id for resource in project.resources])
+    structures = result.analyses[-1].structures
+    assert [graph.resource_id for graph in structures] == [resource.id for resource in project.resources]
+    for graph in structures:
+        source = graph.nodes[0].sources[0]
+        assert source.resource_id == graph.resource_id
+        assert source.evidence_revision == 1 and source.start_seconds == 0 and source.end_seconds == 1
+
+
+@pytest.mark.parametrize("invalid", ["foreign_source", "broken_edge", "duplicate_node", "missing_structure"])
+def test_invalid_graph_never_replaces_saved_analysis(workspace, invalid):
+    store, project, service, _, synthesis = workspace
+    ids = [resource.id for resource in project.resources]
+    saved = service.analyze(project.id, ids)
+    response = synthesis.json_response
+    def corrupt(*args, **kwargs):
+        data = response(*args, **kwargs)
+        graph = data["structures"][0]
+        if invalid == "foreign_source":
+            graph["nodes"][0]["citations"] = data["structures"][1]["nodes"][0]["citations"]
+        elif invalid == "broken_edge":
+            graph["edges"] = [{"source": "moment_one", "target": "invented", "label": "Supports", "explanation": "An unsupported connection",
+                               "citations": graph["nodes"][0]["citations"]}]
+        elif invalid == "duplicate_node":
+            graph["nodes"].append(graph["nodes"][0])
+        else:
+            data["structures"].pop()
+        return data
+    synthesis.json_response = corrupt
+    with pytest.raises((WorkflowError, ValueError)):
+        service.analyze(project.id, ids)
+    assert store.get(project.id).analyses == saved.analyses
+
+
+def test_late_context_change_does_not_replace_current_analysis(workspace):
+    from backend.app.project_workspace.analysis import current_analysis
+    store, project, service, _, synthesis = workspace
+    ids = [resource.id for resource in project.resources]
+    saved = service.analyze(project.id, ids)
+    response = synthesis.json_response
+    def delayed(*args, **kwargs):
+        data = response(*args, **kwargs)
+        current = store.get(project.id)
+        service.set_selection(project.id, current.version, ids[:1])
+        return data
+    synthesis.json_response = delayed
+    with pytest.raises(WorkflowError, match="changed during analysis"):
+        service.analyze(project.id, ids)
+    assert current_analysis(store.get(project.id)).id == saved.analyses[-1].id
+
+
+def test_visual_only_analysis_preserves_original_speech_and_skips_recognition(workspace):
+    from backend.app.project_workspace.models import EvidenceEvent
+    store, project, service, recognizer, synthesis = workspace
+    rid = project.resources[0].id
+    state = service.retry_reference(project.id, rid)
+    def partial(p):
+        resource = p.resources[0]
+        resource.evidence[-1].coverage["speech"] = "failed"
+        resource.evidence[-1].events.append(EvidenceEvent(id="visual_one", kind="visual", text="The mug enters the frame.", start_seconds=0, end_seconds=.5))
+        resource.status = "partial"
+    store.update(project.id, state.version, partial)
+    result = service.analyze(project.id, [rid], visual_only=True)
+    assert recognizer.calls == [rid]
+    assert len(result.resources[0].evidence[-1].events) == 2
+    assert result.resources[0].evidence[-1].coverage["speech"] == "failed"
+    report = result.analyses[-1]
+    assert report.inputs.visual_only
+    assert "visual evidence only" in " ".join(report.limitations)
+    assert all(event["kind"] != "speech" for event in synthesis.context["references"][0]["evidence"]["events"])
 
 
 def test_failed_item_is_explicit_and_does_not_erase_completed_work(workspace):
@@ -244,7 +323,7 @@ def test_retry_preserves_pending_edits_at_admission_and_completion(workspace):
     assert rejected.editor_drafts[scope] == draft
 
 
-def test_retry_never_replaces_corrected_partial_evidence(workspace):
+def test_retry_fills_corrected_partial_evidence_without_replacing_corrections(workspace):
     store, project, service, recognizer, _ = workspace
     rid = project.resources[0].id
     state = service.retry_reference(project.id, rid)
@@ -254,10 +333,11 @@ def test_retry_never_replaces_corrected_partial_evidence(workspace):
     state = service.correct_evidence(project.id, state.version, rid, [event])
     before = state.resources[0].evidence
     retried = service.retry_reference(project.id, rid)
-    assert retried.resources[0].evidence == before
-    assert retried.jobs[-1].status == "partial"
-    assert "cannot replace user corrections" in retried.jobs[-1].error
-    assert recognizer.calls == [rid]
+    assert retried.resources[0].evidence[:-1] == before
+    assert retried.resources[0].evidence[-1].events[0].text == "User corrected this partial transcript"
+    assert retried.resources[0].evidence[-1].coverage["speech"] == "observations"
+    assert retried.jobs[-1].status == "succeeded"
+    assert recognizer.calls == [rid, rid]
 
 
 def test_no_key_keeps_sources_and_explicit_failure_without_fake_evidence(workspace):

@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project } from './contracts';
+import { failureMessage } from './status';
+
+const LAST_PROJECT = 'video-anatomy:current-project';
+function rememberProject(id: string | null) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set('project', id); else url.searchParams.delete('project');
+  window.history.replaceState(null, '', url);
+  try { if (id) localStorage.setItem(LAST_PROJECT, id); else localStorage.removeItem(LAST_PROJECT); } catch { /* URL still preserves tab refresh. */ }
+}
 
 export class ProjectError extends Error {
   constructor(message: string, public status: number, public code?: string) { super(message); }
@@ -15,7 +24,7 @@ export async function call<T>(path: string, body?: unknown, method?: string): Pr
   const data = await response.json();
   if (!response.ok) {
     const error = data.error ?? data.detail;
-    throw new ProjectError(typeof error === 'string' ? error : error?.message ?? 'The operation could not be completed.', response.status, error?.code);
+    throw new ProjectError(failureMessage(typeof error === 'string' ? error : error?.message ?? 'The operation could not be completed.', error?.code), response.status, error?.code);
   }
   return data as T;
 }
@@ -55,13 +64,18 @@ export function useProjectController() {
     const saved = await flushProjectDrafts(current.current?.id);
     await queue.current;
     setError('');
-    try { accept(await call<Project>(`/${id}`)); if (!saved) setError('Some edits could not be saved to the project. Their local drafts are retained for recovery.'); }
+    try { accept(await call<Project>(`/${id}`)); rememberProject(id); if (!saved) setError('Some edits could not be saved to the project. Their local drafts are retained for recovery.'); }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not open project.'); }
   }, [accept]);
+  useEffect(() => {
+    let id = new URL(window.location.href).searchParams.get('project');
+    if (!id) { try { id = localStorage.getItem(LAST_PROJECT); } catch { /* Use dashboard. */ } }
+    if (id) void open(id);
+  }, [open]);
   const close = useCallback(async () => {
     const saved = await flushProjectDrafts(current.current?.id);
     await queue.current;
-    current.current = null; setProject(null); void refreshList();
+    current.current = null; setProject(null); rememberProject(null); void refreshList();
     if (!saved) setError('Some edits could not be saved to the project. Their local drafts are retained; reopen the project to review them.');
   }, [refreshList]);
   const mutate = useCallback<Mutate>((path, body = {}, method) => {

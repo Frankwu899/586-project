@@ -7,4 +7,5 @@ import './styles.css';
 import './glass.css';
 
 const legacy = new URLSearchParams(window.location.search).get('legacy') === '1' || import.meta.env.VITE_LEGACY_WORKSPACE === '1';
+document.documentElement.classList.toggle('va-project-mode', !legacy);
 createRoot(document.getElementById('root')!).render(<StrictMode><I18nProvider>{legacy ? <App /> : <ProjectApp />}</I18nProvider></StrictMode>);

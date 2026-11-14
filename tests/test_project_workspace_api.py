@@ -111,6 +111,24 @@ def test_no_key_message_is_saved_before_failed_assistance_without_sample_output(
         assert latest(client, completed) == completed
 
 
+def test_empty_ideas_request_asks_starting_question_without_admitting_job(tmp_path):
+    with TestClient(create_app(tmp_path)) as client:
+        project = create(client)
+        response = client.post(f"/api/projects/{project['id']}/concepts/generate",
+                               json={"expected_version": project["version"], "instruction": ""})
+        assert response.status_code == 422
+        assert "?" in response.json()["error"]["message"]
+        assert latest(client, project)["jobs"] == []
+
+
+def test_release_diagnostics_expose_version_and_source_without_credentials(tmp_path):
+    with TestClient(create_app(tmp_path)) as client:
+        identity = client.get("/api/projects/capabilities").json()
+        assert identity["version"] == "1.8.1"
+        assert identity["source_commit"] is None or len(identity["source_commit"]) == 40
+        assert client.get("/api/health").json()["application_version"] == "1.8.1"
+
+
 def test_per_resource_recognition_retry_is_distinct_from_preview_and_keeps_selection(tmp_path):
     audio = io.BytesIO()
     with wave.open(audio, "wb") as wav:

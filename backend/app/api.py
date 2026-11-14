@@ -101,7 +101,7 @@ class EditOutputs(Mutation):
 
 
 def create_app(data_dir: Path | None = None, *, service: WorkflowService | None = None) -> FastAPI:
-    app = FastAPI(title="Video Anatomy", version="1.8.0")
+    app = FastAPI(title="Video Anatomy", version="1.8.1")
     svc = service or WorkflowService(Path(data_dir or os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data")))
     app.state.service = svc
 
@@ -123,7 +123,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
     @app.get("/api/health")
     def health():
         return {"status": "ok", "schema_version": "0.7.0",
-                "application_version": "1.8.0", "project_schema_version": "1.8.0",
+                "application_version": "1.8.1", "project_schema_version": "1.8.0",
                 "real_analysis": "configured" if svc.provider_settings.api_key else "unconfigured",
                 "creative_generation": "provider_for_real_tasks" if svc.provider_settings.api_key else "unconfigured_for_real_tasks",
                 "sample_workflow": "available_offline"}

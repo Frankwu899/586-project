@@ -141,12 +141,14 @@ def test_invalid_sources_or_unapproved_claims_cannot_be_persisted(tmp_path, resp
     assert store.get(project.id).contents[0].directions == []
 
 
-def test_unreviewed_selected_evidence_blocks_before_provider(tmp_path):
+def test_unreviewed_evidence_can_inform_provisional_ideas_but_not_final_approval(tmp_path):
     store, service, transport, project = setup(tmp_path, idea_response(), True)
     project = store.update(project.id, project.version, lambda current: setattr(current.resources[0].evidence[-1], "reviewed", False))
+    generated = service.generate_directions(project.id, project.contents[0].id)
+    assert transport.calls
+    assert any("provisional" in text for text in generated.contents[0].directions[-1].inputs.limitations)
     with pytest.raises(WorkflowError, match="Review the corrected evidence"):
-        service.generate_directions(project.id, project.contents[0].id)
-    assert not transport.calls
+        approve(service, generated)
 
 
 def test_unrelated_drafts_do_not_discard_generation_but_applied_context_changes_do(tmp_path):
@@ -592,3 +594,101 @@ def test_series_changes_during_generation_discard_result_but_unrelated_series_ed
         service.generate_directions(project.id, project.contents[0].id)
     assert error.value.code == "generation_inputs_changed"
     assert len(service.store.get(project.id).contents[0].directions) == 1
+
+
+def test_concepts_generate_from_confirmed_context_with_empty_instruction(tmp_path):
+    response = {"series": [], "standalone": [{"title": "A calm departure", "description": "Show the morning routine."}],
+                "used_claim_ids": []}
+    store, service, transport, project = setup(tmp_path, response)
+    preflight = service.preflight_generation(project.id)
+    assert preflight == {"exploratory": False, "visual_only": False, "limitations": []}
+    result = service.generate_concepts(project.id, project.version)
+    assert result.contents[-1].title == "A calm departure"
+    assert not result.contents[-1].inputs.exploratory
+    assert json.loads(transport.calls[-1]["prompt"].split("INPUT_JSON:\n")[1])["instruction"] == ""
+
+
+def test_reference_only_ideas_remain_exploratory_and_cannot_approve_for_production(tmp_path):
+    store, service, transport, project = setup(tmp_path, idea_response(), True)
+    project = store.update(project.id, project.version, lambda current: current.briefs.clear())
+    assert service.preflight_generation(project.id, project.contents[0].id)["exploratory"]
+    result = service.generate_directions(project.id, project.contents[0].id)
+    direction = result.contents[0].directions[-1]
+    assert direction.inputs.exploratory and direction.inputs.brief_revision is None
+    assert any("context is not confirmed" in text for text in direction.inputs.limitations)
+    context = json.loads(transport.calls[-1]["prompt"].split("INPUT_JSON:\n")[1])
+    assert context["confirmed_facts"] == []
+    assert context["reference_evidence"][0]["resource_id"] == "resource_one"
+    with pytest.raises(WorkflowError) as error:
+        approve(service, result)
+    assert error.value.code == "confirmed_context_required"
+    assert store.get(project.id).packs == []
+
+
+def test_empty_start_asks_question_before_provider_or_persisted_job(tmp_path):
+    store, service, transport, project = setup(tmp_path, idea_response())
+    project = store.update(project.id, project.version, lambda current: current.briefs.clear())
+    for operation in (lambda: service.preflight_generation(project.id),
+                      lambda: service.generate_concepts(project.id, None),
+                      lambda: service.generate_directions(project.id, project.contents[0].id)):
+        with pytest.raises(WorkflowError) as error:
+            operation()
+        assert error.value.code == "generation_starting_question"
+        assert "What would you like to create?" in error.value.message
+    assert not transport.calls and store.get(project.id) == project
+
+
+def test_visual_only_is_explicit_filters_speech_and_carries_limitations_into_pack(tmp_path):
+    citations = [{"resource_id": "resource_one", "event_id": "event_one"}]
+    store, service, transport, project = setup(tmp_path, idea_response(citations), True)
+    def partial(current):
+        resource = current.resources[0]
+        resource.status = "partial"
+        evidence = resource.evidence[-1]
+        evidence.coverage = {"speech": "failed", "visual": "observations", "music": "not_analyzed"}
+        evidence.events.append(EvidenceEvent(id="speech_one", kind="speech", text="Incomplete recognized speech", start_seconds=3, end_seconds=4))
+    project = store.update(project.id, project.version, partial)
+    with pytest.raises(WorkflowError, match="Continue with visual evidence only"):
+        service.preflight_generation(project.id, project.contents[0].id)
+    result = service.generate_directions(project.id, project.contents[0].id, visual_only=True)
+    context = json.loads(transport.calls[-1]["prompt"].split("INPUT_JSON:\n")[1])
+    assert [event["id"] for event in context["reference_evidence"][0]["evidence"]["events"]] == ["event_one"]
+    direction = result.contents[0].directions[-1]
+    assert direction.inputs.visual_only and direction.inputs.limitations
+    result = approve(service, result)
+    transport.response = pack_response(citations)
+    result = service.generate_pack(project.id, result.contents[0].id)
+    assert result.packs[-1].inputs.visual_only
+    assert any("visual evidence only" in text for text in result.packs[-1].inputs.limitations)
+    for format in ("markdown", "csv", "html"):
+        data, _, _ = export_pack(store, result.id, result.packs[-1].id, 1, format)
+        assert b"visual evidence only" in data
+    assert store.get(project.id).resources[0].evidence[-1].events[-1].text == "Incomplete recognized speech"
+
+
+def test_visual_only_cannot_cite_speech_or_cover_missing_visuals(tmp_path):
+    store, service, transport, project = setup(tmp_path, idea_response([{"resource_id": "resource_one", "event_id": "speech_one"}]), True)
+    def partial(current):
+        current.resources[0].evidence[-1].coverage["speech"] = "failed"
+        current.resources[0].evidence[-1].events.append(EvidenceEvent(id="speech_one", kind="speech", text="Old partial speech", start_seconds=3, end_seconds=4))
+    project = store.update(project.id, project.version, partial)
+    with pytest.raises(WorkflowError) as error:
+        service.generate_directions(project.id, project.contents[0].id, visual_only=True)
+    assert error.value.code == "invalid_generation_citation"
+    assert store.get(project.id).contents[0].directions == []
+    project = store.update(project.id, project.version, lambda current: setattr(current.resources[0].evidence[-1], "events", []))
+    with pytest.raises(WorkflowError):
+        service.preflight_generation(project.id, visual_only=True)
+
+
+def test_changed_evidence_during_visual_only_generation_keeps_prior_work(tmp_path):
+    store, service, transport, project = setup(tmp_path, idea_response(), True)
+    project = store.update(project.id, project.version, lambda current: current.resources[0].evidence[-1].coverage.update(speech="failed"))
+    def changed():
+        store.update(project.id, None, lambda current: current.resources[0].evidence.append(
+            EvidenceRevision(revision=2, reviewed=True, events=current.resources[0].evidence[0].events, coverage={"speech": "failed"})))
+    transport.callback = changed
+    with pytest.raises(WorkflowError) as error:
+        service.generate_directions(project.id, project.contents[0].id, visual_only=True)
+    assert error.value.code == "generation_inputs_changed"
+    assert store.get(project.id).contents[0].directions == []
