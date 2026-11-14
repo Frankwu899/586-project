@@ -83,6 +83,7 @@ class EvidenceEvent(Model):
 
 
 class EvidenceRevision(Model):
+    diagnostics: dict[str, str] = Field(default_factory=dict)
     revision: int = Field(ge=1)
     events: list[EvidenceEvent] = Field(default_factory=list)
     coverage: dict[str, str] = Field(default_factory=dict)
@@ -125,6 +126,9 @@ class Selection(Model):
 
 
 class InputManifest(Model):
+    exploratory: bool = False
+    visual_only: bool = False
+    limitations: list[str] = Field(default_factory=list)
     brief_revision: int | None = None
     selection_revision: int = 1
     resource_ids: list[str] = Field(default_factory=list)
@@ -138,6 +142,42 @@ class InputManifest(Model):
     model: str | None = None
 
 
+class StructureNode(Model):
+    id: str
+    label: str
+    detail: str
+    kind: Literal["observation", "interpretation", "source_claim", "user_context"] = "interpretation"
+    sources: list[SourceRef] = Field(default_factory=list)
+
+
+class StructureEdge(Model):
+    source: str
+    target: str
+    label: str
+    explanation: str
+    sources: list[SourceRef] = Field(default_factory=list)
+
+
+class ReferenceStructure(Model):
+    resource_id: str
+    summary: str
+    nodes: list[StructureNode]
+    edges: list[StructureEdge] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def valid_links(self):
+        ids = {node.id for node in self.nodes}
+        if len(ids) != len(self.nodes):
+            raise ValueError("Structure node identities must be unique")
+        for edge in self.edges:
+            if edge.source not in ids or edge.target not in ids or edge.source == edge.target:
+                raise ValueError("Structure relationships must connect distinct nodes in the same reference")
+        for item in [*self.nodes, *self.edges]:
+            if any(source.resource_id not in (None, self.resource_id) for source in item.sources):
+                raise ValueError("Structure sources must belong to their reference")
+        return self
+
+
 class Analysis(Model):
     id: str = Field(default_factory=lambda: uid("analysis"))
     content_id: str | None = None
@@ -148,6 +188,7 @@ class Analysis(Model):
     opportunities: list[str] = Field(default_factory=list)
     sources: list[SourceRef] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
+    structures: list[ReferenceStructure] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
     needs_review: bool = False
 
@@ -222,6 +263,7 @@ class ProductionPack(Model):
 
 
 class Job(Model):
+    error_code: str | None = None
     id: str = Field(default_factory=lambda: uid("job"))
     kind: str
     resource_id: str | None = None

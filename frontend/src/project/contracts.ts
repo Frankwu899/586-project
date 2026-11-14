@@ -91,6 +91,9 @@ export type Revision2 = number;
 export type ResourceIds1 = string[];
 export type Id6 = string;
 export type ContentId = string | null;
+export type Exploratory = boolean;
+export type VisualOnly = boolean;
+export type Limitations1 = string[];
 export type BriefRevision1 = number | null;
 export type SelectionRevision = number;
 export type ResourceIds2 = string[];
@@ -106,28 +109,43 @@ export type Findings = string[];
 export type Differences = string[];
 export type Opportunities = string[];
 export type Sources1 = SourceRef[];
-export type Limitations1 = string[];
+export type Limitations2 = string[];
+export type ResourceId1 = string;
+export type Summary = string;
+export type Id7 = string;
+export type Label = string;
+export type Detail = string;
+export type Kind2 = "observation" | "interpretation" | "source_claim" | "user_context";
+export type Sources2 = SourceRef[];
+export type Nodes = StructureNode[];
+export type Source = string;
+export type Target = string;
+export type Label1 = string;
+export type Explanation = string;
+export type Sources3 = SourceRef[];
+export type Edges = StructureEdge[];
+export type Structures = ReferenceStructure[];
 export type CreatedAt5 = string;
 export type NeedsReview = boolean;
 export type Analyses = Analysis[];
-export type Id7 = string;
+export type Id8 = string;
 export type Title1 = string;
 export type Concept = string;
 export type NeedsReview1 = boolean;
 export type Series = Series1[];
-export type Id8 = string;
+export type Id9 = string;
 export type SeriesId = string | null;
 export type Title2 = string;
 export type Description = string;
 export type NeedsReview2 = boolean;
-export type Id9 = string;
+export type Id10 = string;
 export type Revision3 = number;
 export type Title3 = string;
 export type Concept1 = string;
 export type Hook = string;
 export type Narrative = string;
 export type Cta = string;
-export type Sources2 = SourceRef[];
+export type Sources4 = SourceRef[];
 export type Approved = boolean;
 export type ApprovedAt = string | null;
 export type NeedsReview3 = boolean;
@@ -136,14 +154,14 @@ export type Directions = Direction[];
 export type ApprovedDirectionId = string | null;
 export type ApprovedDirectionRevision = number | null;
 export type Contents = ContentItem[];
-export type Id10 = string;
+export type Id11 = string;
 export type Revision4 = number;
 export type ContentId1 = string;
 export type ProductionBrief = string;
 export type Script = string;
 export type Storyboard = string;
 export type ShotList = string;
-export type Id11 = string;
+export type Id12 = string;
 export type StartSeconds2 = number;
 export type EndSeconds2 = number;
 export type Visual = string;
@@ -152,13 +170,14 @@ export type OnScreenText = string;
 export type Sound = string;
 export type Notes = string;
 export type Shots = ProductionShot[];
-export type Sources3 = SourceRef[];
+export type Sources5 = SourceRef[];
 export type NeedsReview4 = boolean;
 export type CreatedAt7 = string;
 export type Packs = ProductionPack[];
-export type Id12 = string;
-export type Kind2 = string;
-export type ResourceId1 = string | null;
+export type ErrorCode = string | null;
+export type Id13 = string;
+export type Kind3 = string;
+export type ResourceId2 = string | null;
 export type ContentId2 = string | null;
 export type Status3 = "queued" | "running" | "succeeded" | "partial" | "failed";
 export type Progress = string;
@@ -264,6 +283,7 @@ export interface MediaMetadata {
   [k: string]: unknown;
 }
 export interface EvidenceRevision1 {
+  diagnostics: Diagnostics;
   revision: Revision1;
   events: Events;
   coverage: Coverage;
@@ -272,6 +292,9 @@ export interface EvidenceRevision1 {
   created_at: CreatedAt4;
   reviewed: Reviewed;
   correction_note: CorrectionNote;
+}
+export interface Diagnostics {
+  [k: string]: string;
 }
 export interface EvidenceEvent {
   id: Id5;
@@ -299,11 +322,15 @@ export interface Analysis {
   differences: Differences;
   opportunities: Opportunities;
   sources: Sources1;
-  limitations: Limitations1;
+  limitations: Limitations2;
+  structures: Structures;
   created_at: CreatedAt5;
   needs_review: NeedsReview;
 }
 export interface InputManifest {
+  exploratory: Exploratory;
+  visual_only: VisualOnly;
+  limitations: Limitations1;
   brief_revision: BriefRevision1;
   selection_revision: SelectionRevision;
   resource_ids: ResourceIds2;
@@ -319,15 +346,35 @@ export interface InputManifest {
 export interface EvidenceRevisions {
   [k: string]: number;
 }
-export interface Series1 {
+export interface ReferenceStructure {
+  resource_id: ResourceId1;
+  summary: Summary;
+  nodes: Nodes;
+  edges: Edges;
+}
+export interface StructureNode {
   id: Id7;
+  label: Label;
+  detail: Detail;
+  kind: Kind2;
+  sources: Sources2;
+}
+export interface StructureEdge {
+  source: Source;
+  target: Target;
+  label: Label1;
+  explanation: Explanation;
+  sources: Sources3;
+}
+export interface Series1 {
+  id: Id8;
   title: Title1;
   concept: Concept;
   inputs: InputManifest | null;
   needs_review: NeedsReview1;
 }
 export interface ContentItem {
-  id: Id8;
+  id: Id9;
   series_id: SeriesId;
   title: Title2;
   description: Description;
@@ -339,7 +386,7 @@ export interface ContentItem {
   approved_direction_revision: ApprovedDirectionRevision;
 }
 export interface Direction {
-  id: Id9;
+  id: Id10;
   revision: Revision3;
   title: Title3;
   concept: Concept1;
@@ -347,14 +394,14 @@ export interface Direction {
   narrative: Narrative;
   cta: Cta;
   inputs: InputManifest;
-  sources: Sources2;
+  sources: Sources4;
   approved: Approved;
   approved_at: ApprovedAt;
   needs_review: NeedsReview3;
   created_at: CreatedAt6;
 }
 export interface ProductionPack {
-  id: Id10;
+  id: Id11;
   revision: Revision4;
   content_id: ContentId1;
   inputs: InputManifest;
@@ -363,12 +410,12 @@ export interface ProductionPack {
   storyboard: Storyboard;
   shot_list: ShotList;
   shots: Shots;
-  sources: Sources3;
+  sources: Sources5;
   needs_review: NeedsReview4;
   created_at: CreatedAt7;
 }
 export interface ProductionShot {
-  id: Id11;
+  id: Id12;
   start_seconds: StartSeconds2;
   end_seconds: EndSeconds2;
   visual: Visual;
@@ -378,9 +425,10 @@ export interface ProductionShot {
   notes: Notes;
 }
 export interface Job {
-  id: Id12;
-  kind: Kind2;
-  resource_id: ResourceId1;
+  error_code: ErrorCode;
+  id: Id13;
+  kind: Kind3;
+  resource_id: ResourceId2;
   content_id: ContentId2;
   status: Status3;
   progress: Progress;

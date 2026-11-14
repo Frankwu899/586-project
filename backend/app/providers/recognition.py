@@ -128,10 +128,10 @@ class ProviderRecognitionAdapter:
         self.records: list[dict] = []
         self._lock = threading.Lock()
 
-    def analyze(self, request) -> AnalysisResult:
+    def analyze(self, request, *, speech_only=False) -> AnalysisResult:
         # One analysis per adapter at a time: bounded concurrency and per-run diagnostics.
         with self._lock:
-            return self._analyze(request)
+            return self._analyze(request, speech_only=speech_only)
 
     def _failure(self, request, analysis_id, error):
         video = request.video
@@ -217,7 +217,7 @@ class ProviderRecognitionAdapter:
                     blocked = True
         return VisionOutput(frames=frames) if frames else None, errors, attempts, hits
 
-    def _analyze(self, request):
+    def _analyze(self, request, *, speech_only=False):
         video = request.video
         analysis_id = f"analysis_{uuid4().hex}"
         records = []
@@ -306,6 +306,8 @@ class ProviderRecognitionAdapter:
                 reused_speech_origin = None
                 for capability, provider, prompt_version in (("vision", self.vision_provider, VISION_PROMPT_VERSION),
                         ("timestamped_transcription", self.transcription_provider, SPEECH_PROMPT_VERSION)):
+                    if speech_only and capability == "vision":
+                        continue  # Existing reviewed visuals belong to the caller, not provider caches.
                     begun = datetime.now(timezone.utc)
                     metadata = {**base, "capability": capability, "provider": provider.provider,
                         "requested_model": provider.model, "prompt_version": prompt_version}
@@ -418,8 +420,8 @@ class ProviderRecognitionAdapter:
                     result = self._failure(request, analysis_id, next(iter(errors.values())))
                 else:
                     result = self._build_result(request, analysis_id, visual, speech, errors,
-                                                reused_speech_origin=reused_speech_origin)
-                if result.status == "succeeded" and cache_path and not cached:
+                                                reused_speech_origin=reused_speech_origin, speech_only=speech_only)
+                if result.status == "succeeded" and cache_path and not cached and not speech_only:
                     try:
                         cache_path.parent.mkdir(parents=True, exist_ok=True)
                         temporary = cache_path.with_suffix(f".{uuid4().hex}.tmp")
@@ -482,7 +484,7 @@ class ProviderRecognitionAdapter:
             raise ValueError("invalid cached speech")
         return [span.model_dump() for span in parsed]
 
-    def _build_result(self, request, analysis_id, visual, speech, errors, *, reused_speech_origin=None):
+    def _build_result(self, request, analysis_id, visual, speech, errors, *, reused_speech_origin=None, speech_only=False):
         video, events, segments = request.video, [], []
         language = self.settings.analysis_language
         speech_provider, speech_model = reused_speech_origin or (
@@ -534,7 +536,8 @@ class ProviderRecognitionAdapter:
         coverage = {kind: ("observations" if any(event["kind"] == kind for event in events) else "none_found")
                     for kind in ("visual_action", "on_screen_text", "speech")}
         if visual is None:
-            coverage.update(visual_action="failed", on_screen_text="failed")
+            coverage.update(visual_action="not_analyzed" if speech_only else "failed",
+                            on_screen_text="not_analyzed" if speech_only else "failed")
         if speech is None:
             coverage["speech"] = "failed"
         elif self.transcription_provider.model == "disabled" and video.has_audio is not False and reused_speech_origin is None:

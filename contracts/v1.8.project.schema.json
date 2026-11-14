@@ -61,6 +61,13 @@
           "title": "Limitations",
           "type": "array"
         },
+        "structures": {
+          "items": {
+            "$ref": "#/$defs/ReferenceStructure"
+          },
+          "title": "Structures",
+          "type": "array"
+        },
         "created_at": {
           "title": "Created At",
           "type": "string"
@@ -81,6 +88,7 @@
         "opportunities",
         "sources",
         "limitations",
+        "structures",
         "created_at",
         "needs_review"
       ],
@@ -384,6 +392,13 @@
     "EvidenceRevision": {
       "additionalProperties": false,
       "properties": {
+        "diagnostics": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
         "revision": {
           "minimum": 1,
           "title": "Revision",
@@ -438,6 +453,7 @@
         }
       },
       "required": [
+        "diagnostics",
         "revision",
         "events",
         "coverage",
@@ -553,6 +569,23 @@
     "InputManifest": {
       "additionalProperties": false,
       "properties": {
+        "exploratory": {
+          "default": false,
+          "title": "Exploratory",
+          "type": "boolean"
+        },
+        "visual_only": {
+          "default": false,
+          "title": "Visual Only",
+          "type": "boolean"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
         "brief_revision": {
           "anyOf": [
             {
@@ -660,6 +693,9 @@
       "title": "InputManifest",
       "type": "object",
       "required": [
+        "exploratory",
+        "visual_only",
+        "limitations",
         "brief_revision",
         "selection_revision",
         "resource_ids",
@@ -676,6 +712,18 @@
     "Job": {
       "additionalProperties": false,
       "properties": {
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
         "id": {
           "title": "Id",
           "type": "string"
@@ -747,6 +795,7 @@
         }
       },
       "required": [
+        "error_code",
         "id",
         "kind",
         "resource_id",
@@ -942,6 +991,41 @@
         "notes"
       ],
       "title": "ProductionShot",
+      "type": "object"
+    },
+    "ReferenceStructure": {
+      "additionalProperties": false,
+      "properties": {
+        "resource_id": {
+          "title": "Resource Id",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/StructureNode"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/StructureEdge"
+          },
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "resource_id",
+        "summary",
+        "nodes",
+        "edges"
+      ],
+      "title": "ReferenceStructure",
       "type": "object"
     },
     "Resource": {
@@ -1347,6 +1431,87 @@
         "start_seconds",
         "end_seconds"
       ]
+    },
+    "StructureEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "label",
+        "explanation",
+        "sources"
+      ],
+      "title": "StructureEdge",
+      "type": "object"
+    },
+    "StructureNode": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "kind": {
+          "default": "interpretation",
+          "enum": [
+            "observation",
+            "interpretation",
+            "source_claim",
+            "user_context"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "detail",
+        "kind",
+        "sources"
+      ],
+      "title": "StructureNode",
+      "type": "object"
     }
   },
   "additionalProperties": false,

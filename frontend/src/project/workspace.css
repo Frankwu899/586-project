@@ -298,3 +298,52 @@ body:has(.va-app) { margin: 0; background: #eaf0fc; color: #161737; overflow: au
 @media print { .va-topbar,.va-rail,.va-actions,.va-settings,.va-activity { display: none!important; } .va-workspace { display: block; } .va-app { background: white; } }
 
 .va-app { color-scheme: light; }
+
+/* 1.8.1: the document owns vertical scrolling; legacy root locks stay isolated. */
+html.va-project-mode { height: auto; min-height: 100%; overflow-y: auto; overflow-x: clip; scroll-padding-block: 20px; }
+html.va-project-mode body, html.va-project-mode #root { height: auto; min-height: 100dvh; max-height: none; overflow: visible; }
+.va-app { width: 100%; overflow-wrap: anywhere; }
+.va-app .va-workspace-main, .va-app .va-dashboard-main { overflow: visible; }
+.va-app .va-topbar, .va-app .va-page-heading, .va-app .va-section-heading, .va-app .va-actions, .va-app .va-dashboard-tools, .va-app .va-resource-tools, .va-app .va-document-footer, .va-app .va-production-controls, .va-app .va-composer-footer { flex-wrap: wrap; }
+.va-app .va-tabs { flex-wrap: wrap; overflow: visible; gap: 4px 10px; padding: 4px; }
+.va-app .va-tabs button { flex-shrink: 0; white-space: normal; }
+.va-app .va-selection-bar { position: static; flex-wrap: wrap; }
+.va-app .va-resource-inspector { position: static; min-width: 0; }
+.va-app .va-transcript, .va-app .va-document-blocks, .va-app .va-evidence-editor, .va-app .va-document-editor { max-height: none; overflow: visible; padding: 4px; }
+.va-app .va-inspector-actions { flex-wrap: wrap; }
+.va-app .va-resource-inspector video { max-height: min(280px, 45dvh); }
+.va-app .va-settings, .va-app .va-activity { position: fixed; top: 12px; bottom: auto; right: 12px; width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; }
+.va-app .va-badge { white-space: normal; }
+.va-app .va-production-controls label { min-width: min(200px,100%); }
+.va-app .va-global-error { flex-wrap: wrap; }
+.va-app .va-support { margin: 8px 0; font-size: 12px; }
+.va-app .va-support pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f2f3fa; padding: 10px; max-height: 180px; overflow: auto; color: #333b56; }
+.va-app .va-analysis-scope { margin-bottom: 20px; max-width: 460px; }
+.va-app .va-structure { margin: 22px 0; min-width: 0; }
+.va-app .logic-viewport { overflow: auto; max-width: 100%; background: #f3f5ff; color: #524b84; }
+.va-app .logic-node { position: absolute; display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 16px; background: #fff; color: #252640; border-color: #c9c6e7; }
+.va-app .logic-node.inference { background: #f4efff; }
+.va-app .logic-node.selected { outline: 3px solid #6252cf; outline-offset: 2px; }
+.va-app .logic-node strong span { display: block; }
+.va-app .logic-node .node-kind, .va-app .logic-node .node-time { color: #64617e; font-size: 12px; }
+.va-app .logic-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.va-app .logic-edge-label { color: #51486e; background: #fbfaff; }
+.va-app .va-node-detail { margin: 14px 0; padding: 16px; background: #ffffffc9; border: 1px solid #d7d9ed; border-radius: 10px; }
+.va-app .va-visual-choice { display: flex; flex-direction: row; align-items: flex-start; margin: 12px 0; }
+@media(max-width:700px) { .va-app .va-rail nav { overflow: visible; flex-wrap: wrap; padding: 4px; } .va-app .va-rail nav button { white-space: normal; } .va-app .va-topbar-actions { margin-left: 0; } .va-app .va-brand { max-width: 100%; flex-wrap: wrap; } .va-app .va-content-list { flex-wrap: wrap; overflow: visible; } .va-app .va-project-heading { flex-wrap: wrap; } .va-app .va-production-document { padding: 14px; } }
+.va-app .logic-controls button.secondary { color: #37305e; background: #fff; border-color: #b6b4d6; }
+.va-app .logic-controls button.secondary:disabled { color: #65627a; background: #e5e6ee; }
+.va-app .logic-connections { color: #817797; }
+/* Keep source timestamps and selection controls intact under narrow columns. */
+.va-app .va-timecode { flex: 0 0 auto; white-space: nowrap; min-width: 5.5ch; }
+.va-app .va-transcript > article > div { min-width: 0; }
+.va-app .va-selection-bar { color: var(--va-ink); text-align: left; }
+.va-app .va-selection-bar strong { color: var(--va-ink); }
+.va-app .va-selection-bar > div:first-child { min-width: min(225px, 100%); max-width: 100%; flex-wrap: wrap; }
+.va-app .va-selection-bar label { width: auto; min-width: 0; gap: 8px; flex-wrap: wrap; white-space: nowrap; overflow-wrap: normal; color: #505972; }
+.va-app .va-selection-bar label > select { width: min(180px, 100%); min-width: 0; flex: 0 1 180px; }
+@media (max-width:700px) {
+  .va-app .va-pack .va-actions, .va-app .va-export-menu { width: 100%; max-width: 100%; }
+  .va-app .va-export-menu > div { position: static; width: 100%; min-width: 0; max-width: 100%; margin-top: 6px; }
+  .va-app .va-export-menu button { white-space: normal; overflow-wrap: anywhere; }
+}

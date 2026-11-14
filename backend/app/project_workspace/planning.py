@@ -179,54 +179,84 @@ def _invalidate_plan_inputs(project, content_id):
             pack.needs_review = True
 
 
-def _context(project, item=None, *, require_brief=True, require_evidence=True):
-    if require_brief and (not project.briefs or not project.briefs[-1].facts):
-        raise WorkflowError("confirmed_context_required", "Confirm the assignment's useful context in Overview before generating. A complete form is not required.", 422)
+def _context(project, item=None, *, require_brief=True, require_evidence=True,
+             exploration=False, visual_only=False):
+    brief = project.briefs[-1] if project.briefs else None
+    facts = [] if brief is None else [fact.model_dump(mode="json") for fact in brief.facts
+                                     if fact.status == "confirmed" and fact.value.strip()
+                                     and (not is_claim_key(fact.key) or fact.permitted_for_use)]
     selection = item.selection if item is not None else project.selection
+    if require_brief and not facts:
+        raise WorkflowError("confirmed_context_required", "Confirm the assignment's useful context in Overview before preparing final production. A complete form is not required.", 422)
+    if exploration and not facts and not selection.resource_ids:
+        raise WorkflowError("generation_starting_question", "What would you like to create? Describe the assignment in Overview, or select a reference to explore.", 422)
     evidence = []
     revisions = {}
+    limitations = []
+    if not facts:
+        limitations.append("Reference-led exploration: project context is not confirmed. Company, product, audience and claims remain unspecified.")
     for resource_id in selection.resource_ids:
         resource = next((entry for entry in project.resources if entry.id == resource_id), None)
         if resource is None:
             raise WorkflowError("reference_not_found", "A selected reference is no longer in this project.", 422)
-        if require_evidence and resource.status != "ready":
-            raise WorkflowError("reference_incomplete", "A selected reference is unavailable or incompletely processed. Retry it or explicitly remove it from this content item's selection.", 422)
+        if require_evidence and resource.status in {"missing", "unsupported", "stored", "processing"}:
+            raise WorkflowError("reference_incomplete", "A selected reference is unavailable or still processing. Restore its original or wait for processing, then retry.", 422)
         if not resource.evidence:
             if require_evidence:
-                raise WorkflowError("reference_evidence_required", "Analyze and review each selected reference, or explicitly remove it from this content item's selection.", 422)
+                raise WorkflowError("reference_evidence_required", "Analyze the selected references in Resources first, or remove them to generate from project context.", 422)
             continue
         latest = resource.evidence[-1]
         if require_evidence:
             _require_evidence_draft_clear(project, resource, latest)
-        if require_evidence and any(value in {"failed", "partial", "error"} for value in latest.coverage.values()):
-            raise WorkflowError("reference_incomplete", "Selected evidence contains a failed extraction stage. Retry that reference or explicitly exclude it before creative generation.", 422)
+        failures = {channel for channel, value in latest.coverage.items() if value in {"failed", "partial", "error"}}
+        usable_visuals = [event for event in latest.events if event.kind in {"visual", "on_screen_text"} and event.text.strip()]
+        if require_evidence and failures:
+            if failures != {"speech"} or not visual_only or not usable_visuals:
+                message = ("Speech transcription is unavailable. Retry transcription, or choose Continue with visual evidence only to use the available visuals."
+                           if failures == {"speech"} and usable_visuals else
+                           "A selected reference has incomplete evidence. Retry recognition in Resources, or remove that reference from this selection.")
+                raise WorkflowError("reference_incomplete", message, 422)
+        if require_evidence and not latest.reviewed and not exploration:
+            raise WorkflowError("reference_review_required", "Review the corrected evidence for each selected reference before final production.", 422)
         if require_evidence and not latest.reviewed:
-            raise WorkflowError("reference_review_required", "Review the corrected evidence for each selected reference before creative generation.", 422)
+            limitations.append(f"{resource.name}: extracted evidence is provisional and has not been reviewed.")
+        payload = latest.model_dump(mode="json")
+        if visual_only:
+            if require_evidence and not usable_visuals:
+                raise WorkflowError("visual_evidence_required", "This reference has no usable visual evidence. Retry recognition or remove it before continuing with visuals only.", 422)
+            payload["events"] = [event.model_dump(mode="json") for event in usable_visuals]
+            limitations.append(f"{resource.name}: visual evidence only was explicitly selected; speech, music and sound cannot support these suggestions.")
+        if require_evidence and not payload["events"]:
+            raise WorkflowError("reference_evidence_required", "A selected reference has no usable observations. Retry recognition or remove it from this selection.", 422)
+        limitations.extend(f"{resource.name}: {limitation}" for limitation in latest.limitations)
         revisions[resource_id] = latest.revision
         evidence.append({"resource_id": resource.id, "name": resource.name,
-                         "source_url": resource.source_url, "evidence": latest.model_dump(mode="json")})
-    brief = project.briefs[-1] if project.briefs else None
-    facts = [] if brief is None else [fact.model_dump(mode="json") for fact in brief.facts
-                                     if fact.status == "confirmed" and (not is_claim_key(fact.key) or fact.permitted_for_use)]
+                         "source_url": resource.source_url, "evidence": payload})
     series = next((entry for entry in project.series if entry.id == item.series_id), None) if item and item.series_id else None
     if item and item.series_id and series is None:
         raise WorkflowError("series_not_found", "The content item's assigned series is unavailable. Choose an existing series or make it standalone.", 422)
     series_context = None if series is None else {"id": series.id, "title": series.title, "concept": series.concept}
+    limitations = list(dict.fromkeys(limitations))
     context = {"confirmed_facts": facts, "reference_evidence": evidence,
                "content": None if item is None else {"title": item.title, "description": item.description, "series_id": item.series_id},
-               "series": series_context,
-               "unresolved": project.unresolved}
+               "series": series_context, "exploratory": not bool(facts), "visual_only": visual_only,
+               "limitations": limitations, "unresolved": project.unresolved}
     manifest = InputManifest(brief_revision=brief.revision if brief else None,
                              selection_revision=selection.revision,
-                             resource_ids=list(selection.resource_ids), evidence_revisions=revisions)
-    if "context_digest" in InputManifest.model_fields:
-        manifest.context_digest = _hash({"facts": facts, "content": context["content"], "series": series_context,
-                                       "selection": selection.model_dump(), "evidence": revisions})
+                             resource_ids=list(selection.resource_ids), evidence_revisions=revisions,
+                             exploratory=not bool(facts), visual_only=visual_only, limitations=limitations)
+    digest_input = {"facts": facts, "content": context["content"], "series": series_context,
+                    "selection": selection.model_dump(), "evidence": revisions}
+    if visual_only:
+        digest_input["visual_only"] = True
+    if not facts:
+        digest_input["exploratory"] = True
+    manifest.context_digest = _hash(digest_input)
     return context, manifest
 
 
 def _same_inputs(left, right):
-    fields = ("brief_revision", "selection_revision", "resource_ids", "evidence_revisions", "context_digest")
+    fields = ("brief_revision", "selection_revision", "resource_ids", "evidence_revisions", "context_digest", "visual_only", "exploratory")
     return all(getattr(left, field, None) == getattr(right, field, None) for field in fields)
 
 
@@ -244,7 +274,7 @@ def _sources(project, manifest, citations):
         revision = manifest.evidence_revisions.get(citation.resource_id)
         evidence = next((entry for entry in resource.evidence if entry.revision == revision), None) if resource else None
         event = next((entry for entry in evidence.events if entry.id == citation.event_id), None) if evidence else None
-        if event is None:
+        if event is None or (manifest.visual_only and event.kind not in {"visual", "on_screen_text"}):
             raise WorkflowError("invalid_generation_citation", "Generation cited evidence outside the saved input snapshot. No result was applied.", 422)
         result.append(SourceRef(resource_id=resource.id, evidence_revision=revision, event_id=event.id,
                                 locator=f"{event.start_seconds:g}–{event.end_seconds:g}s", excerpt=event.text,
@@ -352,6 +382,9 @@ class PlanningService:
             "Do not provide artifact IDs, approval, source timestamps, or invented evidence. "
             f"Write new creative prose in {settings.creative_language}; preserve approved fixed wording and source quotes. "
             "Be concise and specific; distinguish proposed execution from observed reference evidence. "
+            "When exploratory is true, propose reference-led creative structures only: do not invent a company, product, audience, benefit or claim. "
+            "State that project context remains unspecified and identify the next useful clarification. "
+            "Respect visual_only: never infer speech or sound from visual observations. Carry the supplied limitations into the creative proposal. "
             "For concept planning, choose series only when the request benefits from a repeatable organizing idea; standalone topics are valid. "
             "For production, return separate brief/script/shot-list documents and structured shots with distinct dialogue, on-screen text, sound and planned seconds. "
             "Shots must be continuous from zero; all timing is an estimate. Preserve the exact approved proposition. "
@@ -445,12 +478,21 @@ class PlanningService:
                 project.active_content_id = project.contents[0].id if project.contents else None
         return self.store.update(project_id, expected_version, change)
 
-    def generate_concepts(self, project_id, expected_version, instruction):
+    def preflight_generation(self, project_id, content_id=None, instruction="", *, visual_only=False):
+        """Validate available inputs before admitting a potentially billed job."""
+        project = self.store.get(project_id)
+        item = _item(project, content_id) if content_id is not None else None
+        _text(instruction, "Creative instruction", maximum=10000, allow_empty=True)
+        context, _ = _context(project, item, require_brief=False, exploration=True, visual_only=visual_only)
+        return {"exploratory": context["exploratory"], "visual_only": visual_only,
+                "limitations": context["limitations"]}
+
+    def generate_concepts(self, project_id, expected_version, instruction="", *, visual_only=False):
         project = self.store.get(project_id)
         if expected_version is not None and project.version != expected_version:
             raise WorkflowError("version_conflict", "The project changed. Refresh and retry.")
-        context, manifest = _context(project)
-        context["instruction"] = _text(instruction, "Planning instruction", maximum=10000)
+        context, manifest = _context(project, require_brief=False, exploration=True, visual_only=visual_only)
+        context["instruction"] = _text(instruction, "Planning instruction", maximum=10000, allow_empty=True)
         context["existing_series"] = [entry.model_dump() for entry in project.series]
         context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents]
         response, model, digest = self._response("IDEAS", "concepts", context, ConceptsContent)
@@ -467,7 +509,7 @@ class PlanningService:
         if len(titles) != len(set(titles)):
             raise WorkflowError("repeated_concepts", "The provider repeated topic titles. No repetitive plan was applied.", 422)
         def change(current):
-            _, latest = _context(current)
+            _, latest = _context(current, require_brief=False, exploration=True, visual_only=visual_only)
             if not _same_inputs(manifest, latest):
                 raise WorkflowError("generation_inputs_changed", "Confirmed context or selected evidence changed during generation. Existing work is intact; retry.")
             for candidate in response.series:
@@ -491,10 +533,10 @@ class PlanningService:
                 current.active_content_id = current.contents[0].id
         return self.store.update(project_id, None, change)
 
-    def generate_directions(self, project_id, content_id, instruction=""):
+    def generate_directions(self, project_id, content_id, instruction="", *, visual_only=False):
         project = self.store.get(project_id)
         item = _item(project, content_id)
-        context, manifest = _context(project, item)
+        context, manifest = _context(project, item, require_brief=False, exploration=True, visual_only=visual_only)
         context["instruction"] = _text(instruction, "Direction instruction", maximum=10000, allow_empty=True)
         context["existing_directions"] = [{"title": d.title, "concept": d.concept} for d in item.directions]
         response, model, digest = self._response("IDEAS", "directions", context, IdeasContent)
@@ -515,7 +557,7 @@ class PlanningService:
                                         inputs=candidate_manifest, sources=_sources(project, manifest, candidate.citations)))
         def change(current):
             current_item = _item(current, content_id)
-            _, latest = _context(current, current_item)
+            _, latest = _context(current, current_item, require_brief=False, exploration=True, visual_only=visual_only)
             if not _same_inputs(manifest, latest):
                 raise WorkflowError("generation_inputs_changed", "This item's confirmed inputs changed during generation. Existing directions were preserved.")
             current_item.directions.extend(candidates)
@@ -532,7 +574,7 @@ class PlanningService:
                 raise WorkflowError("direction_approval_required", "Approve an exact saved direction before creating a production pack.", 422)
             direction = _direction(item, item.approved_direction_id, item.approved_direction_revision)
             _require_direction_draft_clear(project, item, direction)
-            _, manifest = _context(project, item)
+            _, manifest = _context(project, item, visual_only=direction.inputs.visual_only)
             if not direction.approved or direction.needs_review or not _same_inputs(direction.inputs, manifest):
                 raise WorkflowError("direction_inputs_outdated", "Review and approve a direction against the current confirmed inputs first.", 422)
             manifest.direction_id, manifest.direction_revision = direction.id, direction.revision
@@ -557,7 +599,8 @@ class PlanningService:
             scope = f"direction-{item.id}-{direction_id}" if old else None
             if old:
                 _check_submitted_draft(project, scope, old, values, _DIRECTION_FIELDS)
-            _, current_manifest = _context(project, item, require_brief=False, require_evidence=False)
+            _, current_manifest = _context(project, item, require_brief=False, require_evidence=False,
+                                           visual_only=old.inputs.visual_only if old else False)
             if old and all(getattr(old, key) == value for key, value in values.items()) and _same_inputs(old.inputs, current_manifest):
                 return False
             if old:
@@ -594,7 +637,7 @@ class PlanningService:
             if _direction(item, direction_id).revision != direction.revision:
                 raise WorkflowError("direction_revision_conflict", "Approve the latest saved direction revision.")
             _require_direction_draft_clear(project, item, direction)
-            _, latest = _context(project, item)
+            _, latest = _context(project, item, visual_only=direction.inputs.visual_only)
             if direction.needs_review or not _same_inputs(direction.inputs, latest):
                 raise WorkflowError("direction_inputs_outdated", "This direction uses earlier inputs. Revise or regenerate it against the confirmed context before approving.", 422)
             if item.approved_direction_id == direction.id and item.approved_direction_revision == direction.revision and direction.approved:
@@ -618,7 +661,7 @@ class PlanningService:
         current_packs = [pack for pack in project.packs if pack.content_id == content_id]
         if current_packs:
             require_pack_draft_clear(project, current_packs[-1])
-        context, manifest = _context(project, item)
+        context, manifest = _context(project, item, visual_only=direction.inputs.visual_only)
         context["target_duration_seconds"] = _target_duration(project)
         if not direction.approved or direction.needs_review or not _same_inputs(direction.inputs, manifest):
             raise WorkflowError("direction_inputs_outdated", "The approved direction no longer matches the confirmed inputs. Review and approve a current direction.", 422)
@@ -642,7 +685,7 @@ class PlanningService:
             pack.shots = [ProductionShot.model_validate(entry.model_dump()) for entry in response.shots]
         def change(current):
             current_item = _item(current, content_id)
-            _, latest = _context(current, current_item)
+            _, latest = _context(current, current_item, visual_only=direction.inputs.visual_only)
             if not _same_inputs(manifest, latest) or (current_item.approved_direction_id, current_item.approved_direction_revision) != (direction.id, direction.revision):
                 raise WorkflowError("generation_inputs_changed", "Production inputs changed during generation. Saved production work was preserved.")
             _require_direction_draft_clear(current, current_item, _direction(current_item, direction.id, direction.revision))

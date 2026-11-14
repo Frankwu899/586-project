@@ -60,6 +60,7 @@ class EvidenceBody(Mutation):
 class SelectionBody(Mutation):
     resource_ids: list[str] = Field(max_length=30)
     content_id: str | None = None
+    visual_only: bool = False
 
 
 class SeriesBody(Mutation):
@@ -75,6 +76,7 @@ class ContentBody(Mutation):
 
 class GenerateBody(Mutation):
     instruction: str = Field(default="", max_length=10000)
+    visual_only: bool = False
 
 
 class DirectionBody(Mutation):
@@ -162,12 +164,12 @@ class ProjectRuntime:
             self.store.update(project_id, None, running)
             callback()
         except Exception as exc:
-            from ..providers.base import ProviderError
-            from ..media import MediaError
-            safe = str(exc) if isinstance(exc, (WorkflowError, ProviderError, MediaError)) else "This operation could not finish. Saved work is intact; retry it."
+            from .speech_retry import public_failure
+            code, safe = public_failure(exc)
             def failed(project):
                 job = next(item for item in project.jobs if item.id == job_id)
                 job.status, job.progress, job.error, job.updated_at = "failed", "Failed", safe, now()
+                job.error_code = code
             self.store.update(project_id, None, failed)
         else:
             def completed(project):
@@ -179,6 +181,7 @@ class ProjectRuntime:
                 if job.kind == "recognize" and failed_children:
                     child = failed_children[-1]
                     job.status, job.progress, job.error = child.status, child.progress, child.error
+                    job.error_code = child.error_code
                 elif job.kind == "analyze" and failed_children:
                     job.status, job.progress = "partial", "Completed with source limitations"
                 elif resource is not None and resource.status in ("failed", "unsupported", "missing"):
@@ -219,7 +222,8 @@ def install_project_workspace(app, legacy_service):
 
     @router.get("/capabilities")
     def capabilities():
-        return {"version": "1.8.0", "model": "gpt-6.1-sol", "transcription_model": runtime.settings().transcription_model,
+        from ..release import release_info
+        return {**release_info(), "model": "gpt-6.1-sol", "transcription_model": runtime.settings().transcription_model,
                 "configured": bool(runtime.settings().api_key), "migration_errors": runtime.migration_errors,
                 "library_errors": getattr(runtime.store, "library_errors", []),
                 "discovery": "Reserved — awaiting Frank’s specification."}
@@ -348,7 +352,7 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/analyze", response_model=Project, status_code=202)
     def analyze(project_id: str, body: SelectionBody):
-        return runtime.submit(project_id, body.expected_version, "analyze", lambda: runtime.analysis.analyze(project_id, body.resource_ids, body.content_id), content_id=body.content_id)
+        return runtime.submit(project_id, body.expected_version, "analyze", lambda: runtime.analysis.analyze(project_id, body.resource_ids, body.content_id, visual_only=body.visual_only), content_id=body.content_id)
 
     @router.post("/{project_id}/series", response_model=Project)
     def series(project_id: str, body: SeriesBody):
@@ -360,11 +364,13 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/concepts/generate", response_model=Project, status_code=202)
     def concepts(project_id: str, body: GenerateBody):
-        return runtime.submit(project_id, body.expected_version, "concepts", lambda: runtime.planning.generate_concepts(project_id, None, body.instruction))
+        runtime.planning.preflight_generation(project_id, instruction=body.instruction, visual_only=body.visual_only)
+        return runtime.submit(project_id, body.expected_version, "concepts", lambda: runtime.planning.generate_concepts(project_id, None, body.instruction, visual_only=body.visual_only))
 
     @router.post("/{project_id}/contents/{content_id}/directions/generate", response_model=Project, status_code=202)
     def directions_generate(project_id: str, content_id: str, body: GenerateBody):
-        return runtime.submit(project_id, body.expected_version, "directions", lambda: runtime.planning.generate_directions(project_id, content_id, body.instruction), content_id=content_id)
+        runtime.planning.preflight_generation(project_id, content_id, body.instruction, visual_only=body.visual_only)
+        return runtime.submit(project_id, body.expected_version, "directions", lambda: runtime.planning.generate_directions(project_id, content_id, body.instruction, visual_only=body.visual_only), content_id=content_id)
 
     @router.post("/{project_id}/contents/{content_id}/directions", response_model=Project)
     def direction_create(project_id: str, content_id: str, body: DirectionBody):

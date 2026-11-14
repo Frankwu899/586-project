@@ -13,11 +13,14 @@ import shutil
 import sqlite3
 
 from ..models import TaskState
+from ..providers.base import ProviderError
 from ..workflow_errors import WorkflowError
-from .models import (BriefRevision, ContentItem, Direction, EvidenceEvent,
+from .models import (Analysis, BriefRevision, ContentItem, Direction, EvidenceEvent,
                      EvidenceRevision, Fact, InputManifest, ProductionPack,
-                     Project, Resource, Selection, SourceRef)
+                     Project, ReferenceStructure, Resource, Selection, SourceRef,
+                     StructureEdge, StructureNode)
 from .store import _digest
+from .speech_retry import public_failure
 
 _FIELDS = ("brand_company", "product", "target_audience", "platform", "communication_goal",
            "target_duration_seconds", "available_footage", "presenters", "locations", "tone",
@@ -78,6 +81,128 @@ def _snapshot(db, task_id):
 def _rows(snapshot, table):
     data = snapshot.get(table, {"columns": [], "rows": []})
     return [dict(zip(data["columns"], row, strict=True)) for row in data["rows"]]
+
+
+def _structure_reports(project, state, snapshot):
+    """Project genuine saved legacy graphs; never infer a graph from extraction."""
+    from ..structure_models import Workspace
+    saved = {}
+    # A failed replacement may retain its earlier successful graph in history.
+    for row in [*_rows(snapshot, "structure_history"), *_rows(snapshot, "structure_runs")]:
+        try:
+            workspace = Workspace.model_validate_json(row["payload"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        if workspace.task_id != state.task.task_id or not workspace.graph or workspace.status not in {"ready", "partial"}:
+            continue
+        previous = saved.get(workspace.structure_id)
+        if previous is None or workspace.version > previous.version:
+            saved[workspace.structure_id] = workspace
+    content_id = f"content_legacy_{hashlib.sha256(state.task.task_id.encode()).hexdigest()[:24]}"
+    if not any(item.id == content_id for item in project.contents):
+        return []
+    reports = []
+    for workspace in sorted(saved.values(), key=lambda value: value.updated_at):
+        resource = next((item for item in project.resources if item.id == workspace.video_id), None)
+        original = [item for item in state.analyses if item.video_id == workspace.video_id]
+        revision = next((index + 1 for index, item in enumerate(original)
+                         if item.analysis_id == workspace.analysis_ref.id and item.revision == workspace.analysis_ref.revision), None)
+        evidence = next((item for item in resource.evidence if item.revision == revision), None) if resource else None
+        if resource is None or evidence is None:
+            continue
+        events = {event.id: event for event in evidence.events}
+        external = {item.id: item for item in workspace.sources}
+        contexts = {item.id: item for item in workspace.contexts}
+        nodes = []
+        incomplete = False
+        for node in workspace.graph.nodes:
+            refs = []
+            for event_id in node.event_ids:
+                event = events.get(event_id)
+                if event is None:
+                    incomplete = True
+                    continue
+                refs.append(SourceRef(resource_id=resource.id, evidence_revision=revision,
+                    event_id=event.id, locator=node.label, excerpt=event.text,
+                    start_seconds=event.start_seconds, end_seconds=event.end_seconds))
+            for source_id in node.source_ids:
+                source = external.get(source_id)
+                if source:
+                    refs.append(SourceRef(url=source.url, locator=source.title, excerpt=source.claim))
+                else:
+                    incomplete = True
+            for context_id in node.context_ids:
+                context = contexts.get(context_id)
+                if context:
+                    refs.append(SourceRef(locator=f"Archived user context: {context.id}", excerpt=context.text))
+                else:
+                    incomplete = True
+            if not refs:
+                incomplete = True
+                continue
+            nodes.append(StructureNode(id=node.id, label=node.label, detail=node.explanation,
+                kind="interpretation" if node.kind == "inference" else node.kind, sources=refs))
+        if not nodes:
+            continue
+        node_ids = {node.id for node in nodes}
+        edges = [StructureEdge(source=edge.from_node, target=edge.to_node, label=edge.relation,
+                    explanation=edge.explanation) for edge in workspace.graph.edges
+                    if edge.from_node in node_ids and edge.to_node in node_ids]
+        sources = [source for node in nodes for source in node.sources]
+        graph = ReferenceStructure(resource_id=resource.id, summary=workspace.graph.summary, nodes=nodes, edges=edges)
+        limits = ["Restored saved legacy Structure analysis. Original graph and full history remain in the local legacy archive."]
+        if incomplete:
+            limits.append("Some archived graph sources could not be resolved; unsupported nodes/links remain in the archive instead of receiving invented timestamps.")
+        if workspace.origin == "sample":
+            limits.append("This is an explicitly fictional sample analysis, not a live provider result.")
+        if workspace.research_note:
+            limits.append(workspace.research_note)
+        reports.append(Analysis(id="analysis_legacy_structure_" + hashlib.sha256(
+            f"{workspace.structure_id}:{workspace.graph_revision}".encode()).hexdigest()[:24],
+            content_id=content_id, conclusion=workspace.graph.summary,
+            findings=[method.title for method in workspace.graph.methods][:5],
+            opportunities=[method.explanation for method in workspace.graph.methods],
+            inputs=InputManifest(resource_ids=[resource.id], evidence_revisions={resource.id: revision},
+                                 instruction_version="legacy-structure"),
+            sources=sources, structures=[graph], limitations=limits,
+            needs_review=workspace.outdated or incomplete, created_at=workspace.updated_at))
+    return reports
+
+
+def _restore_extraction_diagnostics(project, state):
+    changed = False
+    for resource in project.resources:
+        originals = [item for item in state.analyses if item.video_id == resource.id]
+        for revision, original in enumerate(originals, start=1):
+            evidence = next((item for item in resource.evidence if item.revision == revision), None)
+            if evidence is None:
+                continue
+            affected = [evidence]
+            if revision == len(originals):
+                # 1.8 correction revisions inherit their extraction processor.
+                # Stop at the first actual recognition result: its processor is
+                # different, and its success must not be undone by old failures.
+                for descendant in sorted(resource.evidence, key=lambda item: item.revision):
+                    if descendant.revision <= revision:
+                        continue
+                    if descendant.processor != evidence.processor or not descendant.correction_note:
+                        break
+                    affected.append(descendant)
+            for channel, error in original.extraction_failures.items():
+                code, _ = public_failure(ProviderError(error.code, error.message))
+                for item in affected:
+                    if channel not in item.diagnostics:
+                        item.diagnostics[channel] = code
+                        changed = True
+                    # Retained partial speech can have observations plus a
+                    # failed later chunk. The archived failure is authoritative.
+                    if item.coverage.get(channel) != "failed":
+                        item.coverage[channel] = "failed"
+                        changed = True
+                    if item is resource.evidence[-1] and resource.status == "ready":
+                        resource.status = "partial"
+                        changed = True
+    return changed
 
 
 def _project(state: TaskState, snapshot: dict, media_root: Path):
@@ -147,7 +272,14 @@ def _project(state: TaskState, snapshot: dict, media_root: Path):
                     text=event.text or event.description or "", start_seconds=start, end_seconds=end,
                     start_frame=event.start_frame, end_frame=event.end_frame))
             revision = len(resource.evidence) + 1
-            resource.evidence.append(EvidenceRevision(revision=revision, events=events, coverage=analysis.coverage.model_dump(),
+            coverage = analysis.coverage.model_dump()
+            diagnostics = {}
+            for channel, error in analysis.extraction_failures.items():
+                coverage[channel] = "failed"
+                code, message = public_failure(ProviderError(error.code, error.message))
+                diagnostics[channel] = code
+                limitations.append(message)
+            resource.evidence.append(EvidenceRevision(revision=revision, events=events, coverage=coverage, diagnostics=diagnostics,
                 limitations=limitations, processor=analysis.origin.description, created_at=analysis.created_at.isoformat(),
                 reviewed=analysis.review.user_confirmed, correction_note="Imported correction history is preserved in legacy/task-state.json." if analysis.corrections else None))
             evidence_refs[(analysis.analysis_id, analysis.revision)] = (video.video_id, revision)
@@ -192,6 +324,7 @@ def _project(state: TaskState, snapshot: dict, media_root: Path):
         content.approved_direction_id, content.approved_direction_revision = task.selected_direction.id, task.selected_direction.revision
     project.contents.append(content)
     project.active_content_id = content.id
+    project.analyses.extend(_structure_reports(project, state, snapshot))
     paired = set()
     for brief in state.production_briefs:
         board = next((item for item in state.storyboards if brief.bundle_id and item.bundle_id == brief.bundle_id and item.direction_ref == brief.direction_ref and item.brief_ref == brief.brief_ref and item.analysis_ref == brief.analysis_ref), None)
@@ -245,6 +378,23 @@ def _import_one(store, legacy_service, db, task_id, payload):
         existing = store.get(identifier, include_trashed=True)
         if existing.legacy_task_id != task_id:
             raise WorkflowError("legacy_destination_conflict", "The destination belongs to another project.", 409)
+        # 1.8.0 archived Structure runs but did not project them into Analysis.
+        # Recover only that frozen archive, never resync later legacy edits.
+        archive = store.resolve_path(identifier, "legacy/related-records.json")
+        saved_state = store.resolve_path(identifier, "legacy/task-state.json")
+        if archive.is_file() and saved_state.is_file():
+            records = json.loads(archive.read_text(encoding="utf-8"))
+            old_state = TaskState.model_validate_json(saved_state.read_text(encoding="utf-8"))
+            candidates = _structure_reports(existing, old_state, records)
+            def backfill(current):
+                known = {item.id for item in current.analyses}
+                missing = [item for item in candidates if item.id not in known]
+                changed = _restore_extraction_diagnostics(current, old_state)
+                if not missing and not changed:
+                    return False
+                # Existing successful 1.8 analysis stays current.
+                current.analyses = [*missing, *current.analyses]
+            store._update(identifier, None, backfill, include_trashed=True)
         return None
     state = TaskState.model_validate_json(payload)
     snapshot = _snapshot(db, task_id)

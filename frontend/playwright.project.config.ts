@@ -4,11 +4,12 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const dataDirectory = mkdtempSync(join(tmpdir(), 'video-anatomy-project-e2e-'));
+const dataDirectory = process.env.VIDEO_ANATOMY_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'video-anatomy-project-e2e-'));
+process.env.VIDEO_ANATOMY_E2E_DATA_DIR = dataDirectory;
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 
 export default defineConfig({
-  testDir: './e2e', testMatch: '**/project-workspace.spec.ts',
+  testDir: './e2e', testMatch: ['**/project-workspace.spec.ts', '**/project-regressions.spec.ts'],
   outputDir: 'test-results/projects', timeout: 90_000,
   expect: { timeout: 15_000 }, fullyParallel: false, workers: 1, reporter: 'list',
   use: {
