@@ -52,7 +52,7 @@ def test_invalid_or_masked_key_is_rejected_before_network_or_budget(key, tmp_pat
     (403, "unsupported_country_region_territory", "rejected", "provider_region_restricted"),
     (403, "organization_deactivated", "rejected", "provider_account_disabled"),
     (429, "insufficient_quota", "unverified", "provider_quota"),
-    (429, "rate_limit_exceeded", "unverified", "provider_temporarily_unavailable"),
+    (429, "rate_limit_exceeded", "unverified", "provider_rate_limit"),
     (503, None, "unverified", "provider_temporarily_unavailable"),
 ])
 def test_check_distinguishes_invalid_key_permission_quota_and_service_failure_without_raw_body(status, code, expected_status, expected_code):

@@ -50,6 +50,9 @@ class Message(Model):
     resource_ids: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
     status: Literal["saved", "failed"] = "saved"
+    reply_to_message_id: str | None = None
+    diagnostics: dict[str, str] = Field(default_factory=dict)
+    retryable: bool = False
 
 
 class BriefRevision(Model):
@@ -84,6 +87,7 @@ class EvidenceEvent(Model):
 
 class EvidenceRevision(Model):
     diagnostics: dict[str, str] = Field(default_factory=dict)
+    support_details: list[dict[str, str]] = Field(default_factory=list)
     revision: int = Field(ge=1)
     events: list[EvidenceEvent] = Field(default_factory=list)
     coverage: dict[str, str] = Field(default_factory=dict)
@@ -268,6 +272,9 @@ class Job(Model):
     kind: str
     resource_id: str | None = None
     content_id: str | None = None
+    message_id: str | None = None
+    diagnostics: dict[str, str] = Field(default_factory=dict)
+    support_details: list[dict[str, str]] = Field(default_factory=list)
     status: Literal["queued", "running", "succeeded", "partial", "failed"] = "queued"
     progress: str = "Queued"
     error: str | None = None

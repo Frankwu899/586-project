@@ -6,12 +6,16 @@ It cannot establish permission to generate Responses or transcribe audio.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+import math
 from typing import Literal
 
 import httpx
 
 from .base import ProviderError
 from .config import ProviderSettings
+from .diagnostics import safe_diagnostics
 
 
 @dataclass(frozen=True)
@@ -34,6 +38,24 @@ def normalize_api_key(value: str) -> str:
     return key
 
 
+def retry_after(response: httpx.Response) -> float | None:
+    """Honor seconds or an HTTP date; callers may defer long waits, never shorten them."""
+    value = response.headers.get("retry-after")
+    if not value or len(value) > 128:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        try:
+            parsed = parsedate_to_datetime(value)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            seconds = (parsed - datetime.now(timezone.utc)).total_seconds()
+        except (ValueError, TypeError, OverflowError):
+            return None
+    return max(0, seconds) if math.isfinite(seconds) and seconds >= 0 else None
+
+
 def provider_http_error(response: httpx.Response) -> ProviderError:
     """Map only status and allowlisted codes; never expose a raw provider body."""
     try:
@@ -41,26 +63,45 @@ def provider_http_error(response: httpx.Response) -> ProviderError:
         error = body.get("error", {}) if isinstance(body, dict) else {}
         code = error.get("code") if isinstance(error, dict) else None
         code = code if isinstance(code, str) else None
+        kind = error.get("type") if isinstance(error, dict) else None
+        kind = kind if isinstance(kind, str) else None
     except ValueError:
-        code = None
+        code, kind = None, None
     status = response.status_code
+    details = safe_diagnostics({"http_status": status, "provider_code": code,
+        "provider_type": kind, "provider_request_id": response.headers.get("x-request-id")})
+
+    def failure(name, message, transient=False):
+        return ProviderError(name, message, transient, diagnostics=details,
+                             retry_after_seconds=retry_after(response) if transient else None)
+
     if code == "unsupported_country_region_territory":
-        return ProviderError("provider_region_restricted", "OpenAI reports that this region is not supported. Check the account's supported region and contact OpenAI support.")
+        return failure("provider_region_restricted", "OpenAI reports that this region is not supported. Check the account's supported region and contact OpenAI support.")
     if code in {"organization_deactivated", "account_deactivated"}:
-        return ProviderError("provider_account_disabled", "OpenAI reports that this account or organization is inactive. Check the account or contact OpenAI support.")
+        return failure("provider_account_disabled", "OpenAI reports that this account or organization is inactive. Check the account or contact OpenAI support.")
     if status == 401:
-        return ProviderError("provider_authentication", "OpenAI rejected the API credential (HTTP 401). Replace it in API settings with a complete, active project secret key.")
-    if code in {"insufficient_quota", "billing_hard_limit_reached"}:
-        return ProviderError("provider_quota", "OpenAI reports insufficient credit or a billing limit. Check billing for the project that owns this API key.")
+        return failure("provider_authentication", "OpenAI rejected the API credential (HTTP 401). Replace it in API settings with a complete, active project secret key.")
+    if code == "credit_balance_exhausted":
+        return failure("provider_credit_balance_exhausted", "OpenAI reports no prepaid API credit remaining. Check the account's API billing and add credits before retrying.")
+    if code == "project_spend_limit_exceeded":
+        return failure("provider_project_spend_limit", "The API project reached its spend limit. Check that project's enforced spend limit before retrying.")
+    if code == "organization_spend_limit_exceeded":
+        return failure("provider_organization_spend_limit", "The API organization reached its spend limit. Check the organization's enforced spend limit before retrying.")
+    if code == "organization_usage_limit_exceeded":
+        return failure("provider_organization_usage_limit", "The API organization reached its approved usage limit. Check the organization's usage limit or request an increase before retrying.")
+    if code in {"insufficient_quota", "billing_hard_limit_reached"} or kind == "insufficient_quota":
+        return failure("provider_quota", "OpenAI reports insufficient credit or a billing limit. Check API billing and usage limits for the project that owns this key before retrying.")
     if code == "model_not_found":
-        return ProviderError("provider_model_access", "OpenAI could not find or allow access to the configured model. Check project model access and the selected model.")
+        return failure("provider_model_access", "OpenAI could not find or allow access to the configured model. Check project model access and the selected model.")
     if status == 403:
-        return ProviderError("provider_permission", "OpenAI denied this request (HTTP 403). Check this project's key permissions, Responses access and access to the selected models.")
+        return failure("provider_permission", "OpenAI denied this request (HTTP 403). Check the configured key's permissions for this endpoint and model.")
     if 300 <= status < 400:
-        return ProviderError("provider_unexpected_redirect", "The OpenAI connection returned an unexpected redirect. Check the network connection; the credential was not forwarded.")
+        return failure("provider_unexpected_redirect", "The OpenAI connection returned an unexpected redirect. Check the network connection; the credential was not forwarded.")
+    if status == 429 and (code in {"rate_limit_exceeded", "slow_down"} or kind == "rate_limit_error"):
+        return failure("provider_rate_limit", "OpenAI is temporarily throttling requests. Wait before retrying.", True)
     transient = status in (408, 409, 429) or status >= 500
-    return ProviderError("provider_temporarily_unavailable" if transient else "provider_request_rejected",
-                         "OpenAI is temporarily unavailable or rate limited; retry later." if transient
+    return failure("provider_temporarily_unavailable" if transient else "provider_request_rejected",
+                         "OpenAI could not complete this request. Wait and retry; this response does not identify a billing cause." if transient
                          else "OpenAI rejected the configured model or request. Check model and API settings.", transient)
 
 
@@ -116,9 +157,9 @@ def check_openai_connection(settings: ProviderSettings, *, client: httpx.Client 
         missing = tuple(sorted(configured - visible))
         if missing:
             return ConnectionCheck("unverified", "provider_models_unverified",
-                "OpenAI accepted the key, but some configured models were not listed. Check project model access. Responses and Audio Transcriptions permissions have not been tested.", missing)
+                "The Models lookup accepted the key, but some configured models were not listed. Check project model access. Paid generation, transcription permissions and API billing have not been tested.", missing)
         return ConnectionCheck("verified", "provider_connection_verified",
-            "OpenAI accepted the key and listed the configured models. Responses and Audio Transcriptions permissions have not been tested. No analysis was run.")
+            "The Models lookup accepted the key and listed the configured models. Paid generation, transcription permissions and API billing have not been tested. No analysis was run.")
     finally:
         if owned:
             client.close()

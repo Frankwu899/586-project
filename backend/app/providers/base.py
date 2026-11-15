@@ -8,9 +8,12 @@ from typing import Any, Protocol
 class ProviderError(ValueError):
     """Only static, operator-actionable messages may cross the API boundary."""
 
-    def __init__(self, code: str, message: str, retryable: bool = False):
+    def __init__(self, code: str, message: str, retryable: bool = False, *,
+                 diagnostics: dict | None = None, retry_after_seconds: float | None = None):
         super().__init__(message)
         self.code, self.message, self.retryable = code, message, retryable
+        self.diagnostics = diagnostics or {}
+        self.retry_after_seconds = retry_after_seconds
 
 
 @dataclass(frozen=True)

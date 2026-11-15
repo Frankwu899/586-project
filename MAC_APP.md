@@ -1,4 +1,4 @@
-# Video Anatomy 1.8.1 for your Mac
+# Video Anatomy 1.8.2 for your Mac
 
 This is the shared testing candidate. Read **RELEASE NOTES.md** for the testing
 checklist and record the version/commit shown in About with every bug report.

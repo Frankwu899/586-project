@@ -66,22 +66,50 @@ class ProjectStore:
         with sqlite3.connect(self.catalog_path) as db:
             db.execute("CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, title TEXT NOT NULL, updated_at TEXT NOT NULL, trashed_at TEXT)")
         for project in self.list(include_trashed=True):
+            # 1.8.1 retained failed messages but had no explicit turn identity.
+            # Only the latest, unambiguously failed reply may gain a retry; a
+            # completed or superseded historical request must never be replayed.
+            latest_user = next((message for message in reversed(project.messages) if message.role == "user"), None)
+            latest_reply = next((message for message in reversed(project.messages) if message.role == "assistant"), None)
+            legacy_failed = (latest_user is not None and latest_reply is not None
+                and latest_reply.status == "failed" and latest_reply.reply_to_message_id is None
+                and project.messages.index(latest_reply) > project.messages.index(latest_user)
+                and latest_user.id not in project.editor_drafts.get("conversation_turns", {})
+                and not project.editor_drafts.get("conversation_requests"))
             if (any(job.status in {"queued", "running"} for job in project.jobs)
                     or any(resource.status == "processing" for resource in project.resources)
-                    or project.editor_drafts.get("conversation_requests")):
+                    or project.editor_drafts.get("conversation_requests") or legacy_failed):
                 def recover(state):
+                    if legacy_failed:
+                        user_id, reply_id = latest_user.id, latest_reply.id
+                        reply = next(message for message in state.messages if message.id == reply_id)
+                        reply.reply_to_message_id, reply.retryable = user_id, True
+                        reply.diagnostics.update(outcome="failed", error_code="legacy_conversation_failure",
+                                                 stage="upgrade_recovery", project_id=state.id, message_id=user_id)
+                        state.editor_drafts.setdefault("conversation_turns", {})[user_id] = {
+                            "status": "failed", "attempt_count": 1, "retryable": True,
+                            "error_code": "legacy_conversation_failure"}
                     for job in state.jobs:
                         if job.status in {"queued", "running"}:
                             job.status = "failed"
                             job.progress = "Interrupted"
                             job.error = "The application stopped before this operation completed. Saved work is retained; retry explicitly."
+                            job.error_code = "conversation_interrupted" if job.kind == "conversation" else "operation_interrupted"
                             job.updated_at = now()
                     for resource in state.resources:
                         if resource.status == "processing":
                             resource.status = "partial" if resource.evidence or resource.blocks else "failed"
                             resource.error = "Processing was interrupted. Completed evidence is retained; retry explicitly."
-                    if state.editor_drafts.pop("conversation_requests", None):
-                        state.messages.append(Message(role="assistant", status="failed",
+                    requests = state.editor_drafts.pop("conversation_requests", {})
+                    for message_id, request in requests.items():
+                        turns = state.editor_drafts.setdefault("conversation_turns", {})
+                        turns[message_id] = {"status": "failed", "attempt_count": request.get("attempt_count", 1),
+                                             "retryable": True, "error_code": "conversation_interrupted"}
+                        state.messages.append(Message(role="assistant", status="failed", retryable=True,
+                            reply_to_message_id=message_id,
+                            diagnostics={"outcome": "failed", "error_code": "conversation_interrupted",
+                                         "stage": "application_restart", "timestamp": now(), "project_id": state.id,
+                                         "message_id": message_id},
                             text="Assistance was interrupted when the application stopped. Your message and saved work are retained; retry explicitly."))
                 self._update(project.id, None, recover, include_trashed=True)
 

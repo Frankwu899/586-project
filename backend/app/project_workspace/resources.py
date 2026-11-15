@@ -360,7 +360,8 @@ class ResourceService:
         if len(audios) > 1:
             raise ValueError("Multiple audio streams are unsupported. Export one intended audio track.")
         metadata = {"duration_seconds": duration, "format_name": data.get("format", {}).get("format_name"),
-                    "audio_codec": audios[0].get("codec_name") if audios else None, "has_audio": bool(audios)}
+                    "audio_codec": audios[0].get("codec_name") if audios else None, "has_audio": bool(audios),
+                    "audio_track_count": len(audios)}
         if resource.kind == "video":
             if len(videos) != 1:
                 raise ValueError("Video intake requires exactly one video stream.")
@@ -406,6 +407,10 @@ class ResourceService:
             if videos or not audios:
                 raise ValueError("Audio intake requires an audio track without a video stream.")
             metadata.update({"sample_rate": audios[0].get("sample_rate"), "channels": audios[0].get("channels")})
+            origin = float(data.get("format", {}).get("start_time", 0))
+            if not math.isfinite(origin):
+                raise ValueError("Audio intake could not establish a finite source start time.")
+            metadata["media_start_seconds"] = origin
             _run([settings.ffmpeg, "-hide_banner", "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe", "-i", str(path), "-map", "0:a:0", "-f", "null", "-"], settings.decode_timeout_seconds)
             resource.playback_path = resource.original_path
         resource.duration_seconds, resource.media_metadata = duration, metadata

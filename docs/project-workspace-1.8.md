@@ -1,5 +1,15 @@
 # Video Anatomy 1.8 project workspace
 
+For the current 1.8.2 conversation/transcription reliability candidate, read
+[release notes](releases/1.8.2.md) and [verification handoff](handoff/project-workspace-1.8.2.md).
+Overview now validates conversational replies and individual fact proposals
+separately. Persisted turn state and correlated jobs distinguish partial replies
+from failures; explicit retry reuses a failed user message without replaying a
+completed turn. Evidence validation uses complete sentences and attached
+qualifications instead of requiring a whole source line. Transcript preparation,
+partial segment/chunk recovery and sanitized diagnostics retain the separate
+Whisper capability and existing media limits.
+
 For the 1.8.1 candidate's changes to analysis graphs/current-result presentation,
 legacy Structure recovery, exploratory generation and speech retries, see
 [release notes](releases/1.8.1.md) and [verification handoff](handoff/project-workspace-1.8.1.md).
@@ -319,6 +329,7 @@ The new prefix is `/api/projects`; legacy `/api/tasks` remains separate.
 | `GET/PATCH /{project_id}` | Read/refresh or save metadata/navigation/composer/editor drafts. |
 | `POST /{id}/duplicate`, `/trash`, `/restore`, `/cache/clear` | Project lifecycle and disposable-cache operations. |
 | `POST /{id}/messages` | Save a message and start background assistance. |
+| `POST /{id}/messages/{message_id}/retry` | Explicitly retry a failed turn against current context without duplicating its user message or replaying a completed turn. |
 | `POST /{id}/brief/draft`, `/brief/apply` | Save working facts or explicitly adopt confirmed context. |
 | `POST /{id}/resources` | Multipart local upload and background extraction. |
 | `GET /{id}/resources/{rid}/file` | Original, playback or thumbnail representation. |

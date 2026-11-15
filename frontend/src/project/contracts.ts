@@ -18,6 +18,8 @@ export type Text = string;
 export type ResourceIds = string[];
 export type CreatedAt1 = string;
 export type Status = "saved" | "failed";
+export type ReplyToMessageId = string | null;
+export type Retryable = boolean;
 export type Messages = Message[];
 export type Id2 = string;
 export type Key = string;
@@ -70,6 +72,9 @@ export type ExtractionHistory = {
 export type DurationSeconds = number | null;
 export type ThumbnailPath = string | null;
 export type PlaybackPath = string | null;
+export type SupportDetails = {
+  [k: string]: string;
+}[];
 export type Revision1 = number;
 export type Id5 = string;
 export type Kind1 = "speech" | "on_screen_text" | "visual" | "sound";
@@ -179,6 +184,10 @@ export type Id13 = string;
 export type Kind3 = string;
 export type ResourceId2 = string | null;
 export type ContentId2 = string | null;
+export type MessageId1 = string | null;
+export type SupportDetails1 = {
+  [k: string]: string;
+}[];
 export type Status3 = "queued" | "running" | "succeeded" | "partial" | "failed";
 export type Progress = string;
 export type Error1 = string | null;
@@ -221,6 +230,12 @@ export interface Message {
   resource_ids: ResourceIds;
   created_at: CreatedAt1;
   status: Status;
+  reply_to_message_id: ReplyToMessageId;
+  diagnostics: Diagnostics;
+  retryable: Retryable;
+}
+export interface Diagnostics {
+  [k: string]: string;
 }
 export interface Fact {
   id: Id2;
@@ -283,7 +298,8 @@ export interface MediaMetadata {
   [k: string]: unknown;
 }
 export interface EvidenceRevision1 {
-  diagnostics: Diagnostics;
+  diagnostics: Diagnostics1;
+  support_details: SupportDetails;
   revision: Revision1;
   events: Events;
   coverage: Coverage;
@@ -293,7 +309,7 @@ export interface EvidenceRevision1 {
   reviewed: Reviewed;
   correction_note: CorrectionNote;
 }
-export interface Diagnostics {
+export interface Diagnostics1 {
   [k: string]: string;
 }
 export interface EvidenceEvent {
@@ -430,11 +446,17 @@ export interface Job {
   kind: Kind3;
   resource_id: ResourceId2;
   content_id: ContentId2;
+  message_id: MessageId1;
+  diagnostics: Diagnostics2;
+  support_details: SupportDetails1;
   status: Status3;
   progress: Progress;
   error: Error1;
   created_at: CreatedAt8;
   updated_at: UpdatedAt1;
+}
+export interface Diagnostics2 {
+  [k: string]: string;
 }
 export interface EditorDrafts {
   [k: string]: {

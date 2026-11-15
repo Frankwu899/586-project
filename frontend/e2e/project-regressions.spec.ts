@@ -133,7 +133,7 @@ test('current analysis survives tabs, replacement and failure while source graph
   await reopened.reload();
   await reopened.getByLabel('Analysis scope', { exact: true }).selectOption('');
   await expect(reopened.getByText('Analysis B replacement takeaway.', { exact: true })).toBeVisible();
-  await expect(reopened.getByText(/service is temporarily busy/i).first()).toBeVisible();
+  await expect(reopened.getByText(/service is temporarily busy|service could not complete/i).first()).toBeVisible();
   await reopened.getByLabel('Analysis scope', { exact: true }).selectOption(project.contents[0].id);
   await expect(reopened.getByText('Independent content result.', { exact: true })).toBeVisible();
   await reopened.getByLabel('Reference structure', { exact: true }).selectOption(project.resources[1].id);

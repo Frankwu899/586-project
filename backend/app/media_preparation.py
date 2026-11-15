@@ -56,6 +56,35 @@ class AudioChunk:
     end_seconds: float
 
 
+def validate_audio_chunk(chunk: AudioChunk, *, source_duration: float | None = None) -> dict:
+    """Validate decoded samples as well as the source interval before a paid call.
+
+    Fifty milliseconds allows ordinary container/decoder endpoint rounding. It
+    never permits an empty sample payload. A valid silent waveform is accepted;
+    preparation alone cannot determine whether the original contains speech.
+    """
+    message = "Prepared audio is invalid. Rebuild the source audio and retry transcription."
+    try:
+        start, end = chunk.start_seconds, chunk.end_seconds
+        if (not math.isfinite(start) or not math.isfinite(end) or start < 0 or end <= start
+                or (source_duration is not None and
+                    (not math.isfinite(source_duration) or source_duration <= 0 or end > source_duration + 1e-6))):
+            raise ValueError("invalid source interval")
+        with wave.open(str(chunk.path), "rb") as audio:
+            channels, width, rate = audio.getnchannels(), audio.getsampwidth(), audio.getframerate()
+            frames = audio.getnframes()
+            if ((channels, width, rate) != (1, 2, 16000) or audio.getcomptype() != "NONE"
+                    or frames <= 0 or abs(frames / rate - (end - start)) > .05 + 1e-9):
+                raise ValueError("invalid PCM format or duration")
+            samples = audio.readframes(frames)
+            if len(samples) != frames * width * channels:
+                raise ValueError("truncated PCM samples")
+        return {"sample_rate": rate, "channels": channels, "sample_width": width,
+                "sample_count": frames, "duration_seconds": frames / rate}
+    except (OSError, EOFError, wave.Error, TypeError, ValueError) as exc:
+        raise MediaError("audio_preparation_invalid", message) from exc
+
+
 @dataclass(frozen=True)
 class PreparedMedia:
     frames: tuple[PreparedFrame, ...]
@@ -123,10 +152,18 @@ def _prepare_audio(path: Path, video: VideoAsset, directory: Path,
         "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav", str(aligned),
     ], media_settings.decode_timeout_seconds)
     sample_rate = 16000
-    with wave.open(str(aligned), "rb") as source:
-        if (source.getnchannels(), source.getsampwidth(), source.getframerate()) != (1, 2, sample_rate):
-            raise MediaError("media_preparation_failed", "Audio extraction did not produce the required mono 16 kHz PCM.")
-        pcm = source.readframes(source.getnframes())
+    try:
+        with wave.open(str(aligned), "rb") as source:
+            if ((source.getnchannels(), source.getsampwidth(), source.getframerate()) != (1, 2, sample_rate)
+                    or source.getcomptype() != "NONE"):
+                raise ValueError("invalid prepared PCM format")
+            sample_count = source.getnframes()
+            pcm = source.readframes(sample_count)
+            if sample_count <= 0 or len(pcm) != sample_count * 2:
+                raise ValueError("empty or truncated prepared audio")
+    except (OSError, EOFError, wave.Error, ValueError) as exc:
+        raise MediaError("audio_preparation_invalid",
+                         "Audio preparation produced no complete PCM samples. Reprocess the source audio before transcription.") from exc
     # Pad absent samples at the tail to the video interval; these are measured
     # track gaps, not claimed silence outside the video or a substitute for ASR.
     total_samples = math.ceil(duration * sample_rate)
@@ -139,7 +176,9 @@ def _prepare_audio(path: Path, video: VideoAsset, directory: Path,
         with wave.open(str(target), "wb") as output:
             output.setparams((1, 2, sample_rate, 0, "NONE", "not compressed"))
             output.writeframes(pcm[first * 2:stop * 2])
-        chunks.append(AudioChunk(target, first / sample_rate, min(duration, stop / sample_rate)))
+        chunk = AudioChunk(target, first / sample_rate, min(duration, stop / sample_rate))
+        validate_audio_chunk(chunk, source_duration=duration)
+        chunks.append(chunk)
     return tuple(chunks)
 
 

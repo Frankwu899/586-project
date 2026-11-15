@@ -15,7 +15,8 @@ LOCAL_FILES = {"LOCAL_API.md", "MAC_APP.md", "requirements.lock", "requirements.
 LOCAL_DIRS = {"backend", "scripts", "contracts", "data", "desktop"}
 RUNTIME_SKILL = ("skills", "video-anatomy-professional-generation")
 RELEASE_DOCS = {"docs/project-workspace-1.8.md", "docs/handoff/project-workspace-1.8.md",
-                "docs/releases/1.8.1.md", "docs/handoff/project-workspace-1.8.1.md"}
+                "docs/releases/1.8.2.md", "docs/handoff/project-workspace-1.8.2.md",
+                "docs/decisions/provider-reliability-1.8.2.md"}
 EXCLUDED_PARTS = {".git", ".agents", ".local-data", ".venv", "node_modules", "__pycache__",
                   "runtime", "release", "build", "test-results", "playwright-report"}
 
@@ -26,7 +27,7 @@ def distributable(path: Path, *, local_api: bool) -> bool:
         return False
     if path.name.startswith(".env") and path.name != ".env.example":
         return False
-    if path.suffix.lower() in {".pem", ".key", ".p12", ".pfx", ".sqlite3", ".db", ".mp4", ".mov", ".webm", ".pyc", ".zip"}:
+    if path.suffix.lower() in {".pem", ".key", ".p12", ".pfx", ".sqlite3", ".db", ".mp4", ".mov", ".webm", ".mkv", ".m4v", ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".pyc", ".zip"}:
         return False
     if local_api:
         if relative.as_posix() == "scripts/package_citation_fix.py":
@@ -63,7 +64,7 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     bundle_root = (Path("Video Anatomy.app/Contents/Resources/app") if args.mac_app else
                    Path("video-anatomy-local" if args.local_api else "video-anatomy-demo"))
-    manifest = {"application_version": "1.8.1", "source_commit": subprocess.check_output(
+    manifest = {"application_version": "1.8.2", "source_commit": subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "private_reference_included": bool(args.private_reference), "files": {}}
     with zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -86,7 +87,7 @@ def main():
                 info.compress_type = zipfile.ZIP_DEFLATED
                 archive.writestr(info, content)
             archive.writestr("READ ME FIRST.md", (ROOT / "MAC_APP.md").read_text())
-            archive.writestr("RELEASE NOTES.md", (ROOT / "docs/releases/1.8.1.md").read_text())
+            archive.writestr("RELEASE NOTES.md", (ROOT / "docs/releases/1.8.2.md").read_text())
     print(f"Local workspace bundle: {args.output.resolve()}")
     print("Original media, runtime libraries, API keys and saved tasks are excluded unless an owner-supplied reference was explicitly requested.")
 

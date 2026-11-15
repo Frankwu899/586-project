@@ -347,3 +347,6 @@ html.va-project-mode body, html.va-project-mode #root { height: auto; min-height
   .va-app .va-export-menu > div { position: static; width: 100%; min-width: 0; max-width: 100%; margin-top: 6px; }
   .va-app .va-export-menu button { white-space: normal; overflow-wrap: anywhere; }
 }
+
+.va-message-recovery { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+.va-support .va-actions { flex-wrap: wrap; gap: 8px; }

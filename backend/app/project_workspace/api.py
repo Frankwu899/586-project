@@ -7,6 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 import mimetypes
 import threading
+import time
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, Query, UploadFile
@@ -135,8 +136,16 @@ class ProjectRuntime:
                        creative_model="gpt-6.1-sol", m2_model="gpt-6.1-sol",
                        structure_model="gpt-6.1-sol", research_model="gpt-6.1-sol")
 
-    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None):
-        job = Job(kind=kind, resource_id=resource_id, content_id=content_id)
+    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None):
+        from ..release import release_info
+        job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id)
+        job.diagnostics = {"application_version": release_info()["version"],
+                           "source_commit": release_info()["source_commit"] or "unknown",
+                           "operation": kind, "stage": "queued", "timestamp": job.created_at,
+                           "project_id": project_id, "job_id": job.id}
+        for key, value in (("resource_id", resource_id), ("message_id", message_id)):
+            if value:
+                job.diagnostics[key] = value
         with self.lock:
             def admit(project):
                 if any(item.status in ("queued", "running") and item.kind == kind
@@ -156,10 +165,12 @@ class ProjectRuntime:
             return admitted
 
     def _run(self, project_id, job_id, callback):
+        started = time.monotonic()
         before_jobs = {job.id for job in self.store.get(project_id).jobs}
         def running(project):
             job = next(item for item in project.jobs if item.id == job_id)
             job.status, job.progress, job.updated_at = "running", "Processing", now()
+            job.diagnostics.update(stage="running", timestamp=job.updated_at)
         try:
             self.store.update(project_id, None, running)
             callback()
@@ -170,10 +181,35 @@ class ProjectRuntime:
                 job = next(item for item in project.jobs if item.id == job_id)
                 job.status, job.progress, job.error, job.updated_at = "failed", "Failed", safe, now()
                 job.error_code = code
+                job.diagnostics.update(stage="completed", outcome="failed", error_code=code,
+                                       timestamp=job.updated_at, elapsed_seconds=f"{time.monotonic() - started:.3f}")
+                if job.kind == "conversation" and job.message_id:
+                    reply = next((message for message in reversed(project.messages)
+                                  if message.reply_to_message_id == job.message_id), None)
+                    if reply:
+                        reply.diagnostics["job_id"] = job.id
+                        job.diagnostics.update(reply.diagnostics)
+                        job.error = reply.text
             self.store.update(project_id, None, failed)
         else:
             def completed(project):
                 job = next(item for item in project.jobs if item.id == job_id)
+                if job.kind == "conversation" and job.message_id:
+                    turn = project.editor_drafts.get("conversation_turns", {}).get(job.message_id, {})
+                    outcome = turn.get("status", "failed")
+                    job.status = outcome if outcome in ("succeeded", "partial", "failed") else "failed"
+                    job.progress = {"succeeded": "Complete", "partial": "Reply saved with limitations", "failed": "Reply needs attention"}[job.status]
+                    reply = next((message for message in reversed(project.messages)
+                                  if message.reply_to_message_id == job.message_id), None)
+                    job.error_code = turn.get("error_code")
+                    if reply:
+                        job.diagnostics.update(reply.diagnostics)
+                        reply.diagnostics["job_id"] = job.id
+                        job.error = reply.text if job.status == "failed" else None
+                    job.updated_at = now()
+                    job.diagnostics.update(outcome=job.status, timestamp=job.updated_at,
+                                           elapsed_seconds=f"{time.monotonic() - started:.3f}")
+                    return
                 resource = next((r for r in project.resources if r.id == job.resource_id), None)
                 failed_children = [child for child in project.jobs if child.id not in before_jobs
                                    and child.kind == "reference_extraction" and child.content_id == job.content_id
@@ -182,6 +218,7 @@ class ProjectRuntime:
                     child = failed_children[-1]
                     job.status, job.progress, job.error = child.status, child.progress, child.error
                     job.error_code = child.error_code
+                    job.support_details = list(child.support_details)
                 elif job.kind == "analyze" and failed_children:
                     job.status, job.progress = "partial", "Completed with source limitations"
                 elif resource is not None and resource.status in ("failed", "unsupported", "missing"):
@@ -191,6 +228,8 @@ class ProjectRuntime:
                 else:
                     job.status, job.progress = "succeeded", "Complete"
                 job.updated_at = now()
+                job.diagnostics.update(stage="completed", outcome=job.status, timestamp=job.updated_at,
+                                       elapsed_seconds=f"{time.monotonic() - started:.3f}")
             self.store.update(project_id, None, completed)
 
     def refresh(self, project_id):
@@ -285,9 +324,24 @@ def install_project_workspace(app, legacy_service):
                 raise WorkflowError("conversation_busy", "A reply is already in progress. Your composer draft is retained.", 409)
             _, message_id = runtime.conversation.begin_message(project_id, body.expected_version, body.text, body.resource_ids)
             try:
-                return runtime.submit(project_id, None, "conversation", lambda: runtime.conversation.respond(project_id, message_id))
+                return runtime.submit(project_id, None, "conversation", lambda: runtime.conversation.respond(project_id, message_id), message_id=message_id)
             except WorkflowError:
                 runtime.conversation._failure(project_id, message_id, "Your message is saved. Assistance could not start; retry after reopening the project.")
+                raise
+
+    @router.post("/{project_id}/messages/{message_id}/retry", response_model=Project, status_code=202)
+    def retry_message(project_id: str, message_id: str, body: Mutation):
+        with runtime.lock:
+            current = runtime.store.get(project_id)
+            if any(job.kind == "conversation" and job.status in ("queued", "running") for job in current.jobs):
+                raise WorkflowError("conversation_busy", "A reply is already in progress. Wait for it to finish.", 409)
+            _, turn_id = runtime.conversation.begin_retry(project_id, body.expected_version, message_id)
+            try:
+                return runtime.submit(project_id, None, "conversation",
+                                      lambda: runtime.conversation.respond(project_id, turn_id), message_id=turn_id)
+            except WorkflowError:
+                runtime.conversation._failure(project_id, turn_id,
+                    "Your message is saved. Assistance could not start; reopen and retry.")
                 raise
 
     @router.post("/{project_id}/brief/draft", response_model=Project)

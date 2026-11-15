@@ -406,7 +406,7 @@ def test_audio_only_chunk_retry_preserves_timebase_and_partial_speech(workspace,
     service = AnalysisService(store, lambda: settings, transport_factory=lambda _: transport)
     path = store.project_dir(project.id) / resource.original_path
     first = service._audio_evidence(project.id, resource, path, settings, "job_test")
-    assert first.coverage["speech"] == "failed" and len(first.events) == 1
+    assert first.coverage["speech"] == "partial" and len(first.events) == 1
     assert first.events[0].start_frame is None
     transport.fail = False
     second = service._audio_evidence(project.id, resource, path, settings, "job_test")
@@ -517,3 +517,71 @@ def test_real_scene_sampling_persists_source_aligned_preparation(workspace, tmp_
     monkeypatch.setattr("backend.app.project_workspace.analysis.prepare_media", reject)
     with service._prepared(project.id, original, video, settings) as reused:
         assert [frame.path for frame in reused.frames] == cached
+
+
+def test_disabled_standalone_transcription_does_not_prepare_or_call(workspace, monkeypatch):
+    store, project, _, _, _ = workspace
+    resource = project.resources[0].model_copy(update={"kind": "audio", "duration_seconds": 2})
+    monkeypatch.setattr("backend.app.project_workspace.analysis._run_media", lambda *a: pytest.fail("Disabled audio preparation"))
+    settings = ProviderSettings(transcription_provider="disabled")
+    service = AnalysisService(store, lambda: settings, transport_factory=lambda _: pytest.fail("Disabled paid transport"))
+    result = service._audio_evidence(project.id, resource, None, settings, "job_disabled")
+    assert result.coverage["speech"] == "not_analyzed" and "disabled" in result.limitations[0]
+
+
+def test_standalone_preparation_validated_and_partial_support_preserved(workspace, monkeypatch):
+    from pathlib import Path
+    import wave
+    store, project, _, _, _ = workspace
+    resource = project.resources[0].model_copy(update={"kind": "audio", "duration_seconds": 2.25})
+    prepared = []
+    def extract(command, _timeout):
+        prepared.append(command[-1])
+        seconds = float(command[command.index("-t") + 1])
+        with wave.open(command[-1], "wb") as output:
+            output.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+            output.writeframes(b"\0" * round(seconds * 32000))
+    monkeypatch.setattr("backend.app.project_workspace.analysis._run_media", extract)
+    class Transport:
+        def __init__(self):
+            self.calls, self.fail = [], True
+
+        def transcribe(self, model, path, **kwargs):
+            self.calls.append(path.name)
+            if path.name == "001.wav" and self.fail:
+                raise ProviderError("provider_timeout", "private detail")
+            return {"segments": [{"start": 0, "end": .2, "text": "Speech fixture"}]}
+    transport = Transport()
+    settings = ProviderSettings(audio_chunk_seconds=1, max_audio_chunks=3)
+    service = AnalysisService(store, lambda: settings, transport_factory=lambda _: transport)
+    first = service._audio_evidence(project.id, resource, None, settings, "job_first")
+    assert first.coverage["speech"] == "partial" and len(first.events) == 2
+    assert transport.calls == ["000.wav", "001.wav", "002.wav"]
+    assert first.support_details[1]["failure_code"] == "provider_timeout"
+    assert first.support_details[-1]["chunk_end_seconds"] == "2.25"
+    failed_wav = next(Path(path) for path in prepared if path.endswith("001.wav"))
+    failed_wav.write_bytes(b"corrupt prepared cache")
+    transport.fail = False
+    second = service._audio_evidence(project.id, resource, None, settings, "job_second")
+    assert second.coverage["speech"] == "observations" and len(second.events) == 3
+    assert transport.calls == ["000.wav", "001.wav", "002.wav", "001.wav"]
+    assert len(prepared) == 4  # Only corrupt/missing work was prepared again.
+    assert [record["cache_status"] for record in second.support_details] == ["hit", "miss", "hit"]
+    assert "private detail" not in str(first.support_details)
+
+
+def test_empty_transcription_is_no_detection_not_proof_of_no_speech(workspace, monkeypatch):
+    import wave
+    store, project, _, _, _ = workspace
+    resource = project.resources[0].model_copy(update={"kind": "audio", "duration_seconds": 1})
+    def extract(command, _timeout):
+        with wave.open(command[-1], "wb") as output:
+            output.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+            output.writeframes(b"\0" * 32000)
+    monkeypatch.setattr("backend.app.project_workspace.analysis._run_media", extract)
+    transport = SimpleNamespace(transcribe=lambda *a, **kw: {"text": "", "segments": []})
+    settings = ProviderSettings()
+    result = AnalysisService(store, lambda: settings, transport_factory=lambda _: transport)._audio_evidence(
+        project.id, resource, None, settings, "job_empty")
+    assert result.coverage["speech"] == "none_found"
+    assert any("does not establish" in note for note in result.limitations)

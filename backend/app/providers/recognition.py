@@ -6,6 +6,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import threading
 from typing import Annotated
 from uuid import uuid4
@@ -22,6 +23,17 @@ VISION_PROMPT_VERSION = "visual-ocr-bounded-batches-v4-language"
 SPEECH_PROMPT_VERSION = "source-speech-v1"
 NORMALIZATION_VERSION = "frames-v0.4-1"
 VISION_BATCH_SIZE = 3
+SPEECH_BOUNDARY_TOLERANCE = .1
+# These failures apply to every chunk. Other failures remain local to their
+# chunk, so one timeout/invalid segment does not discard later valid coverage.
+SPEECH_BLOCKING_ERRORS = {
+    "provider_authentication", "provider_permission", "provider_model_access",
+    "provider_key_format", "provider_not_configured", "provider_quota",
+    "provider_credit_balance_exhausted", "provider_project_spend_limit",
+    "provider_organization_spend_limit", "provider_organization_usage_limit",
+    "provider_request_rejected", "unsupported_provider", "unsupported_model_capability",
+    "experiment_budget_exhausted", "budget_accounting_unavailable", "budget_accounting_paused",
+}
 
 
 def authored_text(language, english, chinese):
@@ -217,6 +229,80 @@ class ProviderRecognitionAdapter:
                     blocked = True
         return VisionOutput(frames=frames) if frames else None, errors, attempts, hits
 
+    def _speech_chunks(self, prepared, speech_key, metadata, records, duration):
+        speech, errors, attempts, hits = [], [], 0, 0
+        blocked = None
+        provider = self.transcription_provider
+        transport = getattr(provider, "transport", None)
+        for index, chunk in enumerate(prepared.audio_chunks):
+            begun = datetime.now(timezone.utc)
+            detail = {**metadata, "stage": "transcription_chunk", "chunk_index": index,
+                      "chunk_start_seconds": chunk.start_seconds, "chunk_end_seconds": chunk.end_seconds,
+                      "started_at": begun.isoformat(), "cache_status": "miss", "attempts": 0}
+            chunk_key = hashlib.sha256(json.dumps({"speech_key": speech_key,
+                "start": chunk.start_seconds, "end": chunk.end_seconds}, sort_keys=True).encode()).hexdigest()
+            chunk_path = self.settings.cache_dir / "speech-chunks" / f"{chunk_key}.json" if self.settings.cache_dir else None
+            spans = None
+            if chunk_path and chunk_path.is_file():
+                try:
+                    spans = self._validate_cached_speech(json.loads(chunk_path.read_text(encoding="utf-8")), duration)
+                    if any(span["start"] < chunk.start_seconds or span["end"] > chunk.end_seconds for span in spans):
+                        spans = None
+                except (OSError, ValueError, TypeError, KeyError):
+                    spans = None
+            before = len(getattr(transport, "records", []))
+            try:
+                if spans is not None:
+                    hits += 1
+                    detail.update(cache_status="hit", validation_outcome="accepted")
+                elif blocked:
+                    detail.update(cache_status="not_requested", validation_outcome="not_run", failure_code=blocked.code)
+                    continue
+                else:
+                    attempts += 1
+                    detail["attempts"] = 1
+                    raw = provider.transcribe(chunk, metadata=detail)
+                    spans, issues, rounded = self._normalize_speech_result(raw, chunk, duration)
+                    detail.update(valid_segments=len(spans), rejected_segments=len(issues), rounded_boundaries=rounded,
+                                  validation_outcome="partial" if issues and spans else "rejected" if issues else "accepted")
+                    if issues:
+                        failure = ProviderError("audio_timestamps_invalid",
+                            "Some transcription segments have invalid timestamps. Valid segments were retained; retry missing coverage.")
+                        errors.append(failure)
+                        detail.update(failure_code=failure.code, validation_rule=",".join(dict.fromkeys(issues)), validation_field="segments")
+                    if hasattr(transport, "validation_result"):
+                        transport.validation_result(detail["validation_outcome"], code=detail.get("failure_code"),
+                            rule=detail.get("validation_rule"), field="segments")
+                    if chunk_path and not issues:
+                        try:
+                            chunk_path.parent.mkdir(parents=True, exist_ok=True)
+                            temporary = chunk_path.with_suffix(f".{uuid4().hex}.tmp")
+                            temporary.write_text(json.dumps(spans, ensure_ascii=False), encoding="utf-8")
+                            temporary.replace(chunk_path)
+                        except OSError:
+                            detail["cache_write_failure"] = "speech_chunk_cache_write_failed"
+                speech.extend(spans)
+            except (ProviderError, ValidationError, ValueError, TypeError, KeyError) as exc:
+                failure = exc if isinstance(exc, ProviderError) else ProviderError(
+                    getattr(exc, "code", "audio_timestamps_invalid"), "The transcription chunk could not be validated; valid completed chunks are retained.")
+                errors.append(failure)
+                detail.update(failure_code=failure.code, validation_outcome="rejected")
+                if failure.code.startswith("audio_timestamps"):
+                    detail.update(validation_rule="timestamped_segments", validation_field="segments")
+                if (hasattr(transport, "validation_result") and len(getattr(transport, "records", [])) > before
+                        and getattr(exc, "code", "").startswith("audio_timestamps")):
+                    transport.validation_result("rejected", code=failure.code, rule="timestamped_segments", field="segments")
+                if failure.code in SPEECH_BLOCKING_ERRORS or getattr(failure, "retry_after_seconds", None):
+                    blocked = failure
+            finally:
+                provider_records = getattr(transport, "records", [])[before:]
+                if provider_records:
+                    detail.update({key: value for key, value in provider_records[-1].items()
+                                   if key in {"attempts", "http_status", "provider_code", "provider_type", "provider_request_id", "retry_after_seconds"}})
+                detail["elapsed_ms"] = round((datetime.now(timezone.utc) - begun).total_seconds() * 1000)
+                records.append(detail)
+        return speech, errors, attempts, hits
+
     def _analyze(self, request, *, speech_only=False):
         video = request.video
         analysis_id = f"analysis_{uuid4().hex}"
@@ -280,7 +366,7 @@ class ProviderRecognitionAdapter:
                 # paid transcript from the same source/timing/chunk identity.
                 # Only this known historical provider cache is reusable; task
                 # history and user-edited transcript text are never copied.
-                speech_cache_provider = (["openai", "whisper-1"] if self.transcription_provider.model == "disabled"
+                speech_cache_provider = (["openai", "whisper-1"] if (self.transcription_provider.model == "disabled" or self.settings.transcription_provider == "disabled")
                                          else [self.transcription_provider.provider, self.transcription_provider.model])
                 speech_key = hashlib.sha256(json.dumps({
                     "source_sha256": prepared.source_sha256, "normalization": NORMALIZATION_VERSION,
@@ -297,7 +383,8 @@ class ProviderRecognitionAdapter:
                         cached_speech = self._validate_cached_speech(json.loads(speech_cache_path.read_text(encoding="utf-8")), video.duration_seconds)
                     except (OSError, ValueError, TypeError, KeyError):
                         cached_speech = None
-                base = {"job_id": request.job_id, "analysis_id": analysis_id, "analysis_revision": 1,
+                base = {"job_id": request.job_id, "project_id": request.task_id, "resource_id": video.video_id,
+                        "analysis_id": analysis_id, "analysis_revision": 1,
                         "source_sha256": prepared.source_sha256, "normalization_version": NORMALIZATION_VERSION,
                         "cache_key": cache_key, "content_region_revision": region.revision, "content_region_fingerprint": region.fingerprint}
                 errors = {}
@@ -338,7 +425,7 @@ class ProviderRecognitionAdapter:
                         elif video.has_audio is False:
                             speech = []
                             cache_status = "skipped_no_audio"
-                        elif provider.model == "disabled":
+                        elif provider.model == "disabled" or self.settings.transcription_provider == "disabled":
                             speech = cached_speech if cached_speech is not None else []
                             cache_status = "hit_transcription_disabled" if cached_speech is not None else "disabled"
                             if cached_speech is not None:
@@ -357,34 +444,14 @@ class ProviderRecognitionAdapter:
                                 speech = cached_speech
                                 cache_status = "hit"
                             else:
-                                speech = []
-                                for chunk in prepared.audio_chunks:
-                                    chunk_key = hashlib.sha256(json.dumps({"speech_key": speech_key,
-                                        "start": chunk.start_seconds, "end": chunk.end_seconds}, sort_keys=True).encode()).hexdigest()
-                                    chunk_path = self.settings.cache_dir / "speech-chunks" / f"{chunk_key}.json" if self.settings.cache_dir else None
-                                    spans = None
-                                    if chunk_path and chunk_path.is_file():
-                                        try:
-                                            spans = self._validate_cached_speech(json.loads(chunk_path.read_text(encoding="utf-8")), video.duration_seconds)
-                                            if any(span["start"] < chunk.start_seconds or span["end"] > chunk.end_seconds for span in spans):
-                                                spans = None
-                                        except (OSError, ValueError, TypeError, KeyError):
-                                            spans = None
-                                    if spans is None:
-                                        local_attempts += 1
-                                        raw = provider.transcribe(chunk, metadata=metadata)
-                                        spans = self._normalize_speech(raw, chunk, video.duration_seconds)
-                                        if chunk_path:
-                                            try:
-                                                chunk_path.parent.mkdir(parents=True, exist_ok=True)
-                                                temporary = chunk_path.with_suffix(f".{uuid4().hex}.tmp")
-                                                temporary.write_text(json.dumps(spans, ensure_ascii=False), encoding="utf-8")
-                                                temporary.replace(chunk_path)
-                                            except OSError:
-                                                records.append({**metadata, "failure_code": "speech_chunk_cache_write_failed", "usage": None})
-                                    else:
-                                        cache_status = "partial_hit" if local_attempts else "hit"
-                                    speech.extend(spans)
+                                speech, chunk_errors, local_attempts, hits = self._speech_chunks(
+                                    prepared, speech_key, metadata, records, video.duration_seconds)
+                                if chunk_errors:
+                                    failure = chunk_errors[0]
+                                    errors["speech"] = failure
+                                    speech = speech or None
+                                if hits:
+                                    cache_status = "partial_hit" if local_attempts else "hit"
                         if cached and cache_status == "miss":
                             cache_status = "hit"
                     except (ProviderError, ValidationError, ValueError, TypeError, KeyError) as exc:
@@ -406,9 +473,7 @@ class ProviderRecognitionAdapter:
                             "cache_status": cache_status, "attempts": 0 if transport else local_attempts,
                             "failure_code": failure.code if failure else None, "usage": None, "cost_usd": None,
                             "usage_explanation": "No provider-reported usage for cached/skipped/alternate-provider result."})
-                    elif failure and capability != "vision":
-                        records[-1]["failure_code"] = failure.code
-                if speech is not None and "speech" not in errors and speech_cache_path and cached_speech is None and self.transcription_provider.model != "disabled":
+                if speech is not None and "speech" not in errors and speech_cache_path and cached_speech is None and self.transcription_provider.model != "disabled" and self.settings.transcription_provider != "disabled":
                     try:
                         speech_cache_path.parent.mkdir(parents=True, exist_ok=True)
                         temporary = speech_cache_path.with_suffix(f".{uuid4().hex}.tmp")
@@ -436,6 +501,10 @@ class ProviderRecognitionAdapter:
                 getattr(exc, "code", "media_preparation_failed"),
                 "Source preparation failed; verify saved media and the configured media tools.")
             records.append({"job_id": request.job_id, "analysis_id": analysis_id,
+                            "project_id": request.task_id, "resource_id": video.video_id,
+                            "stage": "media_preparation", "started_at": datetime.now(timezone.utc).isoformat(),
+                            "requested_model": self.transcription_provider.model,
+                            "cache_status": "not_requested", "validation_outcome": "rejected",
                             "failure_code": error.code, "usage": None, "attempts": 0})
             return self._failure(request, analysis_id, error)
         finally:
@@ -456,28 +525,60 @@ class ProviderRecognitionAdapter:
         return parsed
 
     @staticmethod
-    def _normalize_speech(raw, chunk, duration):
+    def _normalize_speech_result(raw, chunk, duration):
+        """Keep independently timed segments; clamp at most 100 ms of edge rounding.
+
+        No words are divided or supplied with invented timing. A rejected segment
+        leaves coverage incomplete and prevents writing a complete chunk cache.
+        """
         if not isinstance(raw, dict) or not isinstance(raw.get("segments"), list):
-            raise ValueError("timestamped segments are required")
+            raise ProviderError("audio_timestamps_missing", "Transcription returned no usable timestamped segments; retry the affected chunk.")
         if not raw["segments"] and str(raw.get("text", "")).strip():
-            raise ValueError("text without timing cannot become evidence")
-        spans = []
+            raise ProviderError("audio_timestamps_missing", "Transcription returned text without timestamps; untimed text cannot become evidence.")
+        length = chunk.end_seconds - chunk.start_seconds
+        if not math.isfinite(length) or length <= 0 or chunk.start_seconds < 0 or chunk.end_seconds > duration + 1e-6:
+            raise ProviderError("audio_preparation_invalid", "Prepared audio boundaries do not match the source duration.")
+        spans, issues, rounded = [], [], 0
         previous = -1.0
         for item in raw["segments"]:
-            # Ignore documented extra provider confidence/token metadata; these are not
-            # calibrated domain confidence scores and do not become user evidence.
-            span = SpeechSpan.model_validate({key: item.get(key) for key in ("start", "end", "text")})
-            if span.start >= span.end or span.start < previous or span.end > chunk.end_seconds - chunk.start_seconds + .05:
-                raise ValueError("invalid/out-of-order audio timestamp")
-            previous = span.start
-            start, end = span.start + chunk.start_seconds, span.end + chunk.start_seconds
-            if start >= min(duration, chunk.end_seconds) or end <= 0:
+            if not isinstance(item, dict):
+                issues.append("segment_schema")
                 continue
-            spans.append({"start": max(0.0, start), "end": min(duration, chunk.end_seconds, end), "text": span.text})
+            start, end, text = item.get("start"), item.get("end"), item.get("text")
+            if (type(start) not in (int, float) or type(end) not in (int, float)
+                    or not math.isfinite(start) or not math.isfinite(end)
+                    or not isinstance(text, str) or not text.strip()):
+                issues.append("segment_schema")
+                continue
+            if (start >= end or start < -SPEECH_BOUNDARY_TOLERANCE
+                    or end > length + SPEECH_BOUNDARY_TOLERANCE or start >= length or end <= 0):
+                issues.append("segment_bounds")
+                continue
+            bounded_start, bounded_end = max(0.0, start), min(length, end)
+            if bounded_start < previous:
+                issues.append("segment_order")
+                continue
+            previous = bounded_start
+            rounded += int(start != bounded_start) + int(end != bounded_end)
+            spans.append({"start": bounded_start + chunk.start_seconds,
+                          "end": min(duration, bounded_end + chunk.start_seconds), "text": text.strip()})
+        return spans, issues, rounded
+
+    @staticmethod
+    def _normalize_speech(raw, chunk, duration):
+        # Strict compatibility boundary for callers that cannot represent partial
+        # coverage. Recognition callers use the result form above.
+        spans, issues, _ = ProviderRecognitionAdapter._normalize_speech_result(raw, chunk, duration)
+        if issues:
+            raise ProviderError("audio_timestamps_invalid", "Transcription contains invalid timestamps.")
         return spans
 
     @staticmethod
     def _validate_cached_speech(spans, duration):
+        if (not isinstance(spans, list) or any(not isinstance(span, dict)
+                or type(span.get("start")) not in (int, float) or type(span.get("end")) not in (int, float)
+                for span in spans)):
+            raise ValueError("invalid cached timestamp schema")
         parsed = [SpeechSpan.model_validate(span) for span in spans]
         if (any(span.start >= span.end or span.end > duration for span in parsed)
                 or any(right.start < left.start for left, right in zip(parsed, parsed[1:]))):
@@ -540,7 +641,7 @@ class ProviderRecognitionAdapter:
                             on_screen_text="not_analyzed" if speech_only else "failed")
         if speech is None:
             coverage["speech"] = "failed"
-        elif self.transcription_provider.model == "disabled" and video.has_audio is not False and reused_speech_origin is None:
+        elif (self.transcription_provider.model == "disabled" or self.settings.transcription_provider == "disabled") and video.has_audio is not False and reused_speech_origin is None:
             coverage["speech"] = "not_analyzed"
         for kind in errors:
             if coverage[kind] != "observations":
@@ -566,7 +667,7 @@ class ProviderRecognitionAdapter:
             description += authored_text(language,
                 " Reused validated source transcription from cache; no new audio API request was made.",
                 " 已复用校验通过的原视频语音缓存；未发出新的音频 API 请求。")
-        elif self.transcription_provider.model == "disabled":
+        elif (self.transcription_provider.model == "disabled" or self.settings.transcription_provider == "disabled"):
             description += authored_text(language,
                 " Speech transcription is off: current GPT-6 models do not accept audio.",
                 " 语音转写已关闭：当前 GPT-6 模型不支持音频输入。")

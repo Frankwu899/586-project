@@ -399,6 +399,16 @@
           "title": "Diagnostics",
           "type": "object"
         },
+        "support_details": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Support Details",
+          "type": "array"
+        },
         "revision": {
           "minimum": 1,
           "title": "Revision",
@@ -454,6 +464,7 @@
       },
       "required": [
         "diagnostics",
+        "support_details",
         "revision",
         "events",
         "coverage",
@@ -756,6 +767,35 @@
           "default": null,
           "title": "Content Id"
         },
+        "message_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message Id"
+        },
+        "diagnostics": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
+        "support_details": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Support Details",
+          "type": "array"
+        },
         "status": {
           "default": "queued",
           "enum": [
@@ -800,6 +840,9 @@
         "kind",
         "resource_id",
         "content_id",
+        "message_id",
+        "diagnostics",
+        "support_details",
         "status",
         "progress",
         "error",
@@ -848,6 +891,30 @@
           ],
           "title": "Status",
           "type": "string"
+        },
+        "reply_to_message_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reply To Message Id"
+        },
+        "diagnostics": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
         }
       },
       "required": [
@@ -856,7 +923,10 @@
         "text",
         "resource_ids",
         "created_at",
-        "status"
+        "status",
+        "reply_to_message_id",
+        "diagnostics",
+        "retryable"
       ],
       "title": "Message",
       "type": "object"

@@ -358,11 +358,12 @@ def test_speech_chunk_offset_uses_source_relative_clock_without_double_origin(re
 
 def test_speech_timing_tolerance_never_leaks_into_the_next_chunk(tmp_path):
     chunk = AudioChunk(tmp_path / "unused.wav", 0, 1)
-    spans = ProviderRecognitionAdapter._normalize_speech({"segments": [
+    spans, issues, rounded = ProviderRecognitionAdapter._normalize_speech_result({"segments": [
         {"start": .9, "end": 1.04, "text": "end"},
         {"start": 1.01, "end": 1.04, "text": "outside"},
     ]}, chunk, 2)
     assert spans == [{"start": .9, "end": 1, "text": "end"}]
+    assert issues == ["segment_bounds"] and rounded == 1
 
 
 def test_protocol_errors_are_safe_and_bounded():
