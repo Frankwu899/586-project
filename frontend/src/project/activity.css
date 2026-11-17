@@ -1,0 +1,14 @@
+.va-app .va-activity-184 { width: min(460px, calc(100vw - 24px)); padding: 22px; }
+.va-activity-184 .va-activity-task-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.va-activity-184 .va-activity-task-heading strong { font-size: 15px; overflow-wrap: anywhere; text-transform: none; }
+.va-activity-184 article p, .va-activity-184 .va-muted { font-size: 13px; line-height: 1.5; }
+.va-activity-184 article > div.va-report-retry { display: block; }
+.va-activity-184 .va-activity-child { padding-inline-start: 14px; border-inline-start: 3px solid #bdb4ec; margin-block-start: 12px; }
+.va-activity-184 progress { inline-size: 100%; block-size: 6px; accent-color: #654cda; }
+.va-activity-184 summary { cursor: pointer; font-size: 13px; padding-block: 8px; }
+.va-activity-184 button { max-inline-size: 100%; white-space: normal; overflow-wrap: anywhere; }
+.va-activity-184 small { display: block; margin-block-start: 10px; }
+.va-activity-184 ul { padding-inline-start: 22px; font-size: 13px; overflow-wrap: anywhere; }
+.va-activity-184 .va-activity-error { color: #97442e; }
+.va-report-retry { padding-block: 12px; }
+.va-report-retry p { margin-block-end: 0; }

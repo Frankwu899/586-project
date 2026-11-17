@@ -4,7 +4,7 @@ export const channelLabel: Record<string, string> = { speech: 'Speech', on_scree
 const speechConflict = 'New transcription overlaps saved corrections. Review speech and timing against playback, then retry.';
 export function coverageMessage(channel: string, value: string, hasEvents = false, diagnostic?: string) {
   if (channel === 'speech' && diagnostic === 'speech_merge_conflict') return speechConflict;
-  if (channel === 'sound' || channel === 'music' || channel === 'sfx') return 'Music analysis is not available in this version.';
+  if (channel === 'sound' || channel === 'music' || channel === 'sfx') return hasEvents ? 'Saved sound evidence is available. This version does not create new music or sound-effects analysis.' : 'Music analysis is not available in this version.';
   if (value === 'partial' && channel === 'speech') return 'Partial transcript available. Retry missing speech; saved results are retained.';
   if (['failed', 'error', 'partial'].includes(value)) return channel === 'speech' ? 'Speech transcription failed. Retry transcription.' : `${channelLabel[channel] ?? 'Source evidence'} is incomplete. Retry recognition.`;
   if (['no_audio', 'no_audio_track', 'not_applicable'].includes(value) && channel === 'speech') return 'This clip has no audio track.';
@@ -72,8 +72,8 @@ export function failureMessage(value: unknown, code?: string | null) {
 // payloads are intentionally excluded even when a future backend adds them.
 const supportKeys = new Set([
   'application_version', 'source_commit', 'operation', 'stage', 'timestamp', 'started_at', 'ended_at',
-  'project_id', 'resource_id', 'job_id', 'message_id', 'conversation_turn_id', 'reply_to_message_id',
-  'requested_model', 'model', 'attempts', 'attempt_count', 'cache_status', 'elapsed_ms', 'elapsed_seconds',
+  'project_id', 'resource_id', 'job_id', 'parent_job_id', 'analysis_id', 'message_id', 'conversation_turn_id', 'reply_to_message_id',
+  'requested_model', 'requested_speech_model', 'model', 'speech_model', 'speech_timing', 'transcription_model', 'source_index', 'source_total', 'failure_stage', 'attempts', 'attempt_count', 'cache_status', 'elapsed_ms', 'elapsed_seconds',
   'http_status', 'provider_code', 'provider_type', 'provider_request_id', 'validation_outcome',
   'validation_rule', 'validation_field', 'failure_category', 'failure_code', 'error_code', 'status', 'speech',
   'chunk_start_seconds', 'chunk_end_seconds', 'chunk_start', 'chunk_end', 'chunk_index', 'total_chunks', 'retry_after_seconds', 'coverage', 'coverage_status',

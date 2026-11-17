@@ -56,3 +56,9 @@
   .va-pool-table td[data-label]::before { content: attr(data-label) ': '; font-weight: 600; color: #525b76; }
 }
 @media(max-width:540px) { .va-app .va-media-pool { padding: 16px 12px; } .va-pool-tools { align-items: stretch; } }
+.va-upload-results { margin-block: 12px; padding: 12px; background: #f5f4fd; border-radius: 12px; }
+.va-upload-results ul { padding-inline-start: 22px; overflow-wrap: anywhere; }
+.va-import-limits { line-height: 1.5; }
+.va-speech-model { display: grid; gap: 8px; margin-block: 15px; min-width: 0; }
+.va-speech-model select { max-inline-size: 100%; min-inline-size: 0; }
+.va-speech-model p { margin: 0; line-height: 1.5; }
