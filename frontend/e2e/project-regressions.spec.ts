@@ -29,6 +29,10 @@ async function reachable(control: Locator) {
   })).toBeTruthy();
   await control.click({ trial: true });
 }
+async function showSavedContext(page: Page) {
+  const context = page.locator('.va-analysis-context');
+  if (await context.getAttribute('open') === null) await context.getByText('Saved report context', { exact: true }).click();
+}
 async function capture(page: Page, name: string) {
   if (screenshots) {
     mkdirSync(screenshots, { recursive: true });
@@ -49,7 +53,8 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
       const project = fixture();
       await open(page, project);
       await page.getByRole('button', { name: 'Resources', exact: true }).click();
-      await page.getByRole('button', { name: `Preview ${project.resources[0].name}`, exact: true }).click();
+      await page.getByRole('button', { name: `Focus ${project.resources[0].name}`, exact: true }).click();
+      await page.getByRole('button', { name: 'Open in timeline', exact: true }).click();
       const previewPlayer = page.locator('.va-resource-inspector video');
       await previewPlayer.scrollIntoViewIfNeeded();
       await previewPlayer.evaluate(async element => {
@@ -64,14 +69,14 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
         return range.getClientRects().length;
       })).toBe(1);
       await capture(page, `player-${width}x${height}-${zoom * 100}`);
-      await page.getByText('Coverage and limitations', { exact: true }).click();
+      await page.getByText('Coverage, original file and recovery', { exact: true }).click();
       await expect(page.getByText('Speech transcription failed. Retry transcription.', { exact: true }).first()).toBeVisible();
       const relink = page.getByRole('button', { name: 'Relink original', exact: true });
       await page.mouse.move(Math.floor(width / zoom) - 30, Math.floor(height / zoom) - 50);
       for (let attempt = 0; attempt < 8; attempt++) await page.mouse.wheel(0, 1600);
       await reachable(relink);
       await reachable(page.getByRole('button', { name: 'Rebuild media preview', exact: true }));
-      await reachable(page.getByRole('button', { name: 'Retry transcription', exact: true }));
+      await reachable(page.getByRole('button', { name: 'Retry missing speech', exact: true }));
       await relink.focus();
       await expect(relink).toBeFocused();
       await expect(relink).toBeInViewport();
@@ -82,7 +87,8 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
         return bounds.width >= 24 && bounds.height >= 24 && getComputedStyle(element).clipPath === 'none';
       })).toBeTruthy();
       await capture(page, `resources-${width}x${height}-${zoom * 100}`);
-      await reachable(page.getByRole('button', { name: /Analyze selected/ }));
+      await page.getByRole('button', { name: 'Back to Media Pool', exact: true }).click();
+      await reachable(page.getByRole('button', { name: /^Analyze \d+ references?$/ }));
       for (const destination of ['Overview', 'Resources', 'Discover', 'Analysis', 'Content plan', 'Production']) await reachable(page.getByRole('button', { name: destination, exact: true }));
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
       await page.getByRole('button', { name: 'Analysis', exact: true }).click();
@@ -99,9 +105,9 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
       for (const document of ['Production brief', 'Script', 'Storyboard', 'Shot list']) await reachable(page.getByRole('tab', { name: document, exact: true }));
       await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
       await page.getByLabel('Storyboard', { exact: true }).fill('Viewport check: keep the full shot description readable.');
-      await page.getByRole('button', { name: 'Save production pack', exact: true }).click();
+      await page.getByRole('button', { name: 'Save legacy documents', exact: true }).click();
       await expect(page.getByText('Current · v2', { exact: true })).toBeVisible();
-      await page.getByText('Export production pack', { exact: true }).click();
+      await page.getByText('Export legacy documents', { exact: true }).click();
       expect(await page.locator('.va-export-menu > div').evaluate(element => {
         const bounds = element.getBoundingClientRect();
         return bounds.left >= 0 && bounds.right <= innerWidth;
@@ -115,26 +121,32 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
 test('current analysis survives tabs, replacement and failure while source graph keeps identity', async ({ page, context }) => {
   const project = fixture();
   await open(page, project);
+  await showSavedContext(page);
   await expect(page.getByText('Analysis A saved takeaway.', { exact: true })).toBeVisible();
   await expect(page.locator('.va-analysis-report')).toHaveCount(1);
   await page.reload();
   await page.getByLabel('Analysis scope', { exact: true }).selectOption('');
+  await showSavedContext(page);
   await expect(page.getByText('Analysis A saved takeaway.', { exact: true })).toBeVisible();
   const reopened = await context.newPage();
   await page.close();
   await open(reopened, project);
+  await showSavedContext(reopened);
   await expect(reopened.getByText('Analysis A saved takeaway.', { exact: true })).toBeVisible();
   fixture('replace', project.id);
   await reopened.reload();
   await reopened.getByLabel('Analysis scope', { exact: true }).selectOption('');
+  await showSavedContext(reopened);
   await expect(reopened.getByText('Analysis B replacement takeaway.', { exact: true })).toBeVisible();
   await expect(reopened.getByText('Analysis A saved takeaway.', { exact: true })).toHaveCount(0);
   fixture('fail', project.id);
   await reopened.reload();
   await reopened.getByLabel('Analysis scope', { exact: true }).selectOption('');
+  await showSavedContext(reopened);
   await expect(reopened.getByText('Analysis B replacement takeaway.', { exact: true })).toBeVisible();
   await expect(reopened.getByText(/service is temporarily busy|service could not complete/i).first()).toBeVisible();
   await reopened.getByLabel('Analysis scope', { exact: true }).selectOption(project.contents[0].id);
+  await showSavedContext(reopened);
   await expect(reopened.getByText('Independent content result.', { exact: true })).toBeVisible();
   await reopened.getByLabel('Reference structure', { exact: true }).selectOption(project.resources[1].id);
   await reopened.getByRole('button', { name: /Blue frame held/ }).click();
@@ -151,12 +163,12 @@ test('storyboard edits reopen and exact saved revision exports consistently', as
   await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
   const revised = '0–6s: Hold blue.\n6–12s: Continue the blue frame. Revision from browser.';
   await page.getByLabel('Storyboard', { exact: true }).fill(revised);
-  await page.getByRole('button', { name: 'Save production pack', exact: true }).click();
+  await page.getByRole('button', { name: 'Save legacy documents', exact: true }).click();
   await expect(page.getByText('Current · v2', { exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
   await expect(page.getByLabel('Storyboard', { exact: true })).toHaveValue(revised);
-  await page.getByText('Export production pack', { exact: true }).click();
+  await page.getByText('Export legacy documents', { exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Markdown (.md)', exact: true }).click();
   const download = await downloadPromise;
@@ -176,8 +188,9 @@ test('no context or references prompts a starting question without creating a jo
   const project = await (await request.post('/api/projects', { data: { title: `Empty planning ${Date.now()}` } })).json() as Fixture;
   await open(page, project);
   await page.getByRole('button', { name: 'Content plan', exact: true }).click();
-  await page.getByRole('button', { name: 'Suggest series & topics', exact: true }).click();
-  await expect(page.getByText(/What would you like to create\?/)).toBeVisible();
+  await page.getByRole('button', { name: 'Suggest topics', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Topic suggestions', exact: true }).getByRole('button', { name: 'Suggest topics', exact: true }).click();
+  await expect(page.getByText(/Describe the task here, confirm useful context/)).toBeVisible();
   expect((await (await request.get(`/api/projects/${project.id}`)).json()).jobs).toEqual([]);
   await page.getByRole('button', { name: 'Describe the assignment', exact: true }).click();
   await expect(page.getByLabel('Describe your assignment')).toBeVisible();
@@ -189,10 +202,12 @@ for (const referenceOnly of [false, true]) {
     if (referenceOnly) fixture('reference_only', project.id);
     await open(page, project);
     await page.getByRole('button', { name: 'Content plan', exact: true }).click();
-    await expect(page.getByLabel('Creative instruction (optional)', { exact: true })).toHaveValue('');
-    await page.getByLabel('Continue with visual evidence only', { exact: true }).check();
-    const responsePromise = page.waitForResponse(response => response.url().endsWith(`/api/projects/${project.id}/concepts/generate`) && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Suggest series & topics', exact: true }).click();
+    await page.getByRole('button', { name: 'Suggest topics', exact: true }).click();
+    const topics = page.getByRole('dialog', { name: 'Topic suggestions', exact: true });
+    await expect(topics.getByLabel('Topic instruction (optional)', { exact: true })).toHaveValue('');
+    await topics.getByLabel('Continue with visual evidence only', { exact: true }).check();
+    const responsePromise = page.waitForResponse(response => response.url().endsWith(`/api/projects/${project.id}/topics/suggest`) && response.request().method() === 'POST');
+    await topics.getByRole('button', { name: 'Suggest topics', exact: true }).click();
     const response = await responsePromise;
     expect(response.status()).toBe(202);
     expect(response.request().postDataJSON()).toMatchObject({ instruction: '', visual_only: true });

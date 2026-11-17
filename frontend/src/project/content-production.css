@@ -1,0 +1,113 @@
+.va-content-plan-183,.va-production-183 { container: content-production / inline-size; min-inline-size: 0; }
+.va-app .va-content-plan-183 .va-plan-layout { display: grid; grid-template-columns: 240px minmax(0,1fr); gap: 22px; align-items: start; }
+.va-app .va-content-plan-183 .va-content-list { display: flex; flex-direction: column; gap: 16px; min-inline-size: 0; padding: 20px 16px; }
+.va-app .va-content-plan-183 .va-content-list > h2 { display: block; }
+.va-content-plan-183 .va-content-list > section,.va-content-plan-183 .va-series-group { padding-block: 8px; border-block-end: 1px solid #d8ddef; }
+.va-content-plan-183 .va-content-list h3 { font-size: 14px; color: #535a76; margin-block-end: 8px; }
+.va-app .va-content-plan-183 .va-content-list button { inline-size: 100%; justify-content: start; text-align: start; margin-block: 3px; }
+.va-content-plan-183 .va-series-group summary { font-weight: 650; color: #33384f; }
+.va-app .va-content-plan-183 .va-plan-main { min-inline-size: 0; }
+.va-app .va-content-plan-183 .va-content-heading { align-items: start; }
+.va-content-plan-183 .va-video-direction-tools { padding: 22px; margin-block-end: 20px; background: #fafaff; }
+.va-content-plan-183 .va-video-direction-tools > p { font-size: 13px; color: #576079; }
+.va-plan-field { display: grid; gap: 6px; min-inline-size: 0; margin-block: 16px; }
+.va-app .va-plan-field > label { margin: 0; }
+.va-plan-field textarea,.va-plan-field input,.va-plan-field select { inline-size: 100%; min-inline-size: 0; }
+.va-video-group { margin-block: 12px 18px; }
+.va-video-group > summary { color: #535a76; font-size: 13px; }
+.va-video-group form { display: flex!important; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px; background: #f5f5fd; border: 1px solid #daddf0; border-radius: 10px; }
+.va-video-group select { max-inline-size: 100%; min-inline-size: 0; }
+.va-app .va-content-plan-183 .va-directions-grid { grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); align-items: start; }
+.va-app .va-content-plan-183 .va-direction-card { background: #fafaff; min-inline-size: 0; padding: 22px; }
+.va-app .va-content-plan-183 .va-direction-card.approved { border: 2px solid #7160d8; }
+.va-content-plan-183 .va-direction-details dd { margin-inline-start: 0; overflow-wrap: anywhere; }
+.va-content-plan-183 .va-direction-details > div { margin-block: 12px; }
+.va-content-plan-183 .va-direction-details dt { color: #5d647d; font-size: 12px; font-weight: 650; }
+.va-content-plan-183 .va-manual-direction { padding: 22px; background: #fafaff; margin-block-end: 20px; }
+.va-context-limits { margin-block: 10px; font-size: 13px; color: #555d76; }
+.va-plan-inspiration { padding: 18px; background: #efedf9; border: 1px solid #d8d2ef; border-radius: 12px; margin-block-end: 18px; }
+.va-plan-inspiration > p { font-size: 14px; }
+.va-plan-dialog { inline-size: min(640px,calc(100% - 28px)); max-inline-size: calc(100% - 28px); max-block-size: calc(100dvh - 28px); overflow-y: auto; padding: 24px; border: 1px solid #d2d6e8; border-radius: 18px; background: #fafaff; color: #252b42; box-shadow: 0 20px 80px #25294440; }
+.va-plan-dialog:modal { overscroll-behavior: contain; }
+.va-plan-dialog::backdrop { background: #29294260; backdrop-filter: blur(4px); overflow: hidden; overscroll-behavior: contain; }
+.va-plan-dialog h2 { font-size: 24px; }
+.va-plan-dialog .va-actions { justify-content: flex-end; margin-block-start: 20px; }
+.va-topics-dialog .va-topic-previews { display: grid; gap: 16px; margin-block-start: 20px; }
+.va-topics-dialog .va-topic-previews article { padding: 18px; border: 1px solid #d9def0; border-radius: 12px; background: #fff; }
+.va-topics-dialog .va-topic-previews h3 { font-size: 17px; }
+.va-topics-dialog .va-topic-previews p { font-size: 14px; line-height: 1.6; }
+.va-app .va-production-183 .va-production-controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.va-production-183 .va-production-controls > label { min-inline-size: 0; font-size: 13px; color: #59617b; }
+.va-production-183 .va-production-controls > select { min-inline-size: 0; max-inline-size: 100%; }
+.va-production-sheet { min-inline-size: 0; }
+.va-sheet-toolbar { display: flex; gap: 16px; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-block: 18px; }
+.va-sheet-toolbar .va-pack-status,.va-sheet-toolbar .va-actions { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.va-sheet-brief { padding: 20px; margin-block: 18px 24px; background: #fafaff!important; }
+.va-sheet-brief > label { font-size: 18px; font-weight: 650; margin-block-end: 10px; }
+.va-app .va-sheet-brief textarea { min-block-size: 90px; background: #fff; border-color: #cbd2e5; }
+.va-production-sheet > .va-section-heading { flex-wrap: wrap; }
+.va-production-sheet > .va-section-heading p { font-size: 13px; max-inline-size: 65ch; }
+.va-sheet-scroll { max-inline-size: 100%; overflow: auto; max-block-size: min(680px,75dvh); overscroll-behavior: contain; scrollbar-gutter: stable; border: 1px solid #cdd4e8; border-radius: 12px; background: #fff; }
+.va-storyboard-sheet { inline-size: 100%; min-inline-size: 1000px; table-layout: fixed; border-collapse: separate; border-spacing: 0; background: #fff; }
+.va-storyboard-sheet th,.va-storyboard-sheet td { padding: 10px; vertical-align: top; text-align: start; border-inline-end: 1px solid #dde2ef; border-block-end: 1px solid #dde2ef; font-size: 13px; color: #292f47; }
+.va-storyboard-sheet thead th { position: sticky; inset-block-start: 0; z-index: 3; background: #e9edf9; color: #252b43; font-size: 13px; line-height: 1.45; font-weight: 650; }
+.va-storyboard-sheet tbody th { position: sticky; inset-inline-start: 0; z-index: 2; background: #f7f8fe; }
+.va-storyboard-sheet tbody th > span { display: block; font-variant-numeric: tabular-nums; padding-block: 8px; }
+.va-app .va-storyboard-sheet textarea { padding: 7px; font-size: 14px; line-height: 1.55; min-block-size: 105px; background: #fff; border-color: #c5cde0; overflow-wrap: anywhere; }
+.va-shot-time { display: grid; gap: 5px; }
+.va-shot-time label { font-size: 10px; color: #535b75; font-weight: 500; }
+.va-app .va-shot-time input { min-inline-size: 0; inline-size: 100%; padding: 7px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.va-app .va-storyboard-sheet .va-link-button { font-size: 10px; padding: 6px 0; }
+.va-storyboard-sheet .va-sources { display: grid; gap: 5px; }
+.va-shot-reference { font-size: 11px; margin-block-start: 8px; }
+.va-shot-reference select { inline-size: 100%; min-inline-size: 0; font-size: 12px; padding: 6px; }
+.va-sheet-reader { margin-block: 16px; }
+.va-sheet-reader > summary { font-size: 14px; color: #4f5673; }
+.va-sheet-reader article { padding: 18px; border: 1px solid #d7ddef; border-radius: 12px; background: #fff; margin-block: 10px; }
+.va-sheet-reader h3 { font-size: 16px; }
+.va-sheet-reader dl > div { margin-block: 12px; }
+.va-sheet-reader dt { font-size: 12px; color: #59617b; font-weight: 650; }
+.va-sheet-reader dd { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+.va-legacy-pack h2 { font-size: 21px; }
+.va-legacy-pack .va-section-heading { align-items: start; flex-wrap: wrap; }
+.va-legacy-pack .va-section-heading > div { max-inline-size: 70ch; }
+.va-legacy-pack .va-production-document { min-block-size: 260px; }
+.va-legacy-conversion { margin-block: 18px; display: flex; flex-wrap: wrap; gap: 10px; }
+.va-legacy-conversion p { flex-basis: 100%; font-size: 13px; }
+@container content-production (max-width: 850px) {
+  .va-app .va-content-plan-183 .va-plan-layout { grid-template-columns: minmax(0,1fr); }
+  .va-app .va-content-plan-183 .va-content-list { display: flex; flex-flow: row wrap; align-items: start; gap: 12px; }
+  .va-content-plan-183 .va-content-list > h2 { flex-basis: 100%; }
+  .va-content-plan-183 .va-content-list > section,.va-content-plan-183 .va-series-group { min-inline-size: min(200px,100%); flex: 1 1 200px; }
+  .va-app .va-content-plan-183 .va-content-list > button { inline-size: auto; }
+}
+@container content-production (max-width: 600px) {
+  .va-app .va-content-plan-183 .va-direction-card,.va-app .va-content-plan-183 .va-manual-direction,.va-content-plan-183 .va-video-direction-tools { padding: 17px; }
+  .va-sheet-toolbar > .va-actions { inline-size: 100%; }
+  .va-sheet-toolbar .va-export-menu { max-inline-size: 100%; }
+  .va-sheet-toolbar .va-export-menu > div { position: static; min-inline-size: 0; inline-size: 100%; }
+  .va-sheet-toolbar .va-export-menu button { white-space: normal; }
+}
+/* Opaque editing surfaces keep control boundaries distinguishable on glass. */
+.va-app .va-content-plan-183 .va-plan-field :is(input,textarea,select),
+.va-app .va-plan-dialog :is(input,textarea,select),
+.va-app .va-production-183 :is(input,textarea,select) { border-color: #8790a8; }
+.va-app .va-content-plan-183 button:not(.va-primary):not(.va-link-button):not(.va-icon-button),
+.va-app .va-production-183 button:not(.va-primary):not(.va-link-button):not(.va-icon-button) { border-color: #8790a8; }
+
+.va-linked-inspiration { padding: 14px; background: #f0eef9; border: 1px solid #d1c9e9; border-radius: 10px; margin-block: 16px; }
+.va-app .va-linked-inspiration > input { display: inline-block; vertical-align: middle; margin-inline-end: 8px; }
+.va-app .va-linked-inspiration > label { display: inline; font-size: 14px; }
+.va-linked-inspiration p { font-size: 13px; }
+.va-shot-time-range { display: block; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; padding-block-end: 5px; }
+
+.va-app .va-production-sheet .va-export-menu > summary { padding: 9px 12px; border: 1px solid #8790a8; border-radius: 10px; color: #434a68; background: #ffffffa8; box-shadow: none; font-size: 13px; }
+
+.va-video-references { padding: 14px 16px; margin-block: 14px 20px; background: #fafaff; border: 1px solid #d4d9ec; border-radius: 10px; }
+.va-video-references > summary { color: #454d69; font-size: 14px; }
+.va-video-references > p { font-size: 13px; }
+.va-video-references li { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; }
+.va-video-references li > span { flex: 1; min-inline-size: 0; overflow-wrap: anywhere; }
+
+/* Keep offscreen accessible labels inside the table's own scroll context. */
+.va-storyboard-sheet td { position: relative; }
