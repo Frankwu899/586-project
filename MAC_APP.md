@@ -12,7 +12,7 @@ START HERE
    First launch also needs internet access to install the pinned Python
    dependencies in your local cache. The workspace opens in your normal browser
    when it is ready. Node is not needed for the included, prebuilt interface.
-3. Check the version and full source commit in About against the team's delivery
+3. Check the version and full source commit in Settings against the team's delivery
    message. Include them with every test report. No sample video is preloaded.
 
 This is an unsigned, dependency-assisted Finder launcher for the local browser
