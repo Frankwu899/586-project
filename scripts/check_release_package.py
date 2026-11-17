@@ -21,10 +21,10 @@ import tempfile
 import zipfile
 
 
-FORBIDDEN_PARTS = {".git", ".venv", "node_modules", ".local-data", "__pycache__",
+FORBIDDEN_PARTS = {".git", ".agents", ".venv", "node_modules", ".local-data", "__pycache__",
                    "provider-cache", "projects", "runtime", "test-results"}
 FORBIDDEN_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".sqlite3", ".db", ".pyc",
-                      ".mp4", ".mov", ".webm", ".mkv", ".mp3", ".wav", ".m4a",
+                      ".mp4", ".mov", ".webm", ".mkv", ".m4v", ".mp3", ".wav", ".m4a",
                       ".aac", ".flac", ".ogg", ".zip"}
 SECRET_PATTERN = re.compile(rb"\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{32,}\b")
 
@@ -64,6 +64,8 @@ def verify_archive(archive_path: Path, expected_version: str, expected_commit: s
         mac = str(root) == "Video Anatomy.app/Contents/Resources/app"
         if not mac and str(root) != "video-anatomy-local":
             raise ValueError("Use a local-launcher or Mac team package")
+        if mac and {PurePosixPath(name).parts[0] for name in names} != {"README.txt", "Video Anatomy.app"}:
+            raise ValueError("The Mac archive must contain only README.txt and Video Anatomy.app at the top level")
         manifest = json.loads(archive.read(manifest_name))
         commit = manifest.get("source_commit")
         if manifest.get("application_version") != expected_version:
@@ -72,6 +74,8 @@ def verify_archive(archive_path: Path, expected_version: str, expected_commit: s
             raise ValueError("The source commit is missing or malformed")
         if expected_commit is not None and commit != expected_commit:
             raise ValueError("The package source differs from the expected commit")
+        if manifest.get("source_tree_clean") is not True:
+            raise ValueError("Team packages must come from a verified clean source tree")
         if manifest.get("private_reference_included") is not False:
             raise ValueError("Team packages must not contain private reference media")
         files = manifest.get("files")
@@ -98,8 +102,7 @@ def verify_archive(archive_path: Path, expected_version: str, expected_commit: s
             raise ValueError(f"Missing runtime files: {sorted(required - set(files))}")
         wrappers = {name for name in names if not name.startswith(str(root) + "/") and not name.endswith("/")}
         expected_wrappers = {"Video Anatomy.app/Contents/Info.plist", "Video Anatomy.app/Contents/PkgInfo",
-                             "Video Anatomy.app/Contents/MacOS/VideoAnatomy", "READ ME FIRST.md",
-                             "RELEASE NOTES.md"} if mac else set()
+                             "Video Anatomy.app/Contents/MacOS/VideoAnatomy", "README.txt"} if mac else set()
         if wrappers != expected_wrappers:
             raise ValueError("Unexpected or missing package wrapper files")
         if mac:
@@ -110,12 +113,18 @@ def verify_archive(archive_path: Path, expected_version: str, expected_commit: s
             launcher = archive.getinfo("Video Anatomy.app/Contents/MacOS/VideoAnatomy")
             if not ((launcher.external_attr >> 16) & 0o111):
                 raise ValueError("The Finder launcher is not executable")
-            if archive.read("READ ME FIRST.md") != archive.read(str(root / "MAC_APP.md")):
+            if archive.read("README.txt") != archive.read(str(root / "MAC_APP.md")):
                 raise ValueError("Finder launch instructions differ from the package")
-            if archive.read("RELEASE NOTES.md") != archive.read(str(root / f"docs/releases/{expected_version}.md")):
-                raise ValueError("Finder release notes differ from the package")
+        declared_wrappers = manifest.get("wrapper_files")
+        if not isinstance(declared_wrappers, dict) or set(declared_wrappers) != wrappers:
+            raise ValueError("The manifest does not inventory every package wrapper")
+        for name, digest in declared_wrappers.items():
+            if hashlib.sha256(archive.read(name)).hexdigest() != digest:
+                raise ValueError(f"Wrapper hash mismatch: {name}")
     return {"application_version": expected_version, "source_commit": commit, "files_verified": len(files),
-            "variant": "mac-launcher" if mac else "local-launcher", "payload_root": str(root)}
+            "wrapper_files_verified": len(declared_wrappers), "source_tree_clean": True,
+            "variant": "mac-launcher" if mac else "local-launcher",
+            "payload_root": str(root)}
 
 
 SMOKE = r'''
