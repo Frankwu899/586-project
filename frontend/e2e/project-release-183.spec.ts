@@ -209,3 +209,48 @@ test('a corrupted citation timestamp cannot send the player to another moment', 
     await expect(page.locator('.va-source-selected-text')).toHaveText('Original observation at one second.');
   }
 });
+
+test('late media metadata cannot restore a citation after an explicit playback choice', async ({ page }) => {
+  const receipt = seed();
+  // A second authored event in the same saved revision exercises a deliberate
+  // event change independently of the current/historical revision controls.
+  execFileSync(join(root, '.venv/bin/python'), ['-c', [
+    'from pathlib import Path',
+    'import sys',
+    'from backend.app.project_workspace.models import EvidenceEvent',
+    'from backend.app.project_workspace.store import ProjectStore',
+    'store = ProjectStore(Path(sys.argv[1]))',
+    'project = store.get(sys.argv[2])',
+    'def add_event(state):',
+    '    state.resources[0].evidence[0].events.append(EvidenceEvent(id="visual_second", kind="visual", text="Another historical observation at two seconds.", start_seconds=2, end_seconds=2))',
+    'store.update(project.id, project.version, add_event)',
+  ].join('\n'), process.env.VIDEO_ANATOMY_E2E_DATA_DIR!, receipt.project.id], { cwd: root });
+  const player = await openHistoricalSource(page, receipt.project);
+  const at = async (seconds: number) => {
+    await expect.poll(async () => player.evaluate(element => (element as HTMLVideoElement).currentTime)).toBeGreaterThanOrEqual(seconds - .05);
+    expect(await player.evaluate(element => (element as HTMLVideoElement).currentTime)).toBeLessThan(seconds + .05);
+  };
+  const lateMetadata = async () => {
+    await player.dispatchEvent('loadedmetadata');
+    await expect.poll(async () => player.evaluate(element => (element as HTMLVideoElement).seeking)).toBe(false);
+  };
+  await at(1);
+  await page.getByRole('button', { name: 'Seek to 00:02: Another historical observation at two seconds.', exact: true }).click();
+  await at(2);
+  await lateMetadata();
+  await at(2);
+  await expect(page.locator('.va-source-selected-text')).toHaveText('Another historical observation at two seconds.');
+
+  await page.getByRole('button', { name: 'View current evidence', exact: true }).click();
+  await lateMetadata();
+  await at(2);
+  await expect(page.getByLabel('Evidence revision', { exact: true })).toHaveValue('current');
+  await expect(page.locator('.va-source-selected-text')).toHaveCount(0);
+
+  await page.getByLabel('Evidence revision', { exact: true }).selectOption('2');
+  await page.getByRole('button', { name: 'Seek to 00:03: Human-corrected observation at three seconds.', exact: true }).click();
+  await at(3);
+  await lateMetadata();
+  await at(3);
+  await expect(page.locator('.va-source-selected-text')).toHaveText('Human-corrected observation at three seconds.');
+});
