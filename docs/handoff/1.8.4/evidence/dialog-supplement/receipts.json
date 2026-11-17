@@ -1,0 +1,280 @@
+{
+  "results": [
+    {
+      "case": {
+        "width": 1440,
+        "height": 900,
+        "factor": 2
+      },
+      "mode": "Native Chromium Page zoom",
+      "status": "passed",
+      "actualZoom": 2,
+      "dimensions": {
+        "innerWidth": 720,
+        "innerHeight": 378,
+        "outerWidth": 1440,
+        "outerHeight": 900,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "cssZoom": "1",
+        "documentScrollWidth": 720
+      },
+      "controls": [
+        {
+          "label": "Analysis for",
+          "x": 115,
+          "y": 202.9296875,
+          "width": 241,
+          "height": 41.5,
+          "innerWidth": 720,
+          "innerHeight": 378,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Use saved evidence only — skip visual and speech recognition.",
+          "x": 119,
+          "y": 259.4296875,
+          "width": 19,
+          "height": 19,
+          "innerWidth": 720,
+          "innerHeight": 378,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Speech model",
+          "x": 115,
+          "y": 168.515625,
+          "width": 490,
+          "height": 41.5,
+          "innerWidth": 720,
+          "innerHeight": 378,
+          "unobscured": true,
+          "disabled": true
+        },
+        {
+          "label": "Cancel",
+          "x": 115,
+          "y": 303.90625,
+          "width": 77.9140625,
+          "height": 43.6953125,
+          "innerWidth": 720,
+          "innerHeight": 378,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Generate from saved evidence",
+          "x": 202.9140625,
+          "y": 303.90625,
+          "width": 235.1015625,
+          "height": 43.6953125,
+          "innerWidth": 720,
+          "innerHeight": 378,
+          "unobscured": true,
+          "disabled": false
+        }
+      ],
+      "savedOnlyDefault": false,
+      "savedOnlyChecked": true,
+      "speechModelDisabledWhenChecked": true,
+      "submitLabel": "Generate from saved evidence",
+      "submitClicked": false,
+      "cancelFocusReturn": true,
+      "escapeFocusReturn": true,
+      "processingPosts": 0,
+      "jobsUnchanged": true,
+      "evidenceUnchanged": true,
+      "postchangeSourceHashes": {
+        "frontend/src/project/ActivityPanel.tsx": "d860603de6ed830e35354386a3900ce0e25367caa5b9acefd437b0563dd98d78",
+        "frontend/src/project/Resources.tsx": "ade0e8665c3804f2d6b0e96e009c9eb8a4526842dc241e043bda55064310f815"
+      }
+    },
+    {
+      "case": {
+        "width": 1280,
+        "height": 800,
+        "factor": 2
+      },
+      "mode": "Native Chromium Page zoom",
+      "status": "passed",
+      "actualZoom": 2,
+      "dimensions": {
+        "innerWidth": 640,
+        "innerHeight": 328,
+        "outerWidth": 1280,
+        "outerHeight": 800,
+        "devicePixelRatio": 2,
+        "visualViewportScale": 1,
+        "cssZoom": "1",
+        "documentScrollWidth": 640
+      },
+      "controls": [
+        {
+          "label": "Analysis for",
+          "x": 75,
+          "y": 202.9296875,
+          "width": 241,
+          "height": 41.5,
+          "innerWidth": 640,
+          "innerHeight": 328,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Use saved evidence only — skip visual and speech recognition.",
+          "x": 79,
+          "y": 259.4296875,
+          "width": 19,
+          "height": 19,
+          "innerWidth": 640,
+          "innerHeight": 328,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Speech model",
+          "x": 75,
+          "y": 143.515625,
+          "width": 490,
+          "height": 41.5,
+          "innerWidth": 640,
+          "innerHeight": 328,
+          "unobscured": true,
+          "disabled": true
+        },
+        {
+          "label": "Cancel",
+          "x": 75,
+          "y": 245.90625,
+          "width": 77.9140625,
+          "height": 43.6953125,
+          "innerWidth": 640,
+          "innerHeight": 328,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Generate from saved evidence",
+          "x": 162.9140625,
+          "y": 245.90625,
+          "width": 235.1015625,
+          "height": 43.6953125,
+          "innerWidth": 640,
+          "innerHeight": 328,
+          "unobscured": true,
+          "disabled": false
+        }
+      ],
+      "savedOnlyDefault": false,
+      "savedOnlyChecked": true,
+      "speechModelDisabledWhenChecked": true,
+      "submitLabel": "Generate from saved evidence",
+      "submitClicked": false,
+      "cancelFocusReturn": true,
+      "escapeFocusReturn": true,
+      "processingPosts": 0,
+      "jobsUnchanged": true,
+      "evidenceUnchanged": true,
+      "postchangeSourceHashes": {
+        "frontend/src/project/ActivityPanel.tsx": "d860603de6ed830e35354386a3900ce0e25367caa5b9acefd437b0563dd98d78",
+        "frontend/src/project/Resources.tsx": "ade0e8665c3804f2d6b0e96e009c9eb8a4526842dc241e043bda55064310f815"
+      }
+    },
+    {
+      "case": {
+        "width": 390,
+        "height": 844,
+        "factor": 1,
+        "narrow": true
+      },
+      "mode": "390px CSS viewport at native100%",
+      "status": "passed",
+      "actualZoom": 1,
+      "dimensions": {
+        "innerWidth": 390,
+        "innerHeight": 844,
+        "outerWidth": 500,
+        "outerHeight": 844,
+        "devicePixelRatio": 1,
+        "visualViewportScale": 1,
+        "cssZoom": "1",
+        "documentScrollWidth": 390
+      },
+      "controls": [
+        {
+          "label": "Analysis for",
+          "x": 39,
+          "y": 224.125,
+          "width": 241,
+          "height": 42,
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Use saved evidence only — skip visual and speech recognition.",
+          "x": 43,
+          "y": 281.125,
+          "width": 19,
+          "height": 19,
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Speech model",
+          "x": 39,
+          "y": 464.5,
+          "width": 312,
+          "height": 42,
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "unobscured": true,
+          "disabled": true
+        },
+        {
+          "label": "Cancel",
+          "x": 39,
+          "y": 686.375,
+          "width": 77.921875,
+          "height": 43.6875,
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "unobscured": true,
+          "disabled": false
+        },
+        {
+          "label": "Generate from saved evidence",
+          "x": 39,
+          "y": 740.0625,
+          "width": 235.109375,
+          "height": 43.6875,
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "unobscured": true,
+          "disabled": false
+        }
+      ],
+      "savedOnlyDefault": false,
+      "savedOnlyChecked": true,
+      "speechModelDisabledWhenChecked": true,
+      "submitLabel": "Generate from saved evidence",
+      "submitClicked": false,
+      "cancelFocusReturn": true,
+      "escapeFocusReturn": true,
+      "processingPosts": 0,
+      "jobsUnchanged": true,
+      "evidenceUnchanged": true,
+      "postchangeSourceHashes": {
+        "frontend/src/project/ActivityPanel.tsx": "d860603de6ed830e35354386a3900ce0e25367caa5b9acefd437b0563dd98d78",
+        "frontend/src/project/Resources.tsx": "ade0e8665c3804f2d6b0e96e009c9eb8a4526842dc241e043bda55064310f815"
+      }
+    }
+  ],
+  "processingPosts": [],
+  "sourceSnapshot": "../postchange-source-snapshot.json"
+}

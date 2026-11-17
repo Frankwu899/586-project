@@ -22,7 +22,7 @@ Keychain, or installation behavior on a real Mac. If macOS blocks this downloade
 app, use its per-app Open option in Finder or Privacy & Security. Do not disable
 system security checks. Optional document OCR needs Tesseract/Poppler.
 
-UPGRADE FROM 1.8.2 AND KEEP YOUR WORK
+UPGRADE FROM 1.8.2 / 1.8.3 AND KEEP YOUR WORK
 
 Let running requests finish. A closed browser tab does not stop the local server.
 Before backing up, stop the previous Terminal launcher with Control+C. For the
@@ -57,7 +57,8 @@ Existing remembered credentials remain in the macOS login Keychain, separate fro
 the app and library. Allow Keychain access if macOS asks. When setup is needed,
 open API connection, paste the complete OpenAI project secret key, and Save key.
 Remember on this Mac stores it in Keychain. Session-only mode stores no key for
-the next launch and removes this app's previously remembered credential.
+the next launch and removes this app's previously remembered credential or disables
+its future loading if Keychain removal fails, with a visible warning.
 
 Keys are not included in this ZIP, project databases, browser storage, or logs.
 Finish running operations before changing or forgetting a key. Never include a
@@ -97,8 +98,11 @@ Use Finder's Show Package Contents if those technical notes are needed.
 MODELS, USAGE, AND LOCAL STORAGE
 
 Visual analysis, Structure, planning, Production, and input assistance retain
-gpt-6.1-sol. Timestamped speech retains whisper-1; the key also needs Audio
-Transcriptions access. Completed recognition and human corrections survive a
+gpt-6.1-sol. Speech defaults to whisper-1 with estimated segment timestamps.
+Resources and Source Review also offer GPT Transcribe explicitly; its text is
+located by the measured audio-chunk range, without sentence or word alignment.
+Choosing a model does not send audio until you start recognition. Your key needs
+Audio Transcriptions and the selected model access. Completed recognition and human corrections survive a
 partial failure; retry a failed operation explicitly. Opening saved work does
 not automatically repeat interrupted paid requests.
 

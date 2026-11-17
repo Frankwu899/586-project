@@ -1,0 +1,183 @@
+{
+  "description": "Selected offline review evidence; generated inventory, not an additional test result. Original receipts are copied unchanged.",
+  "local_artifact_root": "/workspace/artifacts/video-anatomy-184",
+  "screenshots_copied": 9,
+  "runtime_jsons_copied": 7,
+  "native_counts": {
+    "original_surface_ui": 63,
+    "original_speech_activity_ui": 6,
+    "postchange_bridge_ui": 3,
+    "ui_total_across_two_snapshots": 72,
+    "real_local_player": 1,
+    "overall_across_two_snapshots": 73,
+    "processing_posts": 0
+  },
+  "files": [
+    {
+      "path": "verified/native-1440x900-100-content-plan.png",
+      "kind": "screenshot",
+      "phase": "original-frozen",
+      "meaning": "Desktop Video and series management, native 100%.",
+      "pixel_dimensions": [
+        1440,
+        757
+      ],
+      "bytes": 381139,
+      "sha256": "f4256d35e05ad9378d62c489f07caa29aed31a00769e88e29d92e734c17aa8a7",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/verified/native-1440x900-100-content-plan.png"
+    },
+    {
+      "path": "verified/narrow-390x844-100-content-plan.png",
+      "kind": "screenshot",
+      "phase": "original-frozen",
+      "meaning": "Video and series management at a 390px CSS viewport, native 100%.",
+      "pixel_dimensions": [
+        390,
+        844
+      ],
+      "bytes": 83936,
+      "sha256": "adb906c47a0d59dc57dbd6e6f474ab46193fa6e8c62516f15fb1a4443d29532f",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/verified/narrow-390x844-100-content-plan.png"
+    },
+    {
+      "path": "verified/native-1280x800-200-production-table.png",
+      "kind": "screenshot",
+      "phase": "original-frozen",
+      "meaning": "Saved Production table at real native 200% Page zoom.",
+      "pixel_dimensions": [
+        1280,
+        657
+      ],
+      "bytes": 107710,
+      "sha256": "4dc254283c9a355e2eacf066ffca2cd1125bef386116fb1318107fcdf3a57a1b",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/verified/native-1280x800-200-production-table.png"
+    },
+    {
+      "path": "extra/wide-native-200-activity-partial-failure-details.png",
+      "kind": "screenshot",
+      "phase": "original-frozen",
+      "meaning": "Named source evidence v1 and expandable partial-processing diagnostics at native 200%.",
+      "pixel_dimensions": [
+        1440,
+        900
+      ],
+      "bytes": 335531,
+      "sha256": "7f8f360ef271850548bfc438f6379b8f0faedab8ed9c4c5db621f8613d6e476e",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/extra/wide-native-200-activity-partial-failure-details.png"
+    },
+    {
+      "path": "extra/narrow-native-100-speech-model.png",
+      "kind": "screenshot",
+      "phase": "original-frozen",
+      "meaning": "Saved partial speech, latest authentication failure and passive model preference at 390px.",
+      "pixel_dimensions": [
+        390,
+        844
+      ],
+      "bytes": 78322,
+      "sha256": "513d2d2d6fbbf12e0efa5edb50ac5473a0a7a750515cb913ba1a2f0edd950719",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/extra/narrow-native-100-speech-model.png"
+    },
+    {
+      "path": "extra/wide-native-200-gamma-whole-chunk.png",
+      "kind": "screenshot",
+      "phase": "original-frozen",
+      "meaning": "Authored GPT speech event with whole-audio-chunk timing, native 200%.",
+      "pixel_dimensions": [
+        1440,
+        900
+      ],
+      "bytes": 179434,
+      "sha256": "abcc71ec02712b33fd8727222d6c2dd0f17f54ebd97ef1a18b12d5703979c4ca",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/extra/wide-native-200-gamma-whole-chunk.png"
+    },
+    {
+      "path": "dialog-supplement/native-1280x800-200-speech-model-disabled.png",
+      "kind": "screenshot",
+      "phase": "postchange-bridge",
+      "meaning": "Saved-evidence dialog scrolled to disabled speech model and reachable Cancel/Generate controls, native 200%.",
+      "pixel_dimensions": [
+        1280,
+        657
+      ],
+      "bytes": 122487,
+      "sha256": "84f37f135a6f9a1f522d56e39f87dcb55a4d82a1ace02b6911cc4ef71c60a808",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/dialog-supplement/native-1280x800-200-speech-model-disabled.png"
+    },
+    {
+      "path": "dialog-supplement/narrow-390x844-100-cancel-and-submit.png",
+      "kind": "screenshot",
+      "phase": "postchange-bridge",
+      "meaning": "Saved-evidence dialog at a 390px CSS viewport, native 100%.",
+      "pixel_dimensions": [
+        390,
+        844
+      ],
+      "bytes": 84446,
+      "sha256": "eed4a36dc2e848e7575593c199af050833e5ed27180f95f0a8baebd3fc96021c",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/dialog-supplement/narrow-390x844-100-cancel-and-submit.png"
+    },
+    {
+      "path": "native-player-paused-seek.png",
+      "kind": "screenshot",
+      "phase": "original-frozen",
+      "meaning": "Real generated local MP4 after playback and paused seek to three seconds, native 100%.",
+      "pixel_dimensions": [
+        1440,
+        757
+      ],
+      "bytes": 444546,
+      "sha256": "534ceb3f031b7d6a40374e4fd480f7e8ca76a7b6fe4f02aba9e6b1c3968b73cb",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/native-player-paused-seek.png"
+    },
+    {
+      "path": "native-summary.json",
+      "kind": "copied-runtime-receipt",
+      "bytes": 6866,
+      "sha256": "e352e8ec7fcd803e43fd60555c178454022cac6706c4ba4f592a6cefab696ed4",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/native-summary.json"
+    },
+    {
+      "path": "verified/native-full-receipts.json",
+      "kind": "copied-runtime-receipt",
+      "bytes": 126461,
+      "sha256": "3461bc11063a0d2bcf7f8b56d29a25bf3c44b3d60a81eb335227496842a42867",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/verified/native-full-receipts.json"
+    },
+    {
+      "path": "extra/receipts.json",
+      "kind": "copied-runtime-receipt",
+      "bytes": 9133,
+      "sha256": "466942217913cd451167f3072676b52221d5d788246e055b88fbd0b2f9c93e2b",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/extra/receipts.json"
+    },
+    {
+      "path": "native-player-receipt.json",
+      "kind": "copied-runtime-receipt",
+      "bytes": 689,
+      "sha256": "c00bbd37630f40c15d589ad246d7cd2683c7ac8e6416b73307944a7cf7c3a77d",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/native-player-receipt.json"
+    },
+    {
+      "path": "frozen-source-snapshot.json",
+      "kind": "copied-runtime-receipt",
+      "bytes": 13262,
+      "sha256": "848caf6c25257f68d1060a25b1796a4864c91fc683f319dce0743f6b8414abbc",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/frozen-source-snapshot.json"
+    },
+    {
+      "path": "postchange-source-snapshot.json",
+      "kind": "copied-runtime-receipt",
+      "bytes": 13371,
+      "sha256": "db8bc1cb6f02ff23ca9b66f20f795d8d8d0b2327d4cb3210e0fcb2a244e4a49c",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/postchange-source-snapshot.json"
+    },
+    {
+      "path": "dialog-supplement/receipts.json",
+      "kind": "copied-runtime-receipt",
+      "bytes": 7754,
+      "sha256": "f5af04286f79ba8d337e586064794ad9c0d2cb32b7a230717c17bf2ca18373c7",
+      "local_origin": "/workspace/artifacts/video-anatomy-184/native/dialog-supplement/receipts.json"
+    }
+  ]
+}

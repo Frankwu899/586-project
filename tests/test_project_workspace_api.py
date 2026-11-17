@@ -124,9 +124,9 @@ def test_empty_ideas_request_asks_starting_question_without_admitting_job(tmp_pa
 def test_release_diagnostics_expose_version_and_source_without_credentials(tmp_path):
     with TestClient(create_app(tmp_path)) as client:
         identity = client.get("/api/projects/capabilities").json()
-        assert identity["version"] == "1.8.3"
+        assert identity["version"] == "1.8.4"
         assert identity["source_commit"] is None or len(identity["source_commit"]) == 40
-        assert client.get("/api/health").json()["application_version"] == "1.8.3"
+        assert client.get("/api/health").json()["application_version"] == "1.8.4"
 
 
 def test_per_resource_recognition_retry_is_distinct_from_preview_and_keeps_selection(tmp_path):
