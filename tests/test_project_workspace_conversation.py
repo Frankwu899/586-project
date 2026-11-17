@@ -129,11 +129,13 @@ def test_dynamic_settings_are_read_for_each_response_and_no_silent_model_substit
 def test_rejects_ungrounded_and_strengthened_product_claims(setup, bad):
     store, project, _, transport, service = setup
     transport.response = reply(bad)
-    with pytest.raises(WorkflowError) as failure:
-        service.send(project.id, project.version, "Does not keep drinks warm all day\nKeeps drinks warm for up to six hours in our indoor test")
-    assert failure.value.code == "invalid_conversation_response"
-    saved = store.get(project.id)
+    saved = service.send(project.id, project.version, "Does not keep drinks warm all day\nKeeps drinks warm for up to six hours in our indoor test")
     assert not saved.brief_draft and saved.messages[0].role == "user"
+    assert saved.messages[-1].status == "saved"
+    assert saved.messages[-1].diagnostics["outcome"] == "partial"
+    assert saved.messages[-1].diagnostics["rejected_proposals"] == "1"
+    assert "could not be added" in saved.messages[-1].text
+    assert store.get(project.id).messages == saved.messages
 
 
 def test_document_excerpt_is_grounded_at_its_location_and_never_grants_claim_permission(setup):
@@ -382,3 +384,223 @@ def test_no_fixed_required_fields_or_mandatory_claim_for_confirmed_context(setup
     _, project, _, _, service = setup
     result = service.apply_brief(project.id, project.version, [Fact(key="objective", value="Tell our founding story", status="confirmed", origin="manual")])
     assert result.briefs == [BriefRevision(revision=1, facts=result.briefs[0].facts, created_at=result.briefs[0].created_at)]
+
+
+WELLPATH = (
+    "WellPath is a personalized preventive health platform preparing to launch in the US. "
+    "It brings personal health and wellness information into an understandable dashboard and helps users set wellness goals and track progress. "
+    "No clinical benefits or disease-prevention capabilities have been established.\n\n"
+    "I want this campaign to make more people know WellPath, but I also want people to sign up after watching the video. "
+    "I’m not sure which one should be the main goal."
+)
+
+
+def test_wellpath_tradeoff_preserves_restriction_and_undecided_objective(setup):
+    _, project, _, transport, service = setup
+    restriction = "No clinical benefits or disease-prevention capabilities have been established."
+    discussion = ("For launch, I recommend choosing one primary outcome: awareness can introduce the platform, "
+                  "while sign-ups need a clear next step. Avoid clinical or disease-prevention claims. "
+                  "Which matters more for this first video: reach or registrations?")
+    transport.response = reply(
+        proposal(key="prohibited_claim", value=restriction, excerpt=restriction),
+        proposal(key="objective", value="sign up", excerpt="sign up"),
+        {"key": "objective", "value": "Awareness or sign-ups remains undecided", "kind": "unresolved"},
+        text=discussion,
+    )
+    saved = service.send(project.id, project.version, WELLPATH)
+    assert saved.messages[-1].text.startswith(discussion)
+    assert len(saved.brief_draft) == 2
+    assert saved.brief_draft[0].value == restriction
+    assert saved.brief_draft[1].status == "unresolved"
+    assert saved.briefs == []
+    assert "unresolved_decision" in saved.messages[-1].diagnostics["validation_issues"]
+    assert len(transport.calls) == 1  # No paid repair loop for deterministic validation.
+
+
+@pytest.mark.parametrize(("source", "answer", "value"), [
+    ("Audience: City commuters", "I recommend a short introduction. What should viewers do next?", "City commuters"),
+    ("受众：城市通勤者", "建议先明确一个主要目标。你更希望观众了解品牌，还是注册？", "城市通勤者"),
+    ("Audience: 城市通勤者 / commuters", "建议先做 awareness，再用明确的 CTA 引导注册。主要目标选哪一个？", "城市通勤者"),
+])
+def test_english_chinese_and_mixed_discussion_do_not_require_verbatim_recommendations(setup, source, answer, value):
+    _, project, _, transport, service = setup
+    transport.response = reply(proposal(value=value, excerpt=source), text=answer)
+    saved = service.send(project.id, project.version, source)
+    assert saved.messages[-1].text == answer
+    assert saved.brief_draft[0].value == value
+
+
+def test_one_malformed_proposal_does_not_discard_other_facts_or_reply(setup):
+    _, project, _, transport, service = setup
+    transport.response = reply(proposal(), {"key": 42, "value": ["private-invalid-value"], "kind": "invented"})
+    saved = service.send(project.id, project.version, "Audience: City commuters")
+    assert saved.brief_draft[0].value == "City commuters"
+    message = saved.messages[-1]
+    assert message.status == "saved" and not message.retryable
+    assert message.diagnostics["validation_rule"] == "proposal_schema"
+    assert message.diagnostics["validation_field"] == "proposals[1]"
+    assert "private-invalid-value" not in str(message.diagnostics)
+    with pytest.raises(WorkflowError, match="completed"):
+        service.begin_retry(project.id, saved.version, saved.messages[0].id)
+    assert len(transport.calls) == 1
+
+
+@pytest.mark.parametrize(("paragraph", "excerpt", "accepted"), [
+    ("Meet our bottle. Keeps drinks warm for up to six hours in our indoor test. Choose a color.",
+     "Keeps drinks warm for up to six hours in our indoor test.", True),
+    ("Meet our bottle. Does not keep drinks warm all day. Choose a color.", "Does not keep drinks warm all day.", True),
+    ("Meet our bottle. Does not keep drinks warm all day.", "keep drinks warm all day.", False),
+    ("Keeps drinks warm for up to six hours in our indoor test.", "Keeps drinks warm", False),
+    ("Improves energy. Only under supervised trial conditions.", "Improves energy.", False),
+    ("Improves energy. Results vary and have only been observed in a small trial.", "Improves energy.", False),
+    ("In a small indoor test. It keeps drinks warm for six hours.", "It keeps drinks warm for six hours.", False),
+    ("Improves energy. No clinical benefits have been established.", "Improves energy.", False),
+    ("Improves energy. Only under supervised trial conditions.", "Improves energy. Only under supervised trial conditions.", True),
+    ("在室内试验中保温最长六小时。不能保证全天保温。", "在室内试验中保温最长六小时。", True),
+])
+def test_claim_evidence_uses_complete_sentences_and_attached_qualifications(setup, paragraph, excerpt, accepted):
+    _, project, _, transport, service = setup
+    transport.response = reply(proposal(key="claim", value=excerpt, excerpt=excerpt))
+    saved = service.send(project.id, project.version, paragraph)
+    assert bool(saved.brief_draft) is accepted
+    if accepted:
+        assert not saved.brief_draft[0].permitted_for_use
+
+
+@pytest.mark.parametrize("unsafe", [
+    "WellPath boosts energy 80%.",
+    "WellPath is FDA approved.",
+    "WellPath saves $100 every month.",
+    "WellPath collects your medical records automatically.",
+    "Millions of people use WellPath.",
+    "Users love WellPath because it works.",
+    "For WellPath, I recommend focusing on awareness because customers love it.",
+    "I recommend saying that WellPath cures disease.",
+    "Do not wait: WellPath cures cancer.",
+    "This does not merely treat symptoms; it cures cancer.",
+    "Do not claim clinical benefits because WellPath cures disease.",
+    "I have verified the product claim.",
+    "The clinical benefits are verified.",
+    "Read https://fabricated.example/private-report",
+    "<script>alert('unsafe')</script>",
+])
+def test_unsupported_or_unsafe_reply_is_not_shown_but_independent_fact_is_retained(setup, unsafe):
+    store, project, _, transport, service = setup
+    transport.response = reply(proposal(key="product", value="WellPath", excerpt="WellPath"), text=unsafe)
+    with pytest.raises(WorkflowError):
+        service.send(project.id, project.version, WELLPATH)
+    saved = store.get(project.id)
+    assert saved.brief_draft[0].value == "WellPath"
+    message = saved.messages[-1]
+    assert message.status == "failed" and message.retryable
+    assert unsafe not in message.text
+    assert message.reply_to_message_id == saved.messages[0].id
+    assert message.diagnostics["outcome"] == "failed"
+    assert WELLPATH not in str(message.diagnostics)
+
+
+@pytest.mark.parametrize("key", ["claim", "benefit", "product_benefit", "benefits", "background", "产品卖点", "功效"])
+def test_renaming_unsupported_benefit_cannot_put_it_into_suggestions(setup, key):
+    _, project, _, transport, service = setup
+    transport.response = reply({"key": key, "value": "WellPath prevents disease", "kind": "suggestion"})
+    saved = service.send(project.id, project.version, WELLPATH)
+    assert saved.brief_draft == []
+    assert saved.messages[-1].status == "saved"
+
+
+@pytest.mark.parametrize("malformed", [None, [], "private-output", {"reply": []}, {"reply": ""}])
+def test_malformed_reply_is_safe_and_retriable_without_duplicate_user_turn(setup, malformed):
+    store, project, _, transport, service = setup
+    transport.response = malformed
+    with pytest.raises(WorkflowError):
+        service.send(project.id, project.version, "Audience: City commuters")
+    failed = store.get(project.id)
+    assert failed.messages[-1].diagnostics["failure_category"] == "schema"
+    transport.response = reply(proposal())
+    admitted, message_id = service.begin_retry(project.id, failed.version, failed.messages[0].id)
+    assert sum(message.role == "user" for message in admitted.messages) == 1
+    completed = service.respond(project.id, message_id)
+    assert completed.messages[-1].status == "saved"
+    assert completed.messages[-1].diagnostics["attempt_count"] == "2"
+    assert sum(message.role == "user" for message in completed.messages) == 1
+    assert all(not message.retryable for message in completed.messages)
+
+
+@pytest.mark.parametrize("code", ["provider_refusal", "provider_incomplete", "provider_timeout", "provider_invalid_json"])
+def test_provider_failures_retain_distinct_safe_diagnostics(setup, code):
+    store, project, _, transport, service = setup
+    transport.error = ProviderError(code, "Safe provider failure")
+    with pytest.raises(WorkflowError) as failure:
+        service.send(project.id, project.version, "Audience: City commuters")
+    assert failure.value.code == code
+    message = store.get(project.id).messages[-1]
+    assert message.diagnostics["failure_code"] == code
+    assert message.retryable is (code != "provider_refusal")
+    assert len(transport.calls) == 1
+
+
+@pytest.mark.parametrize("advice", [
+    "For WellPath, I recommend focusing on awareness. Which outcome matters most for this first video?",
+    "WellPath should prioritize awareness for launch. Would a clear invitation to register work as a secondary CTA?",
+    "Which matters more for WellPath: awareness or sign-ups?",
+    "建议 WellPath 先明确主目标，再设计行动号召。你更看重品牌认知还是注册？",
+])
+def test_named_product_campaign_recommendations_remain_usable(setup, advice):
+    _, project, _, transport, service = setup
+    transport.response = reply(text=advice)
+    saved = service.send(project.id, project.version, WELLPATH)
+    assert saved.messages[-1].text == advice
+    assert not saved.briefs
+
+
+@pytest.mark.parametrize("response", [
+    None,
+    reply(text="WellPath cures disease."),
+    reply(unresolved="not a list"),
+    reply(unresolved=["Which audience should lead?", None]),
+    reply(proposal(source_index=999)),
+])
+def test_failed_or_partial_output_preserves_saved_unresolved_decisions(setup, response):
+    store, project, _, transport, service = setup
+    question = "Should awareness or sign-ups be the main objective?"
+    project = store.update(project.id, project.version, lambda state: state.unresolved.append(question))
+    transport.response = response
+    try:
+        service.send(project.id, project.version, WELLPATH)
+    except WorkflowError:
+        pass
+    saved = store.get(project.id)
+    assert question in saved.unresolved
+    if isinstance(response, dict) and isinstance(response.get("unresolved"), list) and "Which audience should lead?" in response["unresolved"]:
+        assert "Which audience should lead?" in saved.unresolved
+    assert None not in saved.unresolved
+
+
+def test_fully_valid_response_can_resolve_saved_unresolved_decision(setup):
+    store, project, _, transport, service = setup
+    project = store.update(project.id, project.version, lambda state: state.unresolved.append("Which audience?"))
+    transport.response = reply(proposal())
+    saved = service.send(project.id, project.version, "Audience: City commuters")
+    assert saved.unresolved == []
+
+
+@pytest.mark.parametrize(("source", "excerpt", "accepted"), [
+    ("Keeps drinks warm\nfor up to six hours in our indoor test.", "Keeps drinks warm", False),
+    ("Keeps drinks warm\r\nfor up to six hours in our indoor test.", "Keeps drinks warm", False),
+    ("Keeps drinks warm\n\nfor up to six hours in our indoor test.", "Keeps drinks warm", False),
+    ("If used indoors\nIt lasts six hours.", "It lasts six hours.", False),
+    ("If used indoors\nIt lasts six hours.", "If used indoors", False),
+    ("Keeps drinks warm\nfor up to six hours in our indoor test.",
+     "Keeps drinks warm\nfor up to six hours in our indoor test.", True),
+    ("If used indoors\nIt lasts six hours.", "If used indoors\nIt lasts six hours.", True),
+])
+def test_wrapped_claim_evidence_preserves_conditions_and_original_wording(setup, source, excerpt, accepted):
+    _, project, _, transport, service = setup
+    transport.response = reply(proposal(key="claim", value=excerpt, excerpt=excerpt))
+    saved = service.send(project.id, project.version, source)
+    assert bool(saved.brief_draft) is accepted
+    if accepted:
+        assert saved.brief_draft[0].value == excerpt
+        assert saved.brief_draft[0].sources[0].excerpt == excerpt
+    else:
+        assert "complete_qualified_claim" in saved.messages[-1].diagnostics["validation_issues"]

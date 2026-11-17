@@ -19,7 +19,7 @@ import zipfile
 
 from ..media import MediaSettings, probe_frame_timing, validate_frame_correspondence
 from ..storage import WorkflowError
-from .models import ExtractedBlock, Project, Resource, invalidate, uid
+from .models import ExtractedBlock, Project, Resource, ResourceFolder, invalidate, now, resource_is_trashed, uid
 
 DOCUMENTS = {".docx", ".pdf", ".xlsx", ".csv", ".pptx", ".txt", ".md", ".tsv", ".rtf"}
 VIDEOS = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
@@ -37,11 +37,36 @@ NS_S = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 NS_R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 
 
-def _resource(project: Project, resource_id: str) -> Resource:
+def _resource(project: Project, resource_id: str, *, include_trashed=False) -> Resource:
     result = next((item for item in project.resources if item.id == resource_id), None)
     if result is None:
         raise WorkflowError("resource_not_found", "This resource does not belong to this project.", 404)
+    if not include_trashed and resource_is_trashed(project, result):
+        raise WorkflowError("resource_trashed", "This source is in Trash. Restore the file or its containing folder to use it; saved evidence and history are retained.", 410)
     return result
+
+
+def _logical_name(value, *, folder=False):
+    if not isinstance(value, str):
+        raise WorkflowError("invalid_resource_name", "Use a readable file or folder name.", 422)
+    value = value.strip()
+    if not value or value in {".", ".."} or len(value) > (200 if folder else 250) or re.search(r"[/\\\x00-\x1f]", value):
+        raise WorkflowError("invalid_resource_name", "Use a name without path separators or control characters.", 422)
+    return value
+
+
+def _folder(project, folder_id, *, active=True):
+    folder = next((item for item in project.resource_folders if item.id == folder_id), None)
+    if folder is None:
+        raise WorkflowError("folder_not_found", "This folder does not belong to the project.", 404)
+    if active:
+        folders, current, seen = {item.id: item for item in project.resource_folders}, folder, set()
+        while current and current.id not in seen:
+            seen.add(current.id)
+            if current.trashed_at:
+                raise WorkflowError("folder_trashed", "This folder is in Trash. Restore it or choose another destination.", 410)
+            current = folders.get(current.parent_id)
+    return folder
 
 
 def _digest(path: Path) -> str:
@@ -268,7 +293,111 @@ class ResourceService:
         self.media_settings = MediaSettings.from_env()
         self._verified_playback: dict[str, tuple] = {}
 
-    def import_file(self, project_id, expected_version, name, stream, role="reference", origin="upload", source_url=None, provenance="") -> Project:
+    def create_folder(self, project_id, expected_version, name, parent_id=None):
+        folder = ResourceFolder(name=_logical_name(name, folder=True), parent_id=parent_id)
+        def change(project):
+            if parent_id is not None:
+                _folder(project, parent_id)
+            project.resource_folders.append(folder)
+        return self.store.update(project_id, expected_version, change)
+
+    def edit_folder(self, project_id, expected_version, folder_id, fields):
+        if not fields or set(fields) - {"name", "parent_id"}:
+            raise WorkflowError("invalid_folder_fields", "Edit only this folder's name and parent folder.", 422)
+        def change(project):
+            folder = _folder(project, folder_id)
+            if "name" in fields:
+                folder.name = _logical_name(fields["name"], folder=True)
+            if "parent_id" in fields:
+                parent_id = fields["parent_id"]
+                parent = _folder(project, parent_id) if parent_id is not None else None
+                seen = {folder_id}
+                while parent is not None:
+                    if parent.id in seen:
+                        raise WorkflowError("folder_cycle", "A folder cannot be moved into itself or one of its children.", 422)
+                    seen.add(parent.id)
+                    parent = _folder(project, parent.parent_id) if parent.parent_id is not None else None
+                folder.parent_id = parent_id
+        return self.store.update(project_id, expected_version, change)
+
+    @staticmethod
+    def _require_idle(project, resource_ids):
+        if any(resource.id in resource_ids and resource.status == "processing" for resource in project.resources):
+            raise WorkflowError("resource_busy", "Wait for this source's processing before moving it to Trash.", 409)
+        for job in project.jobs:
+            if job.status not in {"queued", "running"}:
+                continue
+            if job.resource_id in resource_ids:
+                raise WorkflowError("resource_busy", "Wait for this source's processing before moving it to Trash.", 409)
+            if job.kind == "analyze":
+                content = next((item for item in project.contents if item.id == job.content_id), None)
+                selected = content.selection if content is not None else project.selection
+                if set(selected.resource_ids) & resource_ids:
+                    raise WorkflowError("resource_busy", "Wait for the analysis using this source before moving it to Trash.", 409)
+
+    def folder_trash(self, project_id, expected_version, folder_id, *, restore=False):
+        def change(project):
+            folder = _folder(project, folder_id, active=False)
+            if restore:
+                if folder.trashed_at is None:
+                    return False
+                if folder.parent_id:
+                    _folder(project, folder.parent_id)
+                folder.trashed_at = None
+                return
+            if folder.trashed_at:
+                return False
+            affected = {folder_id}
+            while True:
+                descendants = {item.id for item in project.resource_folders if item.parent_id in affected}
+                if descendants.issubset(affected):
+                    break
+                affected |= descendants
+            self._require_idle(project, {resource.id for resource in project.resources if resource.folder_id in affected})
+            folder.trashed_at = now()
+        return self.store.update(project_id, expected_version, change)
+
+    def edit_resource(self, project_id, expected_version, resource_id, fields):
+        if not fields or set(fields) - {"name", "folder_id"}:
+            raise WorkflowError("invalid_resource_fields", "Edit only this file's display name and logical folder.", 422)
+        def change(project):
+            resource = _resource(project, resource_id)
+            if "name" in fields:
+                resource.name = _logical_name(fields["name"])
+            if "folder_id" in fields:
+                folder_id = fields["folder_id"] or "folder_inbox"
+                _folder(project, folder_id)
+                resource.folder_id = folder_id
+        return self.store.update(project_id, expected_version, change)
+
+    def move_resources(self, project_id, expected_version, resource_ids, folder_id=None):
+        if not resource_ids or len(set(resource_ids)) != len(resource_ids):
+            raise WorkflowError("invalid_resource_selection", "Choose each file once for this move.", 422)
+        folder_id = folder_id or "folder_inbox"
+        def change(project):
+            _folder(project, folder_id)
+            resources = [_resource(project, resource_id) for resource_id in resource_ids]
+            for resource in resources:
+                resource.folder_id = folder_id
+        return self.store.update(project_id, expected_version, change)
+
+    def resource_trash(self, project_id, expected_version, resource_id, *, restore=False):
+        def change(project):
+            resource = _resource(project, resource_id, include_trashed=True)
+            if restore:
+                if resource.folder_id:
+                    _folder(project, resource.folder_id)
+                if resource.trashed_at is None:
+                    return False
+                resource.trashed_at = None
+                return
+            if resource.trashed_at:
+                return False
+            self._require_idle(project, {resource_id})
+            resource.trashed_at = now()
+        return self.store.update(project_id, expected_version, change)
+
+    def import_file(self, project_id, expected_version, name, stream, role="reference", origin="upload", source_url=None, provenance="", folder_id=None) -> Project:
         project = self.store.get(project_id)
         if expected_version is not None and project.version != expected_version:
             raise WorkflowError("version_conflict", "This project changed. Reload before importing.", 409)
@@ -276,8 +405,8 @@ class ResourceService:
         kind = _kind(Path(name).suffix.lower())
         if role not in {"reference", "document", "asset"} or origin not in {"upload", "discovery"}:
             raise WorkflowError("invalid_resource_origin", "Choose a supported resource role and origin.", 422)
-        if kind == "document" and role == "reference":
-            role = "document"
+        folder_id = folder_id or ("folder_references" if origin == "discovery" else "folder_documents" if role == "document" else "folder_inbox")
+        _folder(project, folder_id)
         resource_id = uid("resource")
         category = "documents" if role == "document" else "assets" if role == "asset" else "media"
         relative = f"sources/{category}/{resource_id}/{name}"
@@ -298,12 +427,16 @@ class ResourceService:
             if not size:
                 raise WorkflowError("empty_resource", "The uploaded file is empty.", 422)
             resource = Resource(id=resource_id, name=name, kind=kind, role=role, origin=origin,
+                                folder_id=folder_id,
                                 source_url=_source_url(source_url), provenance=provenance,
                                 original_path=relative, sha256=digest.hexdigest(), size_bytes=size,
                                 mime_type=mimetypes.guess_type(name)[0] or "application/octet-stream")
             stage.replace(destination)
             try:
-                return self.store.update(project_id, expected_version, lambda current: current.resources.append(resource))
+                def append(current):
+                    _folder(current, folder_id)
+                    current.resources.append(resource)
+                return self.store.update(project_id, expected_version, append)
             except Exception:
                 destination.unlink(missing_ok=True)
                 raise
@@ -360,7 +493,8 @@ class ResourceService:
         if len(audios) > 1:
             raise ValueError("Multiple audio streams are unsupported. Export one intended audio track.")
         metadata = {"duration_seconds": duration, "format_name": data.get("format", {}).get("format_name"),
-                    "audio_codec": audios[0].get("codec_name") if audios else None, "has_audio": bool(audios)}
+                    "audio_codec": audios[0].get("codec_name") if audios else None, "has_audio": bool(audios),
+                    "audio_track_count": len(audios)}
         if resource.kind == "video":
             if len(videos) != 1:
                 raise ValueError("Video intake requires exactly one video stream.")
@@ -406,6 +540,10 @@ class ResourceService:
             if videos or not audios:
                 raise ValueError("Audio intake requires an audio track without a video stream.")
             metadata.update({"sample_rate": audios[0].get("sample_rate"), "channels": audios[0].get("channels")})
+            origin = float(data.get("format", {}).get("start_time", 0))
+            if not math.isfinite(origin):
+                raise ValueError("Audio intake could not establish a finite source start time.")
+            metadata["media_start_seconds"] = origin
             _run([settings.ffmpeg, "-hide_banner", "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe", "-i", str(path), "-map", "0:a:0", "-f", "null", "-"], settings.decode_timeout_seconds)
             resource.playback_path = resource.original_path
         resource.duration_seconds, resource.media_metadata = duration, metadata

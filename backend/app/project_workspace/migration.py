@@ -237,6 +237,7 @@ def _project(state: TaskState, snapshot: dict, media_root: Path):
         sha256 = video.content_sha256 or (_digest(source) if exists else "")
         valid = exists and (not sha256 or _digest(source) == sha256)
         resource = Resource(id=video.video_id, name=name, kind="video", role="reference" if video.purpose == "reference" else "asset",
+            folder_id="folder_references" if video.purpose == "reference" else "folder_production_assets",
             origin="legacy", source_url=video.source_url, provenance=video.origin.description,
             original_path=original_relative, sha256=sha256, size_bytes=source.stat().st_size if exists else 0,
             mime_type="video/mp4", duration_seconds=video.duration_seconds, created_at=video.created_at.isoformat(),

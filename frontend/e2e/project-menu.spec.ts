@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import type { TaskState } from '../src/generated/contracts';
 
+// These /api/tasks guards exercise the legacy workspace explicitly, independent of the default entry point.
 async function createTask(api: APIRequestContext, title: string) {
   const response = await api.post('/api/tasks', { data: { title } });
   expect(response.ok(), await response.text()).toBeTruthy();
@@ -13,7 +14,7 @@ async function commands(page: Page, title: string) {
 }
 
 test('project commands preserve drafts through rename, close, Trash and restore', async ({ page, request }) => {
-  await page.goto('/');
+  await page.goto('/?legacy=1');
   await page.getByLabel('New task title', { exact: true }).fill('Project menu draft recovery');
   await page.getByRole('button', { name: 'Create task', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Project menu draft recovery', exact: true })).toBeVisible();
@@ -69,7 +70,7 @@ test('active provider work blocks destructive project commands while another pro
   const ticket = { operation_id: 'operation-project-menu-test', task_id: active.task.task_id, operation: 'recognize', status: 'running', result: null, error: null, created_at: new Date().toISOString() };
   await page.route(`**/api/tasks/${active.task.task_id}/operations`, (route) => route.fulfill({ json: { operations: [ticket] } }));
   await page.route(`**/api/tasks/${active.task.task_id}/operations/${ticket.operation_id}`, (route) => route.fulfill({ json: ticket }));
-  await page.goto('/');
+  await page.goto('/?legacy=1');
   await expect(page.getByRole('button', { name: 'Close project', exact: true })).toBeDisabled();
   const menu = await commands(page, active.task.title);
   await expect(menu.getByRole('button', { name: 'Rename project', exact: true })).toBeDisabled();
@@ -84,7 +85,7 @@ test('application language changes the shell without rewriting project titles or
   expect(languageResponse.ok(), await languageResponse.text()).toBeTruthy();
   state = await languageResponse.json();
   await page.addInitScript((id) => localStorage.setItem('video-anatomy-task', id), state.task.task_id);
-  await page.goto('/');
+  await page.goto('/?legacy=1');
   await page.getByLabel('Application language', { exact: true }).selectOption('Chinese');
   await expect(page.getByRole('heading', { name: '项目', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '研究', exact: true })).toBeVisible();

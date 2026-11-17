@@ -13,7 +13,7 @@ from ..providers.transport import OpenAITransport
 from ..workflow_errors import WorkflowError
 from .models import (
     ContentItem, Direction, EvidenceEvent, InputManifest, Model, ProductionPack, ProductionShot,
-    Series, SourceRef, now,
+    Selection, Series, SourceRef, now,
 )
 from .conversation import _claim as is_claim_key
 
@@ -65,11 +65,13 @@ class ShotContent(Model):
     id: str = Field(min_length=1, max_length=60)
     start_seconds: float = Field(ge=0)
     end_seconds: float = Field(gt=0)
+    framing_camera: str = Field(default="", max_length=2000)
     visual: str = Field(min_length=1, max_length=5000)
     dialogue: str = Field(default="", max_length=5000)
     on_screen_text: str = Field(default="", max_length=2000)
     sound: str = Field(default="", max_length=2000)
     notes: str = Field(default="", max_length=2000)
+    citations: list[Citation] = Field(default_factory=list, max_length=30)
 
 
 class PackContent(Model):
@@ -84,7 +86,8 @@ class PackContent(Model):
 
 _SKILL_ROOT = Path(__file__).resolve().parents[3] / "skills" / "video-anatomy-professional-generation"
 _DIRECTION_FIELDS = {"title", "concept", "hook", "narrative", "cta"}
-_PACK_FIELDS = {"production_brief", "script", "storyboard", "shot_list", "shots"}
+_DOCUMENT_FIELDS = {"production_brief", "script", "storyboard", "shot_list"}
+_PACK_FIELDS = _DOCUMENT_FIELDS | {"shots", "sheet_format"}
 
 
 def _text(value, label, *, maximum=30000, allow_empty=False):
@@ -180,7 +183,7 @@ def _invalidate_plan_inputs(project, content_id):
 
 
 def _context(project, item=None, *, require_brief=True, require_evidence=True,
-             exploration=False, visual_only=False):
+             exploration=False, visual_only=False, instruction="", allow_unavailable=False):
     brief = project.briefs[-1] if project.briefs else None
     facts = [] if brief is None else [fact.model_dump(mode="json") for fact in brief.facts
                                      if fact.status == "confirmed" and fact.value.strip()
@@ -188,17 +191,29 @@ def _context(project, item=None, *, require_brief=True, require_evidence=True,
     selection = item.selection if item is not None else project.selection
     if require_brief and not facts:
         raise WorkflowError("confirmed_context_required", "Confirm the assignment's useful context in Overview before preparing final production. A complete form is not required.", 422)
-    if exploration and not facts and not selection.resource_ids:
+    if exploration and not facts and not selection.resource_ids and not instruction.strip():
         raise WorkflowError("generation_starting_question", "What would you like to create? Describe the assignment in Overview, or select a reference to explore.", 422)
     evidence = []
     revisions = {}
     limitations = []
     if not facts:
-        limitations.append("Reference-led exploration: project context is not confirmed. Company, product, audience and claims remain unspecified.")
+        mode = "Reference-led" if selection.resource_ids else "Instruction-led"
+        limitations.append(f"{mode} exploration: project context is not confirmed. Product facts, audience and claims still need confirmation.")
     for resource_id in selection.resource_ids:
         resource = next((entry for entry in project.resources if entry.id == resource_id), None)
+        from .models import resource_is_trashed
         if resource is None:
+            if allow_unavailable and not require_evidence:
+                limitations.append("A retained historical reference is unavailable. Restore or replace its exact source before approval.")
+                continue
             raise WorkflowError("reference_not_found", "A selected reference is no longer in this project.", 422)
+        if resource_is_trashed(project, resource):
+            if allow_unavailable and not require_evidence:
+                if resource.evidence:
+                    revisions[resource.id] = resource.evidence[-1].revision
+                limitations.append(f"{resource.name}: retained historical source is in Trash; restore it before approval.")
+                continue
+            raise WorkflowError("reference_unavailable", "A selected reference is in Trash. Restore it or explicitly remove it from this selection.", 422)
         if require_evidence and resource.status in {"missing", "unsupported", "stored", "processing"}:
             raise WorkflowError("reference_incomplete", "A selected reference is unavailable or still processing. Restore its original or wait for processing, then retry.", 422)
         if not resource.evidence:
@@ -235,10 +250,12 @@ def _context(project, item=None, *, require_brief=True, require_evidence=True,
     series = next((entry for entry in project.series if entry.id == item.series_id), None) if item and item.series_id else None
     if item and item.series_id and series is None:
         raise WorkflowError("series_not_found", "The content item's assigned series is unavailable. Choose an existing series or make it standalone.", 422)
-    series_context = None if series is None else {"id": series.id, "title": series.title, "concept": series.concept}
+    # An empty-concept series is organization only. Its stable grouping must not
+    # change a standalone video's creative inputs or manufacture a new approval.
+    series_context = None if series is None or not series.concept.strip() else {"id": series.id, "title": series.title, "concept": series.concept}
     limitations = list(dict.fromkeys(limitations))
     context = {"confirmed_facts": facts, "reference_evidence": evidence,
-               "content": None if item is None else {"title": item.title, "description": item.description, "series_id": item.series_id},
+               "content": None if item is None else {"title": item.title, "description": item.description, "series_id": item.series_id if series_context else None},
                "series": series_context, "exploratory": not bool(facts), "visual_only": visual_only,
                "limitations": limitations, "unresolved": project.unresolved}
     manifest = InputManifest(brief_revision=brief.revision if brief else None,
@@ -258,6 +275,20 @@ def _context(project, item=None, *, require_brief=True, require_evidence=True,
 def _same_inputs(left, right):
     fields = ("brief_revision", "selection_revision", "resource_ids", "evidence_revisions", "context_digest", "visual_only", "exploratory")
     return all(getattr(left, field, None) == getattr(right, field, None) for field in fields)
+
+
+def _topics_context(project, instruction, visual_only, series_id):
+    context, manifest = _context(project, require_brief=False, exploration=True,
+                                 visual_only=visual_only, instruction=instruction)
+    series = next((entry for entry in project.series if entry.id == series_id), None) if series_id else None
+    if series_id and series is None:
+        raise WorkflowError("series_not_found", "This series is no longer available. Choose an existing series or request standalone topics.", 404)
+    scope = None if series is None else {"id": series.id, "title": series.title, "concept": series.concept}
+    context["topic_series"] = scope
+    context["instruction"] = instruction
+    context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents]
+    manifest.context_digest = _hash({"context": manifest.context_digest, "topic_series": scope})
+    return context, manifest
 
 
 def _sources(project, manifest, citations):
@@ -286,18 +317,72 @@ def _sources(project, manifest, citations):
 def _storyboard(shots):
     def cell(value):
         return value.replace("|", "\\|").replace("\n", " / ")
-    rows = ["| Shot | Time | Visual | Audio |", "| --- | --- | --- | --- |"]
-    for shot in shots:
-        visual = shot.visual + (f"\nOn-screen text: {shot.on_screen_text}" if shot.on_screen_text else "")
-        audio = "\n".join(part for part in (shot.dialogue, shot.sound) if part) or "Silence"
-        rows.append(f"| {cell(shot.id)} | {shot.start_seconds:g}–{shot.end_seconds:g}s | {cell(visual)} | {cell(audio)} |")
+    rows = ["| Shot | Timecode | Framing / Camera | Visual / Action | Dialogue / VO | On-screen Text | Music / SFX | Production Notes |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    for index, shot in enumerate(shots, 1):
+        values = [f"{index:02d}", f"{shot.start_seconds:g}–{shot.end_seconds:g}s", shot.framing_camera,
+                  shot.visual, shot.dialogue, shot.on_screen_text, shot.sound, shot.notes]
+        rows.append("| " + " | ".join(cell(value) for value in values) + " |")
     return "\n".join(rows)
+
+
+def _sheet_documents(shots):
+    return {"storyboard": _storyboard(shots),
+            "script": "\n\n".join(f"{index:02d} · {shot.start_seconds:g}–{shot.end_seconds:g}s\n" +
+                                      "\n".join(value for value in (shot.dialogue, f"On-screen text: {shot.on_screen_text}" if shot.on_screen_text else "") if value)
+                                      for index, shot in enumerate(shots, 1)),
+            "shot_list": "\n".join(f"{index:02d} · " + " · ".join(value for value in (shot.framing_camera, shot.visual, shot.notes) if value)
+                                    for index, shot in enumerate(shots, 1))}
+
+
+def _canonical_shot_sources(project, manifest, shots, old_shots=()):
+    previous = {shot.id: shot for shot in old_shots}
+    for shot in shots:
+        if len(shot.sources) > 30 or len({(source.resource_id, source.evidence_revision, source.event_id) for source in shot.sources}) != len(shot.sources):
+            raise WorkflowError("invalid_generation_citation", "A shot may contain at most 30 distinct saved evidence references.", 422)
+        retained = previous.get(shot.id)
+        for index, source in enumerate(shot.sources):
+            # An unchanged historical reference stays attached even when its
+            # original is no longer reachable. New references must resolve.
+            if retained and source in retained.sources:
+                continue
+            if not source.resource_id or not source.event_id:
+                raise WorkflowError("invalid_generation_citation", "A shot reference needs an exact saved resource and evidence event.", 422)
+            canonical = _sources(project, manifest, [Citation(resource_id=source.resource_id, event_id=source.event_id)])[0]
+            if (source.evidence_revision != canonical.evidence_revision
+                    or source.start_seconds != canonical.start_seconds or source.end_seconds != canonical.end_seconds):
+                raise WorkflowError("invalid_generation_citation", "A shot reference does not match its saved evidence revision and time.", 422)
+            # Saved legacy links may use different honest locator labels. Event
+            # identity and time are the boundary; derive display text from it.
+            shot.sources[index] = canonical
+
+
+def _source_union(*groups):
+    result = []
+    for group in groups:
+        for source in group:
+            if source not in result:
+                result.append(source)
+    return result
+
+
+def _field_value(key, value):
+    if key == "shots":
+        try:
+            return [ProductionShot.model_validate(shot).model_dump(mode="json") for shot in value]
+        except (ValidationError, TypeError, ValueError):
+            return value
+    return value
 
 
 def _validate_shots(shots):
     seen = set()
     previous = 0.0
     for shot in shots:
+        if (not shot.id.strip() or len(shot.id) > 128 or not shot.visual.strip() or len(shot.visual) > 5000
+                or any(len(getattr(shot, key)) > maximum for key, maximum in
+                       (("framing_camera", 2000), ("dialogue", 5000), ("on_screen_text", 2000), ("sound", 2000), ("notes", 2000)))):
+            raise WorkflowError("invalid_production_shots", "Each planned shot needs a visual action and bounded camera, dialogue, text, sound and notes.", 422)
         if shot.id in seen or shot.end_seconds <= shot.start_seconds or abs(shot.start_seconds - previous) > 0.05:
             raise WorkflowError("invalid_production_timing", "Production shots must have unique IDs, positive durations, and continuous planned timing from zero.", 422)
         seen.add(shot.id)
@@ -323,22 +408,70 @@ def _draft_pending(project, scope, record, fields):
     draft = project.editor_drafts.get(scope)
     if not isinstance(draft, dict):
         return False
-    return any(key in draft and draft[key] != getattr(record, key) for key in fields)
+    return any(key in draft and _field_value(key, draft[key]) != _field_value(key, getattr(record, key)) for key in fields)
 
 
 def require_pack_draft_clear(project, pack):
-    if _draft_pending(project, f"production-{pack.id}", pack, _PACK_FIELDS - {"shots"}):
+    if _draft_pending(project, f"production-{pack.id}", pack, _PACK_FIELDS):
         raise WorkflowError("production_draft_pending", "Save or discard this production pack's pending document edits before exporting or regenerating it.", 422)
 
 
 def _require_direction_draft_clear(project, item, direction):
-    if _draft_pending(project, f"direction-{item.id}-{direction.id}", direction, _DIRECTION_FIELDS):
+    scope = f"direction-{item.id}-{direction.id}"
+    draft = project.editor_drafts.get(scope)
+    sources_changed = False
+    if isinstance(draft, dict) and "source_refs" in draft:
+        try:
+            sources_changed = [SourceRef.model_validate(source) for source in draft["source_refs"]] != direction.sources
+        except (ValidationError, TypeError, ValueError):
+            sources_changed = True
+    if sources_changed or _draft_pending(project, scope, direction, _DIRECTION_FIELDS):
         raise WorkflowError("direction_draft_pending", "Save or discard this direction's pending edits before approval or production.", 422)
+
+
+def _direction_sources(project, refs, retained=()):
+    """Resolve explicitly linked inspiration; historical pins never jump forward."""
+    from .models import resource_is_trashed
+    if not isinstance(refs, list) or len(refs) > 100:
+        raise WorkflowError("invalid_direction_sources", "Link at most 100 exact saved evidence references.", 422)
+    try:
+        refs = [SourceRef.model_validate(source) for source in refs]
+    except (ValidationError, TypeError, ValueError) as exc:
+        raise WorkflowError("invalid_direction_sources", "A linked inspiration reference is invalid.", 422) from exc
+    resolved, latest_ids, limitations = [], [], []
+    for source in refs:
+        known = source in retained
+        resource = next((entry for entry in project.resources if entry.id == source.resource_id), None)
+        revision = next((entry for entry in resource.evidence if entry.revision == source.evidence_revision), None) if resource else None
+        event = next((entry for entry in revision.events if entry.id == source.event_id), None) if revision else None
+        if not source.resource_id or source.evidence_revision is None or not source.event_id or event is None:
+            if not known:
+                raise WorkflowError("invalid_direction_sources", "A linked reference must identify a resource, evidence revision and event in this project.", 422)
+            resolved.append(source)
+            limitations.append("A retained inspiration reference is unavailable or lacks migrated timing. Its historical identity was preserved; review it before approval.")
+            continue
+        if source.start_seconds != event.start_seconds or source.end_seconds != event.end_seconds:
+            if not known:
+                raise WorkflowError("invalid_direction_sources", "A linked reference's time does not match its exact saved evidence event.", 422)
+            resolved.append(source)
+            limitations.append("A retained inspiration reference has unavailable or inconsistent historical timing. Its original reference was preserved for review.")
+            continue
+        canonical = SourceRef(resource_id=resource.id, evidence_revision=revision.revision, event_id=event.id,
+                              locator=f"{event.start_seconds:g}–{event.end_seconds:g}s", excerpt=event.text,
+                              start_seconds=event.start_seconds, end_seconds=event.end_seconds, url=resource.source_url)
+        resolved.append(source if known else canonical)
+        current = resource.evidence[-1].revision == revision.revision
+        available = not resource_is_trashed(project, resource) and resource.status not in {"missing", "unsupported", "stored", "processing"}
+        if current and available:
+            latest_ids.append(resource.id)
+        else:
+            limitations.append(f"{resource.name}: this inspiration keeps evidence revision {revision.revision}; review the historical or unavailable source before approval.")
+    return [source.model_copy(deep=True) for source in _source_union(resolved)], list(dict.fromkeys(latest_ids)), list(dict.fromkeys(limitations))
 
 
 def _checkpoint(project, scope, record, fields):
     if scope in project.editor_drafts:
-        project.editor_drafts[scope] = {**{key: getattr(record, key) for key in fields}, "base_revision": record.revision}
+        project.editor_drafts[scope] = {**{key: record.model_dump(mode="json")[key] for key in fields}, "base_revision": record.revision}
 
 
 def _check_submitted_draft(project, scope, old, values, fields):
@@ -346,7 +479,8 @@ def _check_submitted_draft(project, scope, old, values, fields):
     if not isinstance(draft, dict):
         return
     expected = {key: values.get(key, getattr(old, key)) for key in fields}
-    if any(key in draft and str(draft[key]).strip() != str(expected[key]).strip() for key in fields):
+    if any(key in draft and ( _field_value(key, draft[key]) != _field_value(key, expected[key]) if key == "shots"
+                            else str(draft[key]).strip() != str(expected[key]).strip()) for key in fields):
         raise WorkflowError("editor_draft_changed", "The saved editing draft differs from this submission. Reopen the latest draft before applying it.")
     if draft.get("base_revision", old.revision) != old.revision:
         raise WorkflowError("editor_draft_conflict", "This draft is based on an older saved revision. Reload the current document before applying.")
@@ -382,11 +516,13 @@ class PlanningService:
             "Do not provide artifact IDs, approval, source timestamps, or invented evidence. "
             f"Write new creative prose in {settings.creative_language}; preserve approved fixed wording and source quotes. "
             "Be concise and specific; distinguish proposed execution from observed reference evidence. "
-            "When exploratory is true, propose reference-led creative structures only: do not invent a company, product, audience, benefit or claim. "
+            "When exploratory is true, use the supplied creative instruction or reference mechanisms, labeling missing project context Needs confirmation. Do not invent a company, product, audience, benefit or claim. "
             "State that project context remains unspecified and identify the next useful clarification. "
             "Respect visual_only: never infer speech or sound from visual observations. Carry the supplied limitations into the creative proposal. "
             "For concept planning, choose series only when the request benefits from a repeatable organizing idea; standalone topics are valid. "
-            "For production, return separate brief/script/shot-list documents and structured shots with distinct dialogue, on-screen text, sound and planned seconds. "
+            "For direction generation, default to two genuinely distinct approaches unless the user explicitly requests a different number. "
+            "For topics, preview a few standalone topics or topics for the explicitly selected topic_series; do not create a plan or a new series. "
+            "For production, the short brief and structured shots are the authoritative sheet. Give each shot framing_camera, visual, dialogue, on_screen_text, sound, notes, planned seconds and optional exact citations. Script/shot_list are compatibility fields; the host derives synchronized documents from shots. "
             "Shots must be continuous from zero; all timing is an estimate. Preserve the exact approved proposition. "
             f"Operation: {operation}.\nINSTRUCTION_PACKAGE:\n{instructions}\nINPUT_JSON:\n"
             + json.dumps(context, ensure_ascii=False)
@@ -419,22 +555,26 @@ class PlanningService:
             values = {key: _text(value, key, maximum=200 if key == "title" else 4000, allow_empty=key == "concept") for key, value in fields.items()}
             if all(getattr(series, key) == value for key, value in values.items()):
                 return False
+            meaningful = bool(series.concept.strip() or values.get("concept", series.concept).strip())
             for key, value in values.items():
                 setattr(series, key, value)
-            for item in project.contents:
-                if item.series_id == series_id:
-                    _invalidate_plan_inputs(project, item.id)
+            if meaningful:
+                for item in project.contents:
+                    if item.series_id == series_id:
+                        _invalidate_plan_inputs(project, item.id)
         return self.store.update(project_id, expected_version, change)
 
     def delete_series(self, project_id, expected_version, series_id):
         def change(project):
-            if not any(entry.id == series_id for entry in project.series):
+            series = next((entry for entry in project.series if entry.id == series_id), None)
+            if series is None:
                 raise WorkflowError("series_not_found", "This series does not belong to the project.", 404)
             project.series = [entry for entry in project.series if entry.id != series_id]
             for item in project.contents:
                 if item.series_id == series_id:
                     item.series_id = None
-                    _invalidate_plan_inputs(project, item.id)
+                    if series.concept.strip():
+                        _invalidate_plan_inputs(project, item.id)
         return self.store.update(project_id, expected_version, change)
 
     def create_content(self, project_id, expected_version, title, description="", series_id=None):
@@ -443,7 +583,7 @@ class PlanningService:
                 raise WorkflowError("series_not_found", "This series does not belong to the project.", 404)
             item = ContentItem(title=_text(title, "Content title", maximum=200),
                                description=_text(description, "Content description", maximum=4000, allow_empty=True),
-                               series_id=series_id, selection=project.selection.model_copy(deep=True))
+                               series_id=series_id, selection=Selection())
             project.contents.append(item)
             project.active_content_id = item.id
         return self.store.update(project_id, expected_version, change)
@@ -461,7 +601,11 @@ class PlanningService:
                     values[key] = _text(values[key], key, maximum=200 if key == "title" else 4000, allow_empty=key == "description")
             if all(getattr(item, key) == value for key, value in values.items()):
                 return False
-            meaningful = any(key in values and getattr(item, key) != values[key] for key in ("title", "description", "series_id"))
+            meaningful = any(key in values and getattr(item, key) != values[key] for key in ("title", "description"))
+            if "series_id" in values and item.series_id != values["series_id"]:
+                old_series = next((entry for entry in project.series if entry.id == item.series_id), None)
+                new_series = next((entry for entry in project.series if entry.id == values["series_id"]), None)
+                meaningful = meaningful or any(entry and entry.concept.strip() for entry in (old_series, new_series))
             for key, value in values.items():
                 setattr(item, key, value)
             if meaningful:
@@ -482,17 +626,63 @@ class PlanningService:
         """Validate available inputs before admitting a potentially billed job."""
         project = self.store.get(project_id)
         item = _item(project, content_id) if content_id is not None else None
-        _text(instruction, "Creative instruction", maximum=10000, allow_empty=True)
-        context, _ = _context(project, item, require_brief=False, exploration=True, visual_only=visual_only)
+        instruction = _text(instruction, "Creative instruction", maximum=10000, allow_empty=True)
+        context, _ = _context(project, item, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
         return {"exploratory": context["exploratory"], "visual_only": visual_only,
                 "limitations": context["limitations"]}
+
+    def suggest_topics(self, project_id, instruction="", *, visual_only=False, series_id=None):
+        """Save a reviewable preview, without creating videos or series."""
+        from .models import TopicSuggestion
+        project = self.store.get(project_id)
+        instruction = _text(instruction, "Planning instruction", maximum=10000, allow_empty=True)
+        context, manifest = _topics_context(project, instruction, visual_only, series_id)
+        response, model, digest = self._response("IDEAS", "topics", context, ConceptsContent)
+        topics = [*response.standalone, *[topic for series in response.series for topic in series.topics]]
+        if not topics:
+            raise WorkflowError("no_usable_concepts", "No usable topic was returned. Add a concrete creative instruction or selected reference and retry.", 422)
+        titles = [topic.title.casefold().strip() for topic in topics]
+        if len(titles) != len(set(titles)):
+            raise WorkflowError("repeated_concepts", "The provider repeated topic titles. No preview or plan was changed.", 422)
+        _validate_claims(project, response.used_claim_ids, response.claim_uses,
+                         "\n".join(topic.title + "\n" + topic.description for topic in topics))
+        manifest.model, manifest.instruction_digest = model, digest
+        manifest.claim_ids = list(response.used_claim_ids)
+        candidates = [TopicSuggestion(title=topic.title, description=topic.description,
+                                       series_id=series_id, inputs=manifest.model_copy(deep=True)) for topic in topics[:6]]
+        def change(current):
+            _, latest = _topics_context(current, instruction, visual_only, series_id)
+            if not _same_inputs(manifest, latest):
+                raise WorkflowError("generation_inputs_changed", "The topic inputs changed. Existing previews and planned videos were preserved.")
+            current.topic_suggestions = [entry for entry in current.topic_suggestions
+                                          if entry.added_content_id or entry.series_id != series_id] + candidates
+        return self.store.update(project_id, None, change)
+
+    def add_topic(self, project_id, expected_version, suggestion_id):
+        def change(project):
+            suggestion = next((entry for entry in project.topic_suggestions if entry.id == suggestion_id), None)
+            if suggestion is None:
+                raise WorkflowError("topic_not_found", "This topic suggestion is no longer available. Request a fresh preview.", 404)
+            if suggestion.added_content_id:
+                return False
+            _, latest = _topics_context(project, suggestion.title, suggestion.inputs.visual_only, suggestion.series_id)
+            if not _same_inputs(suggestion.inputs, latest):
+                raise WorkflowError("generation_inputs_changed", "This topic uses earlier inputs. Request new suggestions before adding it to the plan.", 409)
+            content = ContentItem(title=suggestion.title, description=suggestion.description,
+                                  series_id=suggestion.series_id, selection=Selection(),
+                                  inputs=suggestion.inputs.model_copy(deep=True))
+            project.contents.append(content)
+            suggestion.added_content_id = content.id
+            project.active_content_id = content.id
+        return self.store.update(project_id, expected_version, change)
 
     def generate_concepts(self, project_id, expected_version, instruction="", *, visual_only=False):
         project = self.store.get(project_id)
         if expected_version is not None and project.version != expected_version:
             raise WorkflowError("version_conflict", "The project changed. Refresh and retry.")
-        context, manifest = _context(project, require_brief=False, exploration=True, visual_only=visual_only)
-        context["instruction"] = _text(instruction, "Planning instruction", maximum=10000, allow_empty=True)
+        instruction = _text(instruction, "Planning instruction", maximum=10000, allow_empty=True)
+        context, manifest = _context(project, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
+        context["instruction"] = instruction
         context["existing_series"] = [entry.model_dump() for entry in project.series]
         context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents]
         response, model, digest = self._response("IDEAS", "concepts", context, ConceptsContent)
@@ -509,7 +699,7 @@ class PlanningService:
         if len(titles) != len(set(titles)):
             raise WorkflowError("repeated_concepts", "The provider repeated topic titles. No repetitive plan was applied.", 422)
         def change(current):
-            _, latest = _context(current, require_brief=False, exploration=True, visual_only=visual_only)
+            _, latest = _context(current, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
             if not _same_inputs(manifest, latest):
                 raise WorkflowError("generation_inputs_changed", "Confirmed context or selected evidence changed during generation. Existing work is intact; retry.")
             for candidate in response.series:
@@ -536,8 +726,9 @@ class PlanningService:
     def generate_directions(self, project_id, content_id, instruction="", *, visual_only=False):
         project = self.store.get(project_id)
         item = _item(project, content_id)
-        context, manifest = _context(project, item, require_brief=False, exploration=True, visual_only=visual_only)
-        context["instruction"] = _text(instruction, "Direction instruction", maximum=10000, allow_empty=True)
+        instruction = _text(instruction, "Direction instruction", maximum=10000, allow_empty=True)
+        context, manifest = _context(project, item, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
+        context["instruction"] = instruction
         context["existing_directions"] = [{"title": d.title, "concept": d.concept} for d in item.directions]
         response, model, digest = self._response("IDEAS", "directions", context, IdeasContent)
         manifest.model = model
@@ -557,7 +748,7 @@ class PlanningService:
                                         inputs=candidate_manifest, sources=_sources(project, manifest, candidate.citations)))
         def change(current):
             current_item = _item(current, content_id)
-            _, latest = _context(current, current_item, require_brief=False, exploration=True, visual_only=visual_only)
+            _, latest = _context(current, current_item, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
             if not _same_inputs(manifest, latest):
                 raise WorkflowError("generation_inputs_changed", "This item's confirmed inputs changed during generation. Existing directions were preserved.")
             current_item.directions.extend(candidates)
@@ -566,7 +757,7 @@ class PlanningService:
     def create_pack(self, project_id, expected_version, content_id, fields=None):
         """Start user-authored documents without fabricating a generation result."""
         fields = fields or {}
-        if set(fields) - (_PACK_FIELDS - {"shots"}):
+        if set(fields) - _DOCUMENT_FIELDS:
             raise WorkflowError("invalid_production_fields", "A manual pack starts with its four document fields.", 422)
         def change(project):
             item = _item(project, content_id)
@@ -578,14 +769,15 @@ class PlanningService:
             if not direction.approved or direction.needs_review or not _same_inputs(direction.inputs, manifest):
                 raise WorkflowError("direction_inputs_outdated", "Review and approve a direction against the current confirmed inputs first.", 422)
             manifest.direction_id, manifest.direction_revision = direction.id, direction.revision
-            values = {key: _text(fields.get(key, ""), key, maximum=100000, allow_empty=True) for key in _PACK_FIELDS - {"shots"}}
-            project.packs.append(ProductionPack(content_id=content_id, inputs=manifest, **values))
+            values = {key: _text(fields.get(key, ""), key, maximum=100000, allow_empty=True) for key in _DOCUMENT_FIELDS}
+            project.packs.append(ProductionPack(content_id=content_id, inputs=manifest,
+                                               sheet_format="legacy_documents" if any(values.values()) else "storyboard_sheet", **values))
         return self.store.update(project_id, expected_version, change)
 
     def create_manual_pack(self, project_id, expected_version, content_id):
         return self.create_pack(project_id, expected_version, content_id)
 
-    def save_direction(self, project_id, expected_version, content_id, fields, direction_id=None, direction_revision=None, *, expected_editor_version=None):
+    def save_direction(self, project_id, expected_version, content_id, fields, direction_id=None, direction_revision=None, *, expected_editor_version=None, source_refs=None):
         if not fields or set(fields) - _DIRECTION_FIELDS:
             raise WorkflowError("invalid_direction_fields", "Edit only the direction title, concept, hook, narrative, and CTA.", 422)
         values = {key: _text(value, key, maximum=6000, allow_empty=key not in {"title", "concept"}) for key, value in fields.items()}
@@ -599,9 +791,41 @@ class PlanningService:
             scope = f"direction-{item.id}-{direction_id}" if old else None
             if old:
                 _check_submitted_draft(project, scope, old, values, _DIRECTION_FIELDS)
+            draft = project.editor_drafts.get(editor_scope)
+            requested = old.sources if old and source_refs is None else source_refs or []
+            try:
+                submitted_sources = [SourceRef.model_validate(source) for source in requested]
+                if isinstance(draft, dict) and "source_refs" in draft and [SourceRef.model_validate(source) for source in draft["source_refs"]] != submitted_sources:
+                    raise WorkflowError("editor_draft_changed", "The saved inspiration references differ from this submission. Reopen the latest direction draft before saving.")
+            except (ValidationError, TypeError, ValueError) as exc:
+                raise WorkflowError("invalid_direction_sources", "A linked inspiration reference is invalid.", 422) from exc
+            if old is None and isinstance(draft, dict) and any(key in draft and str(draft[key]).strip() != values.get(key, "").strip() for key in _DIRECTION_FIELDS):
+                raise WorkflowError("editor_draft_changed", "The saved direction draft changed before this submission. Reopen it before saving.")
+            linked_sources, latest_ids, history_notes = _direction_sources(project, requested, old.sources if old else ())
+            if old and source_refs is None and any(source.resource_id not in item.selection.resource_ids for source in linked_sources):
+                history_notes.append("Retained inspiration is outside this video's current reference scope. Explicitly keep or remove the linked inspiration before approval.")
+            added = [identity for identity in latest_ids if identity not in item.selection.resource_ids] if source_refs is not None else []
+            if added:
+                item.selection.resource_ids.extend(added)
+                item.selection.revision += 1
+                _invalidate_plan_inputs(project, item.id)
             _, current_manifest = _context(project, item, require_brief=False, require_evidence=False,
-                                           visual_only=old.inputs.visual_only if old else False)
-            if old and all(getattr(old, key) == value for key, value in values.items()) and _same_inputs(old.inputs, current_manifest):
+                                           visual_only=old.inputs.visual_only if old else False, allow_unavailable=True)
+            if history_notes:
+                pinned = {}
+                for source in linked_sources:
+                    if source.resource_id and source.evidence_revision is not None:
+                        if source.resource_id in pinned and pinned[source.resource_id] != source.evidence_revision:
+                            history_notes.append("This inspiration contains multiple saved evidence revisions for one resource. Review each exact source before approving a current direction.")
+                            continue
+                        pinned[source.resource_id] = source.evidence_revision
+                        if source.resource_id not in current_manifest.resource_ids:
+                            current_manifest.resource_ids.append(source.resource_id)
+                        current_manifest.evidence_revisions[source.resource_id] = source.evidence_revision
+                current_manifest.limitations = list(dict.fromkeys([*current_manifest.limitations, *history_notes]))
+                current_manifest.context_digest = _hash({"context": current_manifest.context_digest, "historical_inspiration": [source.model_dump(mode="json") for source in linked_sources]})
+            if (old and all(getattr(old, key) == value for key, value in values.items())
+                    and old.sources == linked_sources and old.needs_review == bool(history_notes) and _same_inputs(old.inputs, current_manifest)):
                 return False
             if old:
                 candidate = old.model_copy(deep=True)
@@ -610,18 +834,20 @@ class PlanningService:
                 candidate.approved_at = None
                 candidate.created_at = now()
                 candidate.inputs = current_manifest
-                candidate.needs_review = False
-                candidate.sources = [source for source in old.sources if source.resource_id in current_manifest.resource_ids
-                                     and source.evidence_revision == current_manifest.evidence_revisions.get(source.resource_id)]
+                candidate.needs_review = bool(history_notes)
+                candidate.sources = linked_sources
             else:
                 if not {"title", "concept"}.issubset(values):
                     raise WorkflowError("direction_content_required", "Give the direction a title and a concrete concept.", 422)
-                candidate = Direction(title=values["title"], concept=values["concept"], inputs=current_manifest)
+                candidate = Direction(title=values["title"], concept=values["concept"], inputs=current_manifest,
+                                      sources=linked_sources, needs_review=bool(history_notes))
             for key, value in values.items():
                 setattr(candidate, key, value)
             item.directions.append(candidate)
             if scope:
                 _checkpoint(project, scope, candidate, _DIRECTION_FIELDS)
+                if scope in project.editor_drafts:
+                    project.editor_drafts[scope]["source_refs"] = [source.model_dump(mode="json") for source in candidate.sources]
             if old and item.approved_direction_id == old.id:
                 item.approved_direction_id = None
                 item.approved_direction_revision = None
@@ -668,8 +894,8 @@ class PlanningService:
         context["approved_direction"] = direction.model_dump(mode="json")
         manifest.direction_id, manifest.direction_revision = direction.id, direction.revision
         response, model, digest = self._response("STORYBOARD", "production", context, PackContent)
-        artifact_text = "\n".join([response.production_brief, response.script, response.shot_list] +
-                                   ["\n".join([shot.visual, shot.dialogue, shot.on_screen_text, shot.sound, shot.notes]) for shot in response.shots])
+        artifact_text = "\n".join([response.production_brief] +
+                                   ["\n".join([shot.framing_camera, shot.visual, shot.dialogue, shot.on_screen_text, shot.sound, shot.notes]) for shot in response.shots])
         _validate_claims(project, response.used_claim_ids, response.claim_uses, artifact_text)
         _validate_shots(response.shots)
         _validate_target_duration(project, response.shots)
@@ -678,11 +904,11 @@ class PlanningService:
             manifest.claim_ids = list(response.used_claim_ids)
         if "instruction_digest" in InputManifest.model_fields:
             manifest.instruction_digest = digest
+        shots = [ProductionShot(**entry.model_dump(exclude={"citations"}),
+                                sources=_sources(project, manifest, entry.citations)) for entry in response.shots]
         pack = ProductionPack(content_id=content_id, inputs=manifest, production_brief=response.production_brief,
-                              script=response.script, storyboard=_storyboard(response.shots), shot_list=response.shot_list,
-                              sources=_sources(project, manifest, response.citations))
-        if "shots" in ProductionPack.model_fields:
-            pack.shots = [ProductionShot.model_validate(entry.model_dump()) for entry in response.shots]
+                              **_sheet_documents(shots), sheet_format="storyboard_sheet", shots=shots,
+                              sources=_source_union(_sources(project, manifest, response.citations), *[shot.sources for shot in shots]))
         def change(current):
             current_item = _item(current, content_id)
             _, latest = _context(current, current_item, visual_only=direction.inputs.visual_only)
@@ -706,28 +932,34 @@ class PlanningService:
             old = max(matches, key=lambda pack: pack.revision)
             if old.revision != pack_revision:
                 raise WorkflowError("pack_revision_conflict", "A newer production revision is saved. Reopen it before applying your edits.")
-            values = {key: _text(value, key, maximum=100000, allow_empty=True) for key, value in fields.items() if key != "shots"}
+            if "sheet_format" in fields and fields["sheet_format"] not in {"legacy_documents", "storyboard_sheet"}:
+                raise WorkflowError("invalid_production_fields", "Choose a supported saved production format.", 422)
+            values = {key: _text(value, key, maximum=100000, allow_empty=True) for key, value in fields.items() if key in _DOCUMENT_FIELDS}
             scope = f"production-{pack_id}"
-            _check_submitted_draft(project, scope, old, values, _PACK_FIELDS - {"shots"})
+            submitted = {**values, **({"shots": fields["shots"]} if "shots" in fields else {}),
+                         **({"sheet_format": fields["sheet_format"]} if "sheet_format" in fields else {})}
+            _check_submitted_draft(project, scope, old, submitted, _PACK_FIELDS)
             if "shots" in fields:
-                if "shots" not in ProductionPack.model_fields:
-                    raise WorkflowError("unsupported_production_fields", "Structured shot editing is unavailable in this contract.", 422)
                 try:
-                    shots = [ShotContent.model_validate(value) for value in fields["shots"]]
+                    if not isinstance(fields["shots"], list) or len(fields["shots"]) > 100:
+                        raise ValueError("Invalid shot collection")
+                    shots = [ProductionShot.model_validate(value) for value in fields["shots"]]
                     _validate_shots(shots)
-                except (ValidationError, TypeError) as exc:
+                except (ValidationError, TypeError, ValueError) as exc:
                     raise WorkflowError("invalid_production_shots", "The structured shot edit is invalid.", 422) from exc
-                values["shots"] = [shot.model_dump() for shot in shots]
-                values["storyboard"] = _storyboard(shots)
-            if "storyboard" in fields and values["storyboard"] != old.storyboard and "shots" not in fields and "shots" in ProductionPack.model_fields:
+                _canonical_shot_sources(project, old.inputs, shots, old.shots)
+                values.update(shots=[shot.model_dump(mode="json") for shot in shots],
+                              sheet_format="storyboard_sheet", **_sheet_documents(shots))
+                values["sources"] = [source.model_dump(mode="json") for source in _source_union(old.sources, *[shot.sources for shot in shots])]
+            elif any(key in values and values[key] != getattr(old, key) for key in ("script", "storyboard", "shot_list")):
                 # Keep previous structured timing available in the prior revision;
                 # manual document text must never masquerade as synchronized rows.
-                values["shots"] = []
-            old_data = old.model_dump()
+                values.update(shots=[], sheet_format="legacy_documents")
+            old_data = old.model_dump(mode="json")
             if all(old_data.get(key) == value for key, value in values.items()):
                 return False
             candidate = ProductionPack.model_validate({**old.model_dump(), **values,
                                                         "revision": old.revision + 1, "created_at": now()})
             project.packs.append(candidate)
-            _checkpoint(project, scope, candidate, _PACK_FIELDS - {"shots"})
+            _checkpoint(project, scope, candidate, _PACK_FIELDS)
         return self.store.update(project_id, expected_version, change)

@@ -1,120 +1,114 @@
-# Video Anatomy 1.8.1 for your Mac
+Video Anatomy for your Mac — team testing candidate
 
-This is the shared testing candidate. Read **RELEASE NOTES.md** for the testing
-checklist and record the version/commit shown in About with every bug report.
+START HERE
 
-This ZIP contains **Video Anatomy.app**, a Finder launcher for the local browser
-workspace. It uses the Python 3.12 and FFmpeg already installed on your Mac; it is
-not the self-contained Electron installer or a DMG. The launcher source and
-Linux integration tests are verified. Finder, Keychain prompts and Gatekeeper
-still require a real Mac acceptance run. The app is not signed or notarized.
+1. Extract the ZIP completely. Its only two top-level items are this README.txt
+   and Video Anatomy.app. Keep the app in a stable folder and open it in Finder.
+2. Your Mac needs Python 3.12 and FFmpeg/ffprobe. If they are missing, install
+   Homebrew, then run this once in Terminal:
 
-## Open and reconnect
+       brew install python@3.12 ffmpeg
 
-1. Stop the old Terminal launcher once with **Control+C**. Keep the old folder
-   and your saved library; do not delete either to fix a startup problem.
-2. Extract the ZIP fully. Move **Video Anatomy.app** to a stable folder, such as
-   your user Applications folder. Open it from Finder. If macOS asks for approval
-   for this downloaded app, use its per-app Open option in Finder or Privacy &
-   Security; do not disable system security checks.
-3. First launch prepares the pinned Python dependencies in your local cache.
-   This may take a few minutes and needs internet access. The workspace opens in
-   your normal browser when it is ready; no Terminal window is needed.
-4. Open **API connection**, paste your complete OpenAI project secret key, and
-   choose **Save key**. Keep **Remember on this Mac** selected to store
-   it in the macOS login Keychain. Allow Keychain access if macOS asks. The key is
-   not saved in the app, task database, browser storage, logs or ZIP.
-5. Open or create a project. To reopen after closing the
-   browser, double-click the same app again. It reconnects to the existing local
-   server instead of starting a second copy. Restarting the Mac starts a new
-   server next time and reloads the saved Keychain credential.
+   First launch also needs internet access to install the pinned Python
+   dependencies in your local cache. The workspace opens in your normal browser
+   when it is ready. Node is not needed for the included, prebuilt interface.
+3. Check the version and full source commit in Settings against the team's delivery
+   message. Include them with every test report. No sample video is preloaded.
 
-Closing the browser leaves the local server available to finish work and reopen.
-When switching to a newer or moved app, its launcher verifies the old session
-and closes it only when idle. If work is running, wait for it to finish. Saved
-work is not deleted, and interrupted paid work is never automatically retried.
+This is an unsigned, dependency-assisted Finder launcher for the local browser
+workspace. It is not a self-contained Electron installer, a DMG, or a notarized
+release. Linux package and runtime checks do not establish Finder, Gatekeeper,
+Keychain, or installation behavior on a real Mac. If macOS blocks this downloaded
+app, use its per-app Open option in Finder or Privacy & Security. Do not disable
+system security checks. Optional document OCR needs Tesseract/Poppler.
 
-If Python or FFmpeg is missing, install Homebrew and run this **once** in Terminal:
+UPGRADE FROM 1.8.2 AND KEEP YOUR WORK
 
-```bash
-brew install python@3.12 ffmpeg
-```
+Let running requests finish. A closed browser tab does not stop the local server.
+Before backing up, stop the previous Terminal launcher with Control+C. For the
+previous Finder app, its launcher supports a graceful stop from Terminal:
 
-No case video is preloaded. Import the videos and documents you choose. Projects
-and media remain in `~/Library/Application Support/Video Anatomy/`, shared with
-v0.7. Back up that entire folder with the old app stopped before upgrading.
-Version 1.8 imports legacy work once into independent project folders while
-retaining the old task library. Each new project's originals, conversations,
-briefs, corrected evidence and output history live under `projects/<id>/`.
-The historical `provider-budget.sqlite3` ledger is preserved but no longer
-limits client requests. No ledger reset or key replacement is needed. Launcher/runtime logs are under
-`~/Library/Caches/Video Anatomy/` and contain no API key.
+    "/path/to/previous/Video Anatomy.app/Contents/MacOS/VideoAnatomy" --stop
 
-## If the connection fails
+Replace the example path with the location of your previous app. It verifies the
+old session and refuses to stop running work. Do not force-stop a paid request.
 
-**Check connection** makes a non-generating request for model metadata. It sends
-no video and consumes no model tokens. A successful check establishes that the
-key is accepted for that metadata request; it does not prove generation/audio
-permissions, account balance, or model output quality.
+With the previous server stopped, copy the entire library folder to a backup:
 
-- **HTTP 401:** OpenAI rejected the credential. Create a replacement project
-  secret key at https://platform.openai.com/api-keys and save the complete string
-  in API connection. Never use the masked key displayed in the list.
-- **HTTP 403:** OpenAI denied access. Check project and key permissions for
-  Responses and the configured models. A Models
-  read restriction alone is shown as an unverified check, not an invalid key.
-- **Billing/quota:** inspect billing for the project/organization owning this
-  key. Buying credit does not itself establish key permissions.
-- **Network or certificate:** verify that the Mac can reach `api.openai.com`.
-- **Keychain:** unlock your login Keychain and allow access, or save for this
-  session only. Replacing with session-only mode removes this app's old saved
-  credential, so it cannot return on restart.
+    ~/Library/Application Support/Video Anatomy/
 
-Errors appear inside API connection and beside the failed operation. If one
-persists, share only the displayed error/code, never the key. Saving a new key
-updates Timeline, Structure, Ideas and input assistance together without a
-restart. Finish running operations before changing or forgetting the key.
+Keep the original library and the previous app. The new app uses that same
+library, preserving projects, originals, conversations, adopted briefs, source
+evidence, corrections, previous analyses, output revisions, and export history.
+Do not delete a library, retranscribe a source, reset the historical usage ledger,
+or replace an API key merely to upgrade or open saved work.
 
-## Workspace controls and language
+Open the new app, inspect an existing project, then close and reopen the browser
+workspace to confirm its saved state. Double-clicking the same app reconnects to
+its verified local server. A moved or updated app switches away from an idle old
+server; if the old server is busy, let it finish and try again.
 
-Use **New project** on the project-card dashboard. Project actions include
-Rename, Duplicate and Move to Trash. Restore from Trash retains saved work;
-duplicates own independent local files. **All projects** returns to the dashboard
-and flushes pending drafts. Running work must finish before deletion.
+For rollback, use the previous app with a separate copy of the pre-upgrade library
+backup. Keep the newer library intact; an older app may reject newly saved fields.
 
-The English 1.8 workspace has Overview, Resources, Discover, Analysis, Content
-plan and Production. Describe the assignment in Overview, review the suggested
-brief and explicitly apply confirmed facts. Choose local references in Resources
-and use **Analyze selected**. Content can belong to a series or stand alone;
-approve a direction before producing its four-document production pack.
+API CONNECTION AND KEYS
 
-Discovery is **Reserved — awaiting Frank’s specification.** The previous bilingual
-workspace remains available by adding `?legacy=1` to the local address. Its
-post-import edits do not synchronize into the independent 1.8 project.
+Existing remembered credentials remain in the macOS login Keychain, separate from
+the app and library. Allow Keychain access if macOS asks. When setup is needed,
+open API connection, paste the complete OpenAI project secret key, and Save key.
+Remember on this Mac stores it in Keychain. Session-only mode stores no key for
+the next launch and removes this app's previously remembered credential.
 
-## Models, missing analysis and usage
+Keys are not included in this ZIP, project databases, browser storage, or logs.
+Finish running operations before changing or forgetting a key. Never include a
+key or private source contents in a test report.
 
-Visual analysis, Structure synthesis, Ideas, Production, input assistance and
-bounded background research all use GPT-6.1 Sol (`gpt-6.1-sol`). The local app
-pins this baseline even when older shell model settings are present. GPT-6 does not accept
-audio. The owner-approved speech exception uses Whisper (`whisper-1`) for
-transcription with segment timestamps. Speech analysis is enabled;
-all other inference keeps the Sol baseline above. Existing speech, source wording
-and compatible caches are retained. The key needs Audio Transcriptions access in
-addition to Responses access.
+Check connection requests model metadata without generating content. It does
+not prove generation/audio permissions, account balance, or output quality.
+For a failure, use the displayed actionable message and optional support details.
+HTTP 401 indicates a rejected credential; HTTP 403 concerns access/permissions;
+billing or quota problems concern the project or organization owning the key.
+For Keychain problems, unlock the login Keychain and allow access, or choose
+session-only mode. For network problems, check access to api.openai.com.
 
-Visuals and visible text are extracted in small batches. Completed results remain
-usable after partial failure. **Retry recognition** retries one resource without
-changing the selected references; **Rebuild media preview** handles local playback
-preparation separately. Recognition preserves user corrections and reports
-incomplete evidence. Clear cache retains originals and corrected evidence.
+WHAT TO TEST
 
-**API connection** shows **API usage** and **No client-side spending cap** in
-the local launcher. The USD 3 allowance applies only to separately run Cloud experiments.
-Local generation does not reserve experiment funds, require budget token
-prechecks, or stop because of an old accounting pause or unresolved reservation.
-Recorded estimates are informational and may be incomplete; they are not an
-invoice or your OpenAI account balance. OpenAI's own billing, rate limits and
-permissions still apply. No paid call runs merely by opening the app, switching
-languages or reading a saved project. After upgrading, retry a failed operation
-explicitly; the app does not automatically repeat previously interrupted calls.
+Use the project's Overview, Resources, Discover, Analysis, Content plan, and
+Production tabs. Describe the assignment in Overview; review and explicitly apply
+a brief draft. Stop interrupts the current conversation attempt without erasing
+your saved message or applied brief. Import your own permitted files in Resources,
+keep the focused file separate from the references selected for analysis, and
+open a source or saved evidence in Source Review. Inspect source-linked insights
+in Analysis. Plan a standalone Video or optionally place it in a Series, approve
+an exact direction, then open Production on that same Video to edit/save/export
+the Storyboard Sheet. Existing production packs remain historical documents.
+
+Discovery remains: Reserved — awaiting Frank’s specification.
+The app does not edit/render video, generate video, publish, or provide a hosted
+shared-key service. The previous workspace is available with ?legacy=1; edits
+there do not synchronize into independent project workspaces.
+
+Use the team's existing test sheet. Record version/source, Mac/browser versions,
+browser zoom, steps, expected/actual behavior, and a screenshot when useful. The
+release notes and detailed handoff are inside the app at
+Contents/Resources/app/docs/releases/ and Contents/Resources/app/docs/handoff/.
+Use Finder's Show Package Contents if those technical notes are needed.
+
+MODELS, USAGE, AND LOCAL STORAGE
+
+Visual analysis, Structure, planning, Production, and input assistance retain
+gpt-6.1-sol. Timestamped speech retains whisper-1; the key also needs Audio
+Transcriptions access. Completed recognition and human corrections survive a
+partial failure; retry a failed operation explicitly. Opening saved work does
+not automatically repeat interrupted paid requests.
+
+API usage is informational, not an invoice or account balance. The local client
+has no client-side spending cap. OpenAI's billing, permissions, and rate limits
+still apply. The separate Cloud experiment allowance is not a client quota, and
+the historical provider-budget.sqlite3 ledger is preserved without resetting it.
+Opening the app or reading a saved project starts no paid inference.
+
+Projects and media stay in ~/Library/Application Support/Video Anatomy/.
+Derived runtime/cache files and launcher logs stay in
+~/Library/Caches/Video Anatomy/. Do not remove either to resolve an unexplained
+failure; preserve your work and share only sanitized support details.

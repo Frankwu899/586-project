@@ -1,112 +1,131 @@
 import { useEffect, useRef, useState } from 'react';
-import type { EvidenceEvent, ExtractedBlock, Project, Resource, SourceRef } from './contracts';
-import { Badge, FailureNotice, DraftConflict, Empty, Icon, time } from './Common';
-import { fileUrl, useDraft, type Mutate } from './client';
-import { playbackSeconds } from './sourceTiming';
-import { channelLabel, coverageMessage, resourceMessage, failureMessage } from './status';
+import type { Project, Resource, ResourceFolder, SourceRef } from './contracts';
+import { DraftConflict, Empty, Icon, date, time } from './Common';
+import { useDraft, type Mutate } from './client';
+import ResourceInspector from './ResourceReview';
+import SourceReview from './SourceReview';
+import { fileSize, folderContains, folderIsTrashed, folderPath, recordedImportDate, resourceIsTrashed } from './resourceLibrary';
+import { resourceMessage } from './status';
+import './resources.css';
 
-function EvidenceEditor({ project, resource, mutate, onClose }: { project: Project; resource: Resource; mutate: Mutate; onClose: () => void }) {
-  const evidence = resource.evidence.at(-1)!;
-  const [draft, setDraft, flush, conflict, reload, draftVersion, adoptSaved] = useDraft(project, `evidence-${resource.id}`, { events: evidence.events, base_revision: evidence.revision }, mutate);
-  const [applying, setApplying] = useState(false);
-  const apply = async () => {
-    setApplying(true);
-    if (!await flush()) { setApplying(false); return; }
-    const saved = await mutate(`/resources/${resource.id}/evidence`, { events: draft.events, reviewed: false, base_revision: draft.base_revision, expected_editor_version: draftVersion() });
-    if (saved) {
-      const corrected = saved.resources.find(item => item.id === resource.id)?.evidence.at(-1);
-      adoptSaved(saved, { events: corrected?.events ?? draft.events, base_revision: corrected?.revision ?? evidence.revision });
-      onClose();
-    }
-    setApplying(false);
-  };
-  const edit = (id: string, changes: Partial<EvidenceEvent>) => setDraft({ ...draft, events: draft.events.map(event => event.id === id ? { ...event, ...changes } : event) });
-  return <section className="va-evidence-editor"><DraftConflict conflict={conflict} reload={reload} /><div className="va-section-heading"><h3>Correct evidence</h3><button disabled={applying} onClick={onClose}>Close</button></div><p className="va-muted">Original recognition is preserved. Applying corrections creates a new evidence revision.</p>{draft.events.map(event => <div className="va-evidence-edit" key={event.id}><Badge>{event.kind.replaceAll('_', ' ')}</Badge><textarea disabled={applying} aria-label={`${event.kind} text`} value={event.text} onChange={change => edit(event.id, { text: change.target.value })} /><div className="va-time-inputs"><label>Start (seconds)<input type="number" disabled={applying} min="0" step="0.01" value={event.start_seconds} onChange={change => edit(event.id, { start_seconds: Number(change.target.value) })} /></label><label>End (seconds)<input type="number" disabled={applying} min="0" step="0.01" value={event.end_seconds} onChange={change => edit(event.id, { end_seconds: Number(change.target.value) })} /></label></div></div>)}<button className="va-primary" disabled={applying || conflict} onClick={() => void apply()}>Apply corrections</button></section>;
-}
-
-function DocumentEditor({ project, resource, mutate, onClose }: { project: Project; resource: Resource; mutate: Mutate; onClose: () => void }) {
-  const [draft, setDraft, flush, conflict, reload, draftVersion, adoptSaved] = useDraft(project, `blocks-${resource.id}`, { blocks: resource.blocks, base_revision: resource.extraction_revision }, mutate);
-  const [applying, setApplying] = useState(false);
-  const apply = async () => {
-    setApplying(true);
-    if (!await flush()) { setApplying(false); return; }
-    const saved = await mutate(`/resources/${resource.id}/blocks`, { blocks: draft.blocks, base_revision: draft.base_revision, expected_editor_version: draftVersion() });
-    if (saved) {
-      const corrected = saved.resources.find(item => item.id === resource.id);
-      adoptSaved(saved, { blocks: corrected?.blocks ?? draft.blocks, base_revision: corrected?.extraction_revision ?? draft.base_revision });
-      onClose();
-    }
-    setApplying(false);
-  };
-  return <section className="va-document-editor"><DraftConflict conflict={conflict} reload={reload} /><div className="va-section-heading"><h3>Correct extraction</h3><button disabled={applying} onClick={onClose}>Close</button></div>{draft.blocks.map(block => <label key={block.id}>{block.locator}<textarea disabled={applying} value={block.text} onChange={event => setDraft({ ...draft, blocks: draft.blocks.map(item => item.id === block.id ? { ...item, text: event.target.value } : item) })} /></label>)}<button className="va-primary" disabled={applying || conflict} onClick={() => void apply()}>Apply corrections</button></section>;
-}
-
-function Inspector({ project, resource, source, mutate }: { project: Project; resource: Resource; source: SourceRef | null; mutate: Mutate }) {
-  const player = useRef<HTMLVideoElement | HTMLAudioElement>(null);
-  const [tab, setTab] = useState('speech');
-  const [editing, setEditing] = useState(false);
-  const [editingDocument, setEditingDocument] = useState(false);
-  const [playbackError, setPlaybackError] = useState('');
-  const relink = useRef<HTMLInputElement>(null);
-  const latestEvidence = resource.evidence.at(-1);
-  const recognizing = project.jobs.some(job => job.resource_id === resource.id && ['reference_extraction', 'recognize'].includes(job.kind) && ['queued', 'running'].includes(job.status));
-  const [showLatest, setShowLatest] = useState(false);
-  const citedEvidence = source?.resource_id === resource.id && source.evidence_revision != null ? resource.evidence.find(item => item.revision === source.evidence_revision) : undefined;
-  const evidence = showLatest ? latestEvidence : citedEvidence ?? latestEvidence;
-  const historicalEvidence = evidence !== latestEvidence;
-  const citedExtraction = source?.resource_id === resource.id && source.extraction_revision != null && source.extraction_revision !== resource.extraction_revision ? resource.extraction_history.find(item => item.revision === source.extraction_revision) : undefined;
-  const documentBlocks = !showLatest && citedExtraction && Array.isArray(citedExtraction.blocks) ? citedExtraction.blocks as unknown as ExtractedBlock[] : resource.blocks;
-  useEffect(() => setShowLatest(false), [source]);
-  const citationTime = source?.resource_id === resource.id && source.start_seconds != null ? playbackSeconds(resource, source.start_seconds) : null;
-  useEffect(() => { if (citationTime != null && player.current) player.current.currentTime = citationTime; }, [source, citationTime]);
-  const seek = (seconds: number) => { if (player.current) player.current.currentTime = playbackSeconds(resource, seconds); };
-  return <aside className="va-resource-inspector va-glass"><div className="va-section-heading"><h2>{resource.name}</h2><Badge tone={['failed', 'missing', 'partial'].includes(resource.status) || Object.values(evidence?.coverage ?? {}).some(value => ['failed', 'partial', 'error'].includes(value)) ? 'warning' : ''}>{resourceMessage(resource)}</Badge></div>
-    {resource.kind === 'video' && <video ref={player as React.RefObject<HTMLVideoElement>} src={fileUrl(project.id, resource.id, 'playback')} controls preload="metadata" onLoadedMetadata={() => { setPlaybackError(''); if (source?.resource_id === resource.id && source.start_seconds != null) seek(source.start_seconds); }} onError={() => setPlaybackError('Playback is unavailable. The original and saved evidence are retained. Check the processing status or relink the original file.')} />}
-    {resource.kind === 'audio' && <audio ref={player as React.RefObject<HTMLAudioElement>} src={fileUrl(project.id, resource.id, 'playback')} controls preload="metadata" onLoadedMetadata={() => { if (source?.resource_id === resource.id && source.start_seconds != null) seek(source.start_seconds); }} onError={() => setPlaybackError('Audio playback is unavailable. Check the source file and processing status.')} />}
-    {resource.kind === 'image' && <img className="va-resource-image" src={fileUrl(project.id, resource.id)} alt={resource.name} />}
-    {(resource.error || playbackError) && <FailureNotice message={resource.error || playbackError} detail={`Resource ${resource.id}. See coverage for the affected stage.`} />}{resource.warnings.map((warning, index) => <p className="va-notice" key={index}>{warning}</p>)}
-    {evidence && <div className="va-evidence-summary" aria-label="Recognition summary"><p>{coverageMessage('speech', evidence.coverage.speech ?? 'not_analyzed', evidence.events.some(event => event.kind === 'speech'), evidence.diagnostics?.speech)}</p><p>{coverageMessage('visual', evidence.coverage.visual_action ?? evidence.coverage.visual ?? evidence.coverage.vision ?? 'not_analyzed', evidence.events.some(event => event.kind === 'visual'))}</p></div>}
-    {(historicalEvidence || (!showLatest && citedExtraction)) && <div className="va-notice">Showing the exact historical evidence cited by this output.<button onClick={() => setShowLatest(true)}>View latest evidence</button></div>}
-    {editing && latestEvidence ? <EvidenceEditor key={`${resource.id}:${latestEvidence.revision}`} project={project} resource={resource} mutate={mutate} onClose={() => setEditing(false)} /> : editingDocument ? <DocumentEditor project={project} resource={resource} mutate={mutate} onClose={() => setEditingDocument(false)} /> : <>
-      <div className="va-tabs" role="tablist" aria-label="Resource details">{(resource.kind === 'video' || resource.kind === 'audio' ? [['speech', 'Transcript'], ['on_screen_text', 'Screen text'], ['visual', 'Visuals'], ['details', 'Details']] : [['document', 'Extracted text'], ['details', 'Details']]).map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id || (tab === 'speech' && id === 'document')} onClick={() => setTab(id)}>{label}</button>)}</div>
-      {tab === 'details' ? <dl className="va-resource-details"><dt>Origin</dt><dd>{resource.origin === 'upload' ? 'Uploaded file' : resource.origin === 'legacy' ? 'Imported from earlier workspace' : 'Imported source'}</dd><dt>Size</dt><dd>{(resource.size_bytes / 1024 / 1024).toFixed(2)} MB</dd><dt>Original</dt><dd>Project-owned local copy</dd>{resource.duration_seconds != null && <><dt>Duration</dt><dd>{time(resource.duration_seconds)}</dd></>}{resource.source_url && <><dt>Source</dt><dd><a href={/^https?:\/\//.test(resource.source_url) ? resource.source_url : undefined} target="_blank" rel="noreferrer">{resource.source_url}</a></dd></>}{resource.provenance && <><dt>Provenance</dt><dd>{resource.provenance}</dd></>}<dt>Fingerprint</dt><dd className="va-hash">{resource.sha256}</dd></dl> : resource.kind === 'video' || resource.kind === 'audio' ? <div className="va-transcript">{evidence?.events.filter(event => event.kind === tab || (tab === 'visual' && event.kind === 'sound')).map(event => <article key={event.id}><button className="va-timecode" onClick={() => seek(event.start_seconds)} aria-label={`Seek to ${time(event.start_seconds)}`}>{time(event.start_seconds)}</button><div><p>{event.text}</p>{event.interpretation && <small>Interpretation: {event.interpretation}</small>}</div></article>)}{!evidence && <p className="va-muted">Select this resource and analyze it to extract speech and visual evidence.</p>}{evidence && !evidence.events.some(event => event.kind === tab) && <p className="va-muted">{coverageMessage(tab, evidence.coverage[tab] ?? 'not_analyzed', false, evidence.diagnostics?.[tab])}</p>}{evidence && <details><summary>Coverage and limitations</summary><dl>{Object.entries(evidence.coverage).map(([key, value]) => <div key={key}><dt>{channelLabel[key] ?? 'Evidence'}</dt><dd>{coverageMessage(key, value, evidence.events.some(event => event.kind === key), evidence.diagnostics?.[key])}</dd></div>)}</dl>{Object.keys(evidence.diagnostics ?? {}).length > 0 && <details className="va-support"><summary>Support diagnostics</summary><pre>{Object.entries(evidence.diagnostics).map(([channel, code]) => `${channelLabel[channel] ?? 'Evidence'}: ${code}`).join('\n')}</pre><button onClick={() => void navigator.clipboard?.writeText(JSON.stringify(evidence.diagnostics)).catch(() => {})}>Copy support details</button></details>}{evidence.limitations.map((item, index) => <p key={index}>{failureMessage(item)}</p>)}</details>}</div> : <div className="va-document-blocks">{documentBlocks.map(block => <article key={block.id}><small>{block.locator}</small><p>{block.text}</p></article>)}{!resource.blocks.length && <p className="va-muted">{resource.status === 'processing' || resource.status === 'stored' ? 'Extracting the document…' : 'No text was extracted. The original file is preserved.'}</p>}</div>}
-      <div className="va-inspector-actions">{['video', 'audio'].includes(resource.kind) && <button disabled={recognizing} onClick={() => void mutate(`/resources/${resource.id}/recognize`)}>{recognizing ? 'Recognizing…' : latestEvidence?.coverage.speech === 'failed' || latestEvidence?.diagnostics?.speech === 'speech_merge_conflict' ? 'Retry transcription' : latestEvidence ? 'Retry recognition' : 'Extract speech / visuals'}</button>}{latestEvidence && !historicalEvidence && <><button onClick={() => setEditing(true)}>Correct text / timing</button><button disabled={latestEvidence.reviewed} onClick={() => void mutate(`/resources/${resource.id}/evidence/review`)}>{latestEvidence.reviewed ? 'Evidence reviewed' : 'Use reviewed evidence'}</button></>}{resource.blocks.length > 0 && (showLatest || !citedExtraction) && <button onClick={() => setEditingDocument(true)}>Correct extraction</button>}<button onClick={() => void mutate(`/resources/${resource.id}/extract`)}>{['video', 'audio'].includes(resource.kind) ? 'Rebuild media preview' : 'Retry extraction'}</button><a className="va-button-link" href={fileUrl(project.id, resource.id)} target="_blank" rel="noreferrer">Open original</a><input ref={relink} className="va-sr-only" tabIndex={-1} type="file" onChange={async event => { const file = event.target.files?.[0]; if (!file) return; const body = new FormData(); body.append('file', file); const saved = await mutate(`/resources/${resource.id}/relink`, body); if (saved) setPlaybackError(''); }} /><button onClick={() => relink.current?.click()}>Relink original</button></div>
-    </>}
-  </aside>;
-}
-
-export default function Resources({ project, mutate, source, onAnalyze }: { project: Project; mutate: Mutate; source: SourceRef | null; onAnalyze: () => void }) {
-  const [category, setCategory] = useState('all');
+type Command = { kind: 'new-folder' | 'rename-folder' | 'move-folder' | 'trash-folder' | 'restore-folder'; folder?: ResourceFolder } | { kind: 'rename-file' | 'move-files' | 'trash-files' | 'restore-files'; ids: string[] };
+export default function Resources({ project, mutate, source, onAnalyze, onCloseSource, sourceReturnLabel, onAttachResource }: { project: Project; mutate: Mutate; source: SourceRef | null; onAnalyze: () => void; onCloseSource?: () => void; sourceReturnLabel?: string; onAttachResource?: (resourceId: string) => void }) {
+  const [view, setView] = useDraft(project, 'resource-library-view', { directory: 'all', layout: 'list' as 'list' | 'grid', focus_id: null as string | null, review_id: null as string | null, citation: null as SourceRef | null }, mutate);
+  const directory = view.directory;
+  const layout = view.layout;
+  const focusId = view.focus_id;
+  const reviewId = view.review_id;
+  const setDirectory = (directory: string) => setView({ ...view, directory, review_id: null, citation: null });
+  const setLayout = (layout: 'list' | 'grid') => setView({ ...view, layout });
+  const setFocusId = (focus_id: string | null) => setView({ ...view, focus_id });
+  const setReviewId = (review_id: string | null) => setView({ ...view, review_id, citation: null });
   const [search, setSearch] = useState('');
-  const [preview, setPreview] = useState<string | null>(project.resources[0]?.id ?? null);
-  const [selection, setSelection, flushSelection, selectionConflict, reloadSelection] = useDraft(project, 'reference-selection', { resource_ids: project.selection.resource_ids, content_id: '' }, mutate);
+  const [sort, setSort] = useState<'name' | 'created_at' | 'size_bytes' | 'duration_seconds'>('name');
+  const [descending, setDescending] = useState(false);
+  const oldSelection = project.editor_drafts['reference-selection']?.resource_ids;
+  const initialSelection = Array.isArray(oldSelection) ? oldSelection.filter((id): id is string => typeof id === 'string' && project.resources.some(item => item.id === id)) : project.selection.resource_ids;
+  const [selection, setSelection, flushSelection, selectionConflict, reloadSelection] = useDraft(project, 'filesystem-selection', { resource_ids: initialSelection }, mutate);
   const [uploading, setUploading] = useState(false);
-  const [running, setRunning] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [command, setCommand] = useState<Command | null>(null);
+  const [commandError, setCommandError] = useState('');
+  const [name, setName] = useState('');
+  const [destination, setDestination] = useState('folder_inbox');
+  const [scope, setScope] = useState('');
   const [visualOnly, setVisualOnly] = useState(false);
-  const visualChoice = project.resources.some(resource => selection.resource_ids.includes(resource.id) && resource.evidence.at(-1)?.coverage.speech === 'failed' && resource.evidence.at(-1)?.events.some(event => ['visual', 'on_screen_text'].includes(event.kind)));
-  useEffect(() => setVisualOnly(false), [selection.resource_ids.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dialog = useRef<HTMLDialogElement>(null);
+  const analyzeDialog = useRef<HTMLDialogElement>(null);
   const upload = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (source?.resource_id) setPreview(source.resource_id); }, [source]);
-  const selected = project.resources.find(resource => resource.id === preview) ?? project.resources[0];
-  const visible = project.resources.filter(resource => (category === 'all' || resource.role === category) && resource.name.toLowerCase().includes(search.toLowerCase()));
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (source?.resource_id) setView({ ...view, review_id: source.resource_id, focus_id: source.resource_id, citation: source }); }, [source]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (command) dialog.current?.showModal(); }, [command]);
+  const folder = project.resource_folders.find(item => item.id === directory);
+  const focused = project.resources.find(item => item.id === focusId);
+  const reviewed = project.resources.find(item => item.id === reviewId);
+  const reviewSource = source?.resource_id === reviewId ? source : view.citation?.resource_id === reviewId ? view.citation : null;
+  const inTrash = directory === 'trash';
+  const checked = project.resources.filter(item => selection.resource_ids.includes(item.id));
+  const media = checked.filter(item => ['video', 'audio'].includes(item.kind) && !resourceIsTrashed(project, item));
+  const visible = project.resources.filter(item => resourceIsTrashed(project, item) === inTrash && (directory === 'all' || inTrash || item.folder_id === directory) && item.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())).sort((a, b) => {
+    const value = sort === 'name' || sort === 'created_at' ? String(a[sort]).localeCompare(String(b[sort])) : (a[sort] ?? -1) - (b[sort] ?? -1);
+    return descending ? -value : value;
+  });
+  const folders = project.resource_folders.filter(item => inTrash ? Boolean(item.trashed_at) : directory !== 'all' && item.parent_id === directory && !folderIsTrashed(project, item.id));
+  const activeFolders = project.resource_folders.filter(item => !folderIsTrashed(project, item.id));
+  const hasPartialSpeech = media.some(item => ['failed', 'partial', 'error'].includes(item.evidence.at(-1)?.coverage.speech ?? '') && item.evidence.at(-1)?.events.some(event => ['visual', 'on_screen_text'].includes(event.kind)));
+  const chosenIds = checked.length ? checked.map(item => item.id) : focused ? [focused.id] : [];
+  const select = (resource: Resource, checked: boolean) => setSelection({ resource_ids: checked ? [...new Set([...selection.resource_ids, resource.id])] : selection.resource_ids.filter(id => id !== resource.id) });
+  const open = (resource: Resource) => setView({ ...view, focus_id: resource.id, review_id: resource.id, citation: null });
+  const begin = (next: Command) => {
+    setName('folder' in next ? next.folder?.name ?? '' : next.kind === 'rename-file' ? project.resources.find(item => item.id === next.ids[0])?.name ?? '' : '');
+    setDestination(next.kind === 'move-folder' ? next.folder?.parent_id ?? '' : folder && !folderIsTrashed(project, folder.id) ? folder.id : 'folder_inbox'); setCommandError(''); setCommand(next);
+  };
+  const finish = async () => {
+    if (!command || working) return;
+    setWorking(true);
+    try {
+      let saved: Project | null = null;
+      if (command.kind === 'new-folder') saved = await mutate('/folders', { name: name.trim(), parent_id: folder?.id ?? null });
+      else if (command.kind === 'rename-folder') saved = await mutate(`/folders/${command.folder!.id}`, { name: name.trim() }, 'PATCH');
+      else if (command.kind === 'move-folder') saved = await mutate(`/folders/${command.folder!.id}`, { parent_id: destination || null }, 'PATCH');
+      else if (command.kind === 'trash-folder' || command.kind === 'restore-folder') saved = await mutate(`/folders/${command.folder!.id}/${command.kind === 'trash-folder' ? 'trash' : 'restore'}`);
+      else if (command.kind === 'rename-file') saved = await mutate(`/resources/${command.ids[0]}`, { name: name.trim() }, 'PATCH');
+      else if (command.kind === 'move-files') saved = await mutate('/resources/move', { resource_ids: command.ids, folder_id: destination });
+      else if ('ids' in command) {
+        for (const id of command.ids) {
+          saved = await mutate(`/resources/${id}/${command.kind === 'trash-files' ? 'trash' : 'restore'}`);
+          if (!saved) break;
+        }
+      }
+      if (saved) { if (command.kind === 'trash-folder') setDirectory('all'); dialog.current?.close(); heading.current?.focus(); }
+      else setCommandError('The change could not be completed. Review the current items, name and destination before trying again.');
+    } finally { setWorking(false); }
+  };
   const importFiles = async (files: FileList | null) => {
-    if (!files) return;
-    setUploading(true);
-    for (const file of Array.from(files)) {
-      const body = new FormData(); body.append('file', file); body.append('role', category === 'asset' ? 'asset' : /\.(mp4|mov|webm|mkv|mp3|wav|m4a|aac|ogg|flac)$/i.test(file.name) ? 'reference' : 'document');
-      const saved = await mutate('/resources', body); if (saved) setPreview(saved.resources.at(-1)?.id ?? null);
-    }
-    setUploading(false);
+    if (!files) return; setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const body = new FormData(); body.append('file', file);
+        if (folder && !folderIsTrashed(project, folder.id)) body.append('folder_id', folder.id);
+        const saved = await mutate('/resources', body);
+        if (saved) setFocusId(saved.resources.at(-1)?.id ?? null);
+      }
+    } finally { setUploading(false); }
   };
-  const saveSelection = async () => await flushSelection() ? mutate('/selection', { resource_ids: selection.resource_ids, content_id: selection.content_id || null }) : null;
   const analyze = async () => {
-    setRunning(true);
-    const saved = await saveSelection();
-    if (saved) { const started = await mutate('/analyze', { resource_ids: selection.resource_ids, content_id: selection.content_id || null, visual_only: visualOnly }); if (started) { await mutate('', { active_content_id: selection.content_id || null }, 'PATCH'); onAnalyze(); } }
-    setRunning(false);
+    if (!media.length || working || !await flushSelection()) return;
+    setWorking(true);
+    try {
+      const resource_ids = media.map(item => item.id); const content_id = scope || null;
+      const selected = await mutate('/selection', { resource_ids, content_id });
+      if (selected && await mutate('/analyze', { resource_ids, content_id, visual_only: visualOnly })) { analyzeDialog.current?.close(); onAnalyze(); }
+    } finally { setWorking(false); }
   };
-  return <div className="va-resources"><section className="va-library va-glass"><div className="va-page-heading"><div><h1>Resource library</h1><p>Choose the references to analyze together.</p></div></div><div className="va-tabs">{[['all', 'All resources'], ['reference', 'References'], ['document', 'Documents'], ['asset', 'Production assets']].map(([id, label]) => <button key={id} className={category === id ? 'active' : ''} onClick={() => setCategory(id)}>{label}</button>)}</div><div className="va-resource-tools"><label className="va-search"><Icon name="search" /><input aria-label="Search resources" placeholder="Search resources" value={search} onChange={event => setSearch(event.target.value)} /></label><input ref={upload} type="file" multiple tabIndex={-1} className="va-sr-only" onChange={event => { void importFiles(event.target.files); event.target.value = ''; }} /><button className="va-primary" disabled={uploading} onClick={() => upload.current?.click()}><Icon name="upload" />{uploading ? 'Importing…' : 'Upload files'}</button></div>
-    {!project.resources.length ? <Empty title="Bring your materials together"><p>Add briefs, product documents, references, and production assets. Original files are copied into this project.</p><button onClick={() => upload.current?.click()}>Choose files</button></Empty> : <div className="va-resource-grid">{visible.map(resource => <article className={`va-resource-card ${selection.resource_ids.includes(resource.id) ? 'selected' : ''} ${selected?.id === resource.id ? 'previewing' : ''}`} key={resource.id}><div className="va-resource-card-heading"><label><input type="checkbox" aria-label={`Select ${resource.name}`} disabled={!['video', 'audio'].includes(resource.kind)} checked={selection.resource_ids.includes(resource.id)} onChange={event => setSelection({ ...selection, resource_ids: event.target.checked ? [...selection.resource_ids, resource.id] : selection.resource_ids.filter(id => id !== resource.id) })} /><span>{resource.name}</span></label><Badge tone={resource.origin === 'upload' ? 'success' : ''}>{resource.origin === 'upload' ? 'Uploaded' : resource.origin === 'legacy' ? 'Imported' : 'Discovery import'}</Badge></div><button className="va-resource-preview" onClick={() => setPreview(resource.id)} aria-label={`Preview ${resource.name}`}>{resource.thumbnail_path || resource.kind === 'image' ? <img src={fileUrl(project.id, resource.id, resource.thumbnail_path ? 'thumbnail' : 'original')} alt="" /> : <Icon name={['video', 'audio'].includes(resource.kind) ? 'play' : 'file'} size={38} />}{resource.duration_seconds != null && <span className="va-duration"><Icon name="play" size={12} />{time(resource.duration_seconds)}</span>}</button><div className="va-resource-card-footer"><span>{resource.kind}</span><Badge tone={['failed', 'unsupported', 'missing', 'partial'].includes(resource.status) || Object.values(resource.evidence.at(-1)?.coverage ?? {}).some(value => ['failed', 'partial', 'error'].includes(value)) ? 'warning' : ''}>{resourceMessage(resource)}</Badge></div>{resource.error && <p className="va-resource-error">{failureMessage(resource.error)}</p>}</article>)}</div>}
-    {visualChoice && <label className="va-visual-choice"><input type="checkbox" checked={visualOnly} onChange={event => setVisualOnly(event.target.checked)} />Continue with visual evidence only<span>Speech is unavailable. The analysis will retain this limitation.</span></label>}<DraftConflict conflict={selectionConflict} reload={reloadSelection} /><footer className="va-selection-bar"><div><strong>{selection.resource_ids.length} selected</strong><label>For <select aria-label="Reference selection for" value={selection.content_id} onChange={event => { const content = project.contents.find(item => item.id === event.target.value); setSelection({ content_id: event.target.value, resource_ids: content?.selection.resource_ids ?? project.selection.resource_ids }); }}><option value="">Project exploration</option>{project.contents.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label></div><div className="va-actions"><button onClick={() => void saveSelection()}>Save selection</button><button className="va-primary" disabled={!selection.resource_ids.length || running} onClick={() => void analyze()}><Icon name="play" />{running ? 'Starting…' : `Analyze selected (${selection.resource_ids.length})`}</button></div></footer>
-  </section>{selected && <Inspector key={selected.id} project={project} resource={selected} source={source} mutate={mutate} />}</div>;
+  const tree = (parent: string | null, depth = 0, visited = new Set<string>()): React.ReactNode => project.resource_folders.filter(item => item.parent_id === parent && !folderIsTrashed(project, item.id) && !visited.has(item.id)).map(item => <div key={item.id}><button type="button" className={directory === item.id ? 'active' : ''} style={{ paddingInlineStart: 12 + depth * 13 }} aria-current={directory === item.id ? 'location' : undefined} onClick={() => setDirectory(item.id)}><Icon name="resources" size={17} /><span>{item.name}</span></button>{tree(item.id, depth + 1, new Set([...visited, item.id]))}</div>);
+  const row = (resource: Resource) => <tr key={resource.id} className={`${focusId === resource.id ? 'focused' : ''} ${selection.resource_ids.includes(resource.id) ? 'checked' : ''}`} onDoubleClick={() => open(resource)}>
+    <td><input type="checkbox" aria-label={`Select ${resource.name}`} checked={selection.resource_ids.includes(resource.id)} onChange={event => select(resource, event.target.checked)} /></td><th scope="row"><button type="button" className="va-file-name" aria-label={`Focus ${resource.name}`} aria-pressed={focusId === resource.id} onClick={() => setFocusId(resource.id)} onKeyDown={event => { if (event.key === 'Enter' && event.altKey) { event.preventDefault(); open(resource); } }}><Icon name={['video', 'audio'].includes(resource.kind) ? 'play' : 'file'} size={20} /><span>{resource.name}</span></button></th><td data-label="Type">{resource.mime_type !== 'application/octet-stream' ? resource.mime_type : resource.kind}</td><td data-label="Imported">{recordedImportDate(resource) ? date(recordedImportDate(resource)!) : '—'}</td><td data-label="Size">{fileSize(resource)}</td><td data-label="Duration">{resource.duration_seconds != null ? time(resource.duration_seconds) : '—'}</td><td data-label="Status"><span>{resourceIsTrashed(project, resource) ? 'In Trash' : resourceMessage(resource)}</span></td>
+  </tr>;
+
+  if (reviewId) return <div className="va-library-review"><button type="button" className="va-back-to-pool" onClick={() => { setReviewId(null); if (source?.resource_id) onCloseSource?.(); }}><Icon name="back" />{source?.resource_id ? sourceReturnLabel ?? 'Back to previous view' : 'Back to Media Pool'}</button>{reviewed ? ['video', 'audio'].includes(reviewed.kind) ? <SourceReview key={reviewed.id} project={project} resource={reviewed} source={reviewSource} mutate={mutate} /> : <ResourceInspector key={reviewed.id} project={project} resource={reviewed} source={reviewSource} mutate={mutate} /> : <Empty title="Source unavailable"><p>The cited resource is not present in this project. No substitute was opened.</p></Empty>}</div>;
+  return <section className="va-media-pool va-glass">
+    <div className="va-page-heading"><div><h1 ref={heading} tabIndex={-1}>Media Pool</h1><p>Organize your files, then choose references for analysis.</p></div><input ref={upload} className="va-sr-only" tabIndex={-1} type="file" multiple onChange={event => { void importFiles(event.target.files); event.target.value = ''; }} /><button type="button" className="va-primary" disabled={uploading || inTrash} onClick={() => upload.current?.click()}><Icon name="upload" />{uploading ? 'Importing…' : 'Upload files'}</button></div>
+    <div className="va-pool-layout"><details className="va-folder-sidebar" open><summary>Folders</summary><nav aria-label="Resource folders"><button type="button" className={directory === 'all' ? 'active' : ''} onClick={() => setDirectory('all')}><Icon name="resources" size={18} />All files</button>{tree(null)}<button type="button" onClick={() => begin({ kind: 'new-folder' })}><Icon name="plus" size={18} />New folder</button><button type="button" className={inTrash ? 'active' : ''} onClick={() => setDirectory('trash')}><Icon name="trash" size={18} />Trash</button></nav></details>
+    <div className="va-pool-content"><div className="va-pool-breadcrumb"><strong>{inTrash ? 'Trash' : folder ? folderPath(project, folder) : 'All files'}</strong>{folder && <details><summary aria-label="Folder actions">Folder actions</summary><div className="va-actions"><button type="button" onClick={() => begin({ kind: 'rename-folder', folder })}>Rename folder</button><button type="button" onClick={() => begin({ kind: 'move-folder', folder })}>Move folder</button><button type="button" onClick={() => begin({ kind: 'trash-folder', folder })}>Move folder to Trash</button></div></details>}</div>
+      <div className="va-pool-tools"><label className="va-search"><Icon name="search" /><input aria-label="Search files" placeholder="Search files…" value={search} onChange={event => setSearch(event.target.value)} /></label><div role="group" aria-label="File view"><button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')}>List</button><button type="button" aria-pressed={layout === 'grid'} onClick={() => setLayout('grid')}>Grid</button></div><label className="va-sr-only" htmlFor={`files-sort-${project.id}`}>Sort files</label><select id={`files-sort-${project.id}`} value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="name">Name</option><option value="created_at">Imported</option><option value="size_bytes">Size</option><option value="duration_seconds">Duration</option></select><button type="button" aria-label={descending ? 'Sort ascending' : 'Sort descending'} onClick={() => setDescending(!descending)}>{descending ? '↓' : '↑'}</button></div>
+      <div className="va-pool-file-actions" aria-label="File actions"><button type="button" disabled={!focused} onClick={() => focused && open(focused)}>{focused && ['video', 'audio'].includes(focused.kind) ? 'Open in timeline' : 'Open file'}</button>{onAttachResource && focused && ['document', 'image'].includes(focused.kind) && !resourceIsTrashed(project, focused) && <button type="button" onClick={() => onAttachResource(focused.id)}>Attach in Overview</button>}<button type="button" disabled={!focused || inTrash} onClick={() => focused && begin({ kind: 'rename-file', ids: [focused.id] })}>Rename file</button><button type="button" disabled={!chosenIds.length || inTrash} onClick={() => begin({ kind: 'move-files', ids: chosenIds })}>Move to</button><button type="button" disabled={!chosenIds.length} onClick={() => begin({ kind: inTrash ? 'restore-files' : 'trash-files', ids: chosenIds })}>{inTrash ? 'Restore file' : 'Move to Trash'}</button></div>
+      {folders.length > 0 && <div className="va-pool-subfolders">{folders.map(item => <div key={item.id}><button type="button" onClick={() => inTrash ? begin({ kind: 'restore-folder', folder: item }) : setDirectory(item.id)}><Icon name="resources" />{item.name}{inTrash && ' · Restore folder'}</button></div>)}</div>}
+      {!visible.length ? <Empty title={inTrash ? 'No files in Trash' : 'No files here'}><p>{search ? 'Try another file name.' : inTrash ? 'Files and evidence are retained when you move them to Trash.' : 'Upload files into this folder. Uploads from All files go to Inbox.'}</p></Empty> : layout === 'list' ? <div className="va-pool-table-scroll" tabIndex={0} role="region" aria-label="Project files"><table className="va-pool-table"><caption className="va-sr-only">Files in {folder?.name ?? (inTrash ? 'Trash' : 'All files')}</caption><thead><tr><th scope="col">Select</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Imported</th><th scope="col">Size</th><th scope="col">Duration</th><th scope="col">Status</th></tr></thead><tbody>{visible.map(row)}</tbody></table></div> : <div className="va-pool-grid">{visible.map(resource => <article key={resource.id} className={focusId === resource.id ? 'focused' : ''}><label><input type="checkbox" aria-label={`Select ${resource.name}`} checked={selection.resource_ids.includes(resource.id)} onChange={event => select(resource, event.target.checked)} />Select file</label><button type="button" className="va-file-name" aria-label={`Focus ${resource.name}`} aria-pressed={focusId === resource.id} onClick={() => setFocusId(resource.id)} onDoubleClick={() => open(resource)}><Icon name={['video', 'audio'].includes(resource.kind) ? 'play' : 'file'} size={28} /><strong>{resource.name}</strong></button><p>{resource.kind} · {fileSize(resource)}{resource.duration_seconds != null ? ` · ${time(resource.duration_seconds)}` : ''}</p><small>{resourceMessage(resource)}</small></article>)}</div>}
+      {focused && <p className="va-pool-focus" role="status"><strong>Focused:</strong> {focused.name} · {resourceMessage(focused)}. Opening a file does not change the checked references.</p>}
+      <DraftConflict conflict={selectionConflict} reload={reloadSelection} />
+      {checked.length > 0 && <footer className="va-pool-selection"><div><strong>{checked.length} {checked.length === 1 ? 'file' : 'files'} selected</strong><span>{media.length} analyzable {media.length === 1 ? 'reference' : 'references'}</span></div><div className="va-actions"><button type="button" onClick={() => setSelection({ resource_ids: [] })}>Clear selection</button><button type="button" className="va-primary" disabled={!media.length || working} onClick={() => { setScope(''); setVisualOnly(false); analyzeDialog.current?.showModal(); }}>Analyze {media.length} {media.length === 1 ? 'reference' : 'references'}</button></div></footer>}
+    </div></div>
+    <dialog ref={dialog} className="va-pool-dialog" aria-labelledby={`file-command-${project.id}`} onClose={() => setCommand(null)}><form onSubmit={event => { event.preventDefault(); void finish(); }}><h2 id={`file-command-${project.id}`}>{command?.kind === 'new-folder' ? 'New folder' : command?.kind === 'rename-folder' ? 'Rename folder' : command?.kind === 'move-folder' ? 'Move folder' : command?.kind === 'rename-file' ? 'Rename file' : command?.kind === 'move-files' ? 'Move files' : command?.kind.startsWith('restore') ? 'Restore from Trash' : 'Move to Trash'}</h2>
+      {command && ['new-folder', 'rename-folder', 'rename-file'].includes(command.kind) && <><label htmlFor={`resource-name-${project.id}`}>Name</label><input id={`resource-name-${project.id}`} value={name} onChange={event => setName(event.target.value)} required maxLength={240} /></>}
+      {command && ['move-folder', 'move-files'].includes(command.kind) && <><label htmlFor={`resource-destination-${project.id}`}>Destination folder</label><select id={`resource-destination-${project.id}`} value={destination} onChange={event => setDestination(event.target.value)}>{command.kind === 'move-folder' && <option value="">Root folders</option>}{activeFolders.filter(item => command.kind !== 'move-folder' || !command.folder || !folderContains(project, command.folder.id, item.id)).map(item => <option key={item.id} value={item.id}>{folderPath(project, item)}</option>)}</select></>}
+      {command?.kind.startsWith('trash') && <p>Original files, saved evidence and historical references are retained. References used by saved work will be marked unavailable until restored. No permanent deletion is performed.</p>}
+      {command?.kind.startsWith('restore') && <p>Restore this item to its existing folder. A trashed parent folder must also be restored.</p>}
+      {commandError && <p className="va-notice" role="alert">{commandError}</p>}
+      <div className="va-actions"><button type="button" autoFocus disabled={working} onClick={() => dialog.current?.close()}>Cancel</button><button type="submit" className="va-primary" disabled={working || (Boolean(command && ['new-folder', 'rename-folder', 'rename-file'].includes(command.kind)) && !name.trim())}>{working ? 'Saving…' : command?.kind.startsWith('trash') ? 'Move to Trash' : command?.kind.startsWith('restore') ? 'Restore' : 'Save'}</button></div></form></dialog>
+    <dialog ref={analyzeDialog} className="va-pool-dialog" aria-labelledby={`analyze-confirm-${project.id}`}><form onSubmit={event => { event.preventDefault(); void analyze(); }}><h2 id={`analyze-confirm-${project.id}`}>Analyze selected references</h2><p>Only these {media.length} media files will be analyzed. Other checked files are retained for file operations.</p><ul>{media.map(item => <li key={item.id}>{item.name}</li>)}</ul><label htmlFor={`analysis-scope-${project.id}`}>Analysis for</label><select id={`analysis-scope-${project.id}`} value={scope} onChange={event => setScope(event.target.value)}><option value="">Project exploration</option>{project.contents.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select>{hasPartialSpeech && <label className="va-visual-choice"><input type="checkbox" checked={visualOnly} onChange={event => setVisualOnly(event.target.checked)} />Continue with visual evidence only. Keep the incomplete speech limitation in the report.</label>}<p className="va-muted">Analysis uses your configured API. Choosing a scope does not switch the Video selected for Production.</p><div className="va-actions"><button type="button" autoFocus disabled={working} onClick={() => analyzeDialog.current?.close()}>Cancel</button><button type="submit" className="va-primary" disabled={working || !media.length}>{working ? 'Starting…' : 'Start analysis'}</button></div></form></dialog>
+  </section>;
 }

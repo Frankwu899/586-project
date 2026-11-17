@@ -6,6 +6,7 @@ from decimal import Decimal
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import random
 import time
 import threading
 import fcntl
@@ -21,6 +22,8 @@ from .config import ProviderSettings
 from .budget import ExperimentBudget, TEXT_MODELS, module_name
 from .catalog import GPT6_MODELS
 from .local_usage import estimate_local_attempt
+from .diagnostics import safe_diagnostics
+from ..release import release_info
 
 # Explicitly reviewed model families, not a claim that arbitrary GPT IDs share capabilities.
 STRUCTURED_VISION_MODELS = frozenset({"gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini",
@@ -89,18 +92,32 @@ class OpenAITransport:
             self.budget = ExperimentBudget(path, self.settings.experiment_max_usd)
         return self.budget
 
-    def _persist_usage(self, record):
+    def _persist_usage(self, record, filename="usage.jsonl"):
         if self.settings.cache_dir is None:
             return
         try:
             self.settings.cache_dir.mkdir(parents=True, exist_ok=True)
-            with (self.settings.cache_dir / "usage.jsonl").open("a", encoding="utf-8") as output:
+            with (self.settings.cache_dir / filename).open("a", encoding="utf-8") as output:
                 fcntl.flock(output.fileno(), fcntl.LOCK_EX)
                 output.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
                 output.flush()
                 fcntl.flock(output.fileno(), fcntl.LOCK_UN)
         except (OSError, ValueError):
             record["diagnostics_error"] = "usage_write_failed"
+
+    def last_diagnostics(self) -> dict:
+        """Request-local support details, without cost ledgers or private payloads."""
+        return safe_diagnostics(getattr(self._thread_record, "value", {}))
+
+    def validation_result(self, outcome: str, *, code=None, rule=None, field=None):
+        """Persist semantic outcomes after HTTP success without double-counting usage."""
+        record = getattr(self._thread_record, "value", None)
+        if record is None:
+            return
+        record.update(safe_diagnostics({"validation_outcome": outcome, "validation_rule": rule,
+                                       "validation_field": field}))
+        record["failure_code"] = safe_diagnostics({"failure_code": code}).get("failure_code")
+        self._persist_usage(self.last_diagnostics(), "validation.jsonl")
 
     def _remaining_timeout(self, deadline):
         if deadline is None:
@@ -151,12 +168,14 @@ class OpenAITransport:
 
     def _request(self, endpoint: str, model: str, payload: dict, *, metadata: dict | None = None,
                  audio_path: Path | None = None) -> dict:
-        api_key = normalize_api_key(self.settings.api_key)
         deadline = (metadata or {}).get("_deadline")
-        public_metadata = {key: value for key, value in (metadata or {}).items() if not key.startswith("_")}
+        public_metadata = safe_diagnostics(metadata)
+        release = release_info()
         record = {"provider": "openai", "requested_model": model, "resolved_model": None,
+                  "application_version": release["version"], "source_commit": release["source_commit"],
                   "started_at": datetime.now(timezone.utc).isoformat(), "ended_at": None,
                   "elapsed_ms": None, "attempts": 0, "cache_status": "miss", "failure_code": None,
+                  "validation_outcome": "pending", "stage": endpoint,
                   "usage": None, "usage_explanation": "Provider usage unavailable; cost is unknown, not zero.",
                   "cost_usd": None, "provider_billed_cost_usd": None,
                   "module": module_name(metadata), "attempt_records": [], **public_metadata}
@@ -169,7 +188,9 @@ class OpenAITransport:
         owned = self.client is None
         client = self.client or httpx.Client(timeout=self.settings.timeout_seconds, follow_redirects=False)
         counted_bound = None
+        final_error = None
         try:
+            api_key = normalize_api_key(self.settings.api_key)
             for attempt in range(self.settings.max_retries + 1):
                 attempt_started = time.monotonic()
                 reservation_id = None
@@ -206,6 +227,8 @@ class OpenAITransport:
                         request_sent = True
                         record["attempts"] += 1
                     headers = {"Authorization": f"Bearer {api_key}"}
+                    for key in ("http_status", "provider_code", "provider_type", "provider_request_id", "retry_after_seconds"):
+                        record.pop(key, None)
                     if audio_path is None:
                         response = self._post(client, "https://api.openai.com/v1/" + endpoint,
                                                headers=headers, json=payload, deadline=deadline,
@@ -215,6 +238,8 @@ class OpenAITransport:
                             response = self._post(client, "https://api.openai.com/v1/" + endpoint, headers=headers,
                                 data=payload, files={"file": ("audio.wav", audio, "audio/wav")},
                                 deadline=deadline, before_send=mark_sent, follow_redirects=False)
+                    record.update(safe_diagnostics({"http_status": response.status_code,
+                        "provider_request_id": response.headers.get("x-request-id")}))
                     if response.status_code >= 300:
                         raise provider_http_error(response)
                     try:
@@ -224,7 +249,7 @@ class OpenAITransport:
                     except ValueError as exc:
                         raise ProviderError("provider_invalid_json", "Provider returned malformed JSON; retry the analysis.") from exc
                     attempt_response = data
-                    record["resolved_model"] = data.get("model")
+                    record.update(safe_diagnostics({"resolved_model": data.get("model")}))
                     usage = data.get("usage")
                     if isinstance(usage, dict):
                         record["usage"] = {key: {"value": value, "unit": "seconds" if key == "seconds" else "tokens"}
@@ -235,6 +260,7 @@ class OpenAITransport:
                     error = provider_connection_error(exc)
                 except ProviderError as exc:
                     error = exc
+                    record.update(safe_diagnostics(exc.diagnostics))
                 finally:
                     attempt_error = error if attempt_response is None else None
                     if not self.settings.experiment_budget_enabled and request_sent:
@@ -259,10 +285,33 @@ class OpenAITransport:
                 if not error.retryable or attempt >= self.settings.max_retries:
                     record["failure_code"] = error.code
                     raise error
-                self.sleep(min(2 ** attempt, 4, self._remaining_timeout(deadline)))
+                delay = error.retry_after_seconds
+                if delay is None:
+                    delay = min(2 ** attempt, 4) + random.uniform(0, 0.25)
+                else:
+                    record["retry_after_seconds"] = delay
+                # Long server cooldowns are left to explicit user retry. Never
+                # retry early by clamping Retry-After or exceeding a run deadline.
+                # A per-request timeout is not an operation-wide deadline: a
+                # one-second network timeout still permits a bounded retry.
+                if delay > 60 or (deadline is not None and delay > self._remaining_timeout(deadline)):
+                    raise error
+                self.sleep(delay)
+        except ProviderError as exc:
+            final_error = exc
+            record["failure_code"] = exc.code
+            record["validation_outcome"] = "rejected"
+            record.update(safe_diagnostics(exc.diagnostics))
+            if exc.retry_after_seconds is not None:
+                record["retry_after_seconds"] = exc.retry_after_seconds
+            exc.diagnostics = self.last_diagnostics()
+            raise
         finally:
             record["ended_at"] = datetime.now(timezone.utc).isoformat()
             record["elapsed_ms"] = round((time.monotonic() - start) * 1000)
+            # Include final elapsed/attempt metadata on the error as well.
+            if final_error is not None:
+                final_error.diagnostics = self.last_diagnostics()
             settlements = record["attempt_records"]
             if settlements:
                 record["known_estimated_cost_usd"] = str(sum((Decimal(item["estimated_cost_usd"]) for item in settlements
@@ -304,13 +353,16 @@ class OpenAITransport:
             result = json.loads("".join(texts))
             if not isinstance(result, dict):
                 raise ValueError("not object")
+            self.validation_result("decoded")
             return result
         except (ValueError, TypeError, AttributeError) as exc:
             if isinstance(exc, ProviderError):
-                self._thread_record.value["failure_code"] = exc.code
+                self.validation_result("rejected", code=exc.code, rule="response_status", field="output")
+                exc.diagnostics = self.last_diagnostics()
                 raise
-            self._thread_record.value["failure_code"] = "provider_invalid_json"
-            raise ProviderError("provider_invalid_json", "Provider returned malformed structured output; retry the analysis.") from exc
+            self.validation_result("rejected", code="provider_invalid_json", rule="json_object", field="output")
+            raise ProviderError("provider_invalid_json", "Provider returned malformed structured output; retry the analysis.",
+                                diagnostics=self.last_diagnostics()) from exc
 
     def transcribe(self, model: str, audio_path: Path, *, prompt: str = "", metadata=None) -> dict:
         if model not in TIMESTAMP_MODELS:
@@ -336,6 +388,19 @@ class OpenAITransport:
         if model in GPT6_MODELS:
             payload["reasoning"] = {"effort": "low"}
         data = self._request("responses", model, payload, metadata=metadata or {"capability": "research"})
+        try:
+            result = self._search_result(data, max_tool_calls)
+            self.validation_result("accepted")
+            return result
+        except (ValueError, TypeError, AttributeError, KeyError) as exc:
+            error = exc if isinstance(exc, ProviderError) else ProviderError(
+                "provider_invalid_json", "Provider returned unreadable research output; saved work is retained.")
+            self.validation_result("rejected", code=error.code, rule="research_response", field="output")
+            error.diagnostics = self.last_diagnostics()
+            raise error from None
+
+    @staticmethod
+    def _search_result(data, max_tool_calls):
         if data.get("status") != "completed":
             raise ProviderError("provider_incomplete", "Background research ended before a complete response was available.")
         texts, sources, citations = [], {}, []

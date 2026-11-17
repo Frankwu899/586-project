@@ -14,17 +14,26 @@ _CONFLICT_PREFIX = "Recovery needs review:"
 
 _MESSAGES = {
     "provider_quota": "The provider reports insufficient credit or a billing limit. Check billing for the project that owns this key.",
+    "provider_credit_balance_exhausted": "The account has insufficient API credit. Check its API billing balance before retrying.",
+    "provider_project_spend_limit": "The API project's spend limit was reached. Check the relevant project limit before retrying.",
+    "provider_organization_spend_limit": "The organization's spend limit was reached. Check the relevant organization limit before retrying.",
+    "provider_organization_usage_limit": "The organization's usage limit was reached. Check the relevant organization limit before retrying.",
     "provider_authentication": "The service rejected the API key. Check the saved key in Settings.",
     "provider_key_format": "Paste the complete API key in Settings without quotes or a Bearer prefix.",
     "provider_permission": "The key lacks permission for this request. Check model and Audio Transcriptions access.",
     "provider_model_access": "The configured model is unavailable to this key. Check project model access.",
-    "provider_temporarily_unavailable": "The service is temporarily busy. Try again shortly.",
+    "provider_temporarily_unavailable": "The service could not accept this request. Wait before retrying; if it persists, check account limits in Settings.",
+    "provider_rate_limit": "Requests are temporarily throttled. Wait before retrying.",
     "provider_busy": "The service is temporarily busy. Try again shortly.",
     "provider_timeout": "The service took too long to respond. Check the connection and retry.",
     "provider_network": "The service could not be reached. Check your network, proxy and certificate settings.",
     "provider_invalid_output": "The response could not be read as valid evidence. Retry this operation.",
     "provider_invalid_json": "The response could not be read as valid evidence. Retry this operation.",
     "missing_prepared_audio": "The audio track could not be prepared. Rebuild the media preview and retry transcription.",
+    "audio_preparation_invalid": "Prepared audio failed sample or duration validation. Rebuild the media preview and retry transcription.",
+    "media_preparation_failed": "Media preparation failed before transcription. Check the original file and FFmpeg, then rebuild the preview.",
+    "audio_timestamps_missing": "Transcription returned text without usable timestamps. Retry the affected chunk; saved evidence is retained.",
+    "audio_timestamps_invalid": "Some transcription timestamps are invalid. Valid segments are retained; retry missing coverage.",
     "unsupported_model_capability": "The configured transcription engine cannot supply the required timestamps. Check Settings.",
 }
 

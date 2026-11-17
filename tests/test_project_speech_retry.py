@@ -100,7 +100,8 @@ def test_no_audio_and_empty_transcript_are_distinct(tmp_path, has_audio, expecte
 def test_billing_is_diagnosed_only_from_actual_error_code():
     busy = provider_http_error(httpx.Response(429, json={'error': {'message':'secret body'}}))
     quota = provider_http_error(httpx.Response(429, json={'error': {'code':'insufficient_quota', 'message':'secret body'}}))
-    assert 'busy' in public_failure(busy)[1] and 'billing' not in public_failure(busy)[1]
+    assert busy.code == 'provider_temporarily_unavailable'
+    assert 'Wait before retrying' in public_failure(busy)[1] and 'billing' not in public_failure(busy)[1]
     assert 'billing' in public_failure(quota)[1]
     assert 'secret' not in public_failure(quota)[1]
 

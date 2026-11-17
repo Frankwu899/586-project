@@ -236,3 +236,117 @@ def test_disabled_transcription_requires_matching_chunk_boundaries(recognition_i
     result = adapter.analyze(request)
     assert result.coverage.speech == 'not_analyzed'
     assert speech.calls == 1
+
+
+def test_speech_failure_is_local_and_retry_requests_only_missing_chunk(recognition_input, tmp_path):
+    from backend.app.media_preparation import AudioChunk
+    request, prepared = recognition_input
+    chunks = tuple(AudioChunk(request.media_path, start, end) for start, end in ((0, .3), (.3, .6), (.6, 1)))
+    prepared = replace(prepared, audio_chunks=chunks)
+    class Speech(AlternateSpeech):
+        def __init__(self):
+            super().__init__()
+            self.starts, self.fail = [], True
+
+        def transcribe(self, chunk, *, metadata):
+            self.starts.append(chunk.start_seconds)
+            if chunk.start_seconds == .3 and self.fail:
+                raise ProviderError("provider_timeout", "Private response must not enter support details.")
+            return {"segments": [{"start": 0, "end": .2, "text": "清楚的原文 English"}]}
+    speech, vision = Speech(), AlternateVision()
+    adapter = ProviderRecognitionAdapter(ProviderSettings(cache_dir=tmp_path / "results"),
+        vision_provider=vision, transcription_provider=speech, prepare=lambda *_: prepared)
+    partial = adapter.analyze(request)
+    assert partial.status == "partial"
+    assert len([event for event in partial.events if event.kind == "speech"]) == 2
+    assert speech.starts == [0, .3, .6]
+    speech.fail = False
+    complete = adapter.analyze(request, speech_only=True)
+    assert complete.status == "succeeded" and speech.starts == [0, .3, .6, .3]
+    assert vision.calls == 1
+    chunks = [record for record in adapter.records if record.get("stage") == "transcription_chunk"]
+    assert [record["cache_status"] for record in chunks[-3:]] == ["hit", "miss", "hit"]
+    assert all("Private response" not in json.dumps(record) for record in chunks)
+
+
+@pytest.mark.parametrize("code", ["provider_authentication", "provider_permission", "provider_credit_balance_exhausted",
+    "provider_project_spend_limit", "provider_organization_spend_limit", "provider_organization_usage_limit"])
+def test_account_failures_block_unrequested_chunks(recognition_input, tmp_path, code):
+    from backend.app.media_preparation import AudioChunk
+    request, prepared = recognition_input
+    prepared = replace(prepared, audio_chunks=(AudioChunk(request.media_path, 0, .5), AudioChunk(request.media_path, .5, 1)))
+    class Speech(AlternateSpeech):
+        def transcribe(self, chunk, *, metadata):
+            self.calls += 1
+            raise ProviderError(code, "Account needs attention.")
+    speech = Speech()
+    adapter = ProviderRecognitionAdapter(ProviderSettings(cache_dir=tmp_path / "results"),
+        vision_provider=AlternateVision(), transcription_provider=speech, prepare=lambda *_: prepared)
+    result = adapter.analyze(request)
+    assert result.extraction_failures["speech"].code == code and speech.calls == 1
+    assert any(record.get("cache_status") == "not_requested" for record in adapter.records)
+
+
+def test_invalid_segment_is_isolated_and_never_cached_as_complete(recognition_input, tmp_path):
+    request, prepared = recognition_input
+    speech = AlternateSpeech()
+    speech.transcribe = lambda *a, **kw: {"segments": [
+        {"start": 0, "end": .2, "text": "Original English"},
+        {"start": .4, "end": 12, "text": "Invalid timing"},
+        {"start": .5, "end": 1.08, "text": "保留中文"}]}
+    adapter = ProviderRecognitionAdapter(ProviderSettings(cache_dir=tmp_path / "results"),
+        vision_provider=AlternateVision(), transcription_provider=speech, prepare=lambda *_: prepared)
+    result = adapter.analyze(request)
+    assert result.status == "partial" and result.extraction_failures["speech"].code == "audio_timestamps_invalid"
+    assert [event.text for event in result.events if event.kind == "speech"] == ["Original English", "保留中文"]
+    assert not list((tmp_path / "results" / "speech-chunks").glob("*.json"))
+    detail = next(record for record in adapter.records if record.get("stage") == "transcription_chunk")
+    assert detail["validation_outcome"] == "partial" and detail["rejected_segments"] == 1
+    assert detail["rounded_boundaries"] == 1 and detail["validation_rule"] == "segment_bounds"
+
+
+def test_timestamp_schema_and_source_offset_are_not_invented(tmp_path):
+    from backend.app.media_preparation import AudioChunk
+    chunk = AudioChunk(tmp_path / "unused.wav", 60, 60.25)
+    spans, issues, rounded = ProviderRecognitionAdapter._normalize_speech_result({"segments": [
+        {"start": -.02, "end": .32, "text": "last words"},
+        {"start": .1, "text": "missing end"},
+        {"start": True, "end": .2, "text": "boolean"},
+        {"start": .1, "end": float("nan"), "text": "not finite"},
+    ]}, chunk, 60.25)
+    assert spans == [{"start": 60, "end": 60.25, "text": "last words"}]
+    assert rounded == 2 and issues == ["segment_schema"] * 3
+    with pytest.raises(ProviderError) as failure:
+        ProviderRecognitionAdapter._normalize_speech_result({"text": "Untimed", "segments": []}, chunk, 60.25)
+    assert failure.value.code == "audio_timestamps_missing"
+
+
+def test_disabled_provider_never_calls_audio(recognition_input):
+    request, prepared = recognition_input
+    speech = AlternateSpeech()
+    adapter = ProviderRecognitionAdapter(ProviderSettings(transcription_provider="disabled"),
+        vision_provider=AlternateVision(), transcription_provider=speech, prepare=lambda *_: prepared)
+    result = adapter.analyze(request)
+    assert result.coverage.speech == "not_analyzed" and speech.calls == 0
+
+
+def test_deferred_retry_after_does_not_send_later_chunks_early(recognition_input):
+    from backend.app.media_preparation import AudioChunk
+    request, prepared = recognition_input
+    prepared = replace(prepared, audio_chunks=(AudioChunk(request.media_path, 0, .5), AudioChunk(request.media_path, .5, 1)))
+    class Speech(AlternateSpeech):
+        def transcribe(self, chunk, *, metadata):
+            self.calls += 1
+            raise ProviderError("provider_rate_limit", "Retry later.", True, retry_after_seconds=120)
+    speech = Speech()
+    adapter = ProviderRecognitionAdapter(ProviderSettings(), vision_provider=AlternateVision(),
+        transcription_provider=speech, prepare=lambda *_: prepared)
+    result = adapter.analyze(request)
+    assert result.extraction_failures["speech"].code == "provider_rate_limit" and speech.calls == 1
+    assert any(record.get("cache_status") == "not_requested" for record in adapter.records)
+
+
+@pytest.mark.parametrize("start,end", [(True, .5), (0, True), ("0", .5)])
+def test_cached_timestamps_cannot_coerce_booleans_or_strings(start, end):
+    with pytest.raises(ValueError):
+        ProviderRecognitionAdapter._validate_cached_speech([{"start": start, "end": end, "text": "Cached words"}], 2)

@@ -95,7 +95,7 @@ export default function ApiConnection({ children }: { children: ReactNode }) {
         {error && <p className="error" role="alert">{t(error)}</p>}
         {!error && check && <div className={check.status === 'rejected' ? 'error' : 'notice'} role={check.status === 'rejected' ? 'alert' : 'status'}><p>{t(check.message)}</p>{check.missing_models.length > 0 && <p>{t("Models not listed:")} {check.missing_models.join(', ')}.</p>}</div>}
         {notice && <p role="status" className="connection-success">{t(notice)}</p>}
-        <p className="connection-check-note">{t("Connection checks do not generate content or use paid model calls. Generation access and account credit are confirmed when you run an analysis.")}</p>
+        <p className="connection-check-note">{t("This check only looks up available models. It does not make paid requests or verify transcription access, generation access, API credit, or spending limits.")}</p>
         <div className="connection-actions"><button type="button" className="secondary" disabled={Boolean(pending) || (!key.trim() && !status.configured)} onClick={() => void perform('check')}>{t("Check connection")}</button><button type="submit" disabled={Boolean(pending) || !key.trim()}>{t("Save key")}</button></div>
         {status.configured && <button type="button" className="text-button connection-forget" disabled={Boolean(pending)} onClick={() => void perform('forget')}>{t("Remove API key")}</button>}
       </form>}

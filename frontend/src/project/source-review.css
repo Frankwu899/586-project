@@ -1,0 +1,53 @@
+.va-source-review { container: source-review / inline-size; min-inline-size: 0; }
+.va-source-review .va-page-heading h1 { font-size: clamp(22px, 2.4vw, 32px); overflow-wrap: anywhere; }
+.va-source-review .va-page-heading > label { max-inline-size: 300px; }
+.va-source-top { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 20px; align-items: start; }
+.va-source-review .va-source-player { min-inline-size: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
+.va-source-stage { display: grid; place-items: center; min-block-size: 150px; background: #161727; border: 1px solid #d4d8e8; border-radius: 12px; }
+.va-app .va-source-stage video { display: block; inline-size: 100%; block-size: auto; max-block-size: min(55dvh, 520px); max-inline-size: 100%; object-fit: contain; aspect-ratio: auto; }
+.va-source-stage audio { inline-size: min(100%, 620px); }
+.va-source-clock { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: #515b75; font-size: 11px; padding-inline: 4px; }
+.va-source-clock output { font-variant-numeric: tabular-nums; color: #292e48; }
+.va-source-inspector { padding: 20px; background: #fafaff; min-inline-size: 0; }
+.va-source-inspector h2 { font-size: 20px; margin-block: 0 18px; }
+.va-source-selected-text { font-size: 16px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.va-source-inspector .va-muted { font-size: 12px; line-height: 1.6; }
+.va-source-speech-status { border-block-start: 1px solid #d8deed; margin-block-start: 20px; padding-block-start: 12px; font-size: 12px; color: #535b76; }
+.va-evidence-timeline { padding: 20px; margin-block: 20px; min-inline-size: 0; background: #fafaff; }
+.va-evidence-timeline h2 { font-size: 21px; margin: 0; }
+.va-evidence-timeline .va-section-heading p { font-size: 11px; margin-block: 6px; }
+.va-evidence-timeline .va-actions button { font-size: 11px; min-block-size: 34px; padding: 7px 10px; }
+.va-timeline-scroll { overflow-x: auto; overscroll-behavior-inline: contain; padding-block: 12px; min-block-size: 220px; }
+.va-timeline-canvas { min-inline-size: 100%; }
+.va-timeline-ruler,.va-timeline-playhead,.va-evidence-track { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 14px; align-items: center; min-block-size: 50px; }
+.va-timeline-ruler { min-block-size: 28px; font-size: 11px; color: #535d79; padding-inline-end: 20px; }
+.va-timeline-ruler > div { position: relative; block-size: 25px; }
+.va-timeline-ruler > div > span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.va-timeline-ruler > div > span:first-child { transform: none; }
+.va-timeline-ruler > div > span:last-child { transform: translateX(-100%); }
+.va-timeline-playhead > label { font-size: 12px; }
+.va-app .va-timeline-playhead input { inline-size: 100%; min-inline-size: 0; padding: 0; accent-color: #593bd0; block-size: 32px; }
+.va-evidence-track { border-block-end: 1px solid #dce1ee; }
+.va-evidence-track > strong { font-size: 11px; color: #414b68; }
+.va-evidence-track-body { position: relative; block-size: 48px; background: linear-gradient(to right, #d9ddec 1px, transparent 1px) 0 0 / 25% 100%; }
+.va-track-playhead { position: absolute; inset-block: 0; inline-size: 2px; background: #6845d6; pointer-events: none; z-index: 2; }
+.va-app .va-timeline-event { position: absolute; inset-block-start: 7px; border: 1px solid #8272bd; box-shadow: none; min-block-size: 32px; max-block-size: 36px; padding: 4px 7px; border-radius: 6px; background: #ded7f7; color: #322451; font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.va-app .va-timeline-event.sample { padding: 0; background: transparent; border: 0; font-size: 20px; color: #5a35c2; }
+.va-app .va-timeline-event.unknown { border-style: dashed; }
+.va-app .va-timeline-event.estimated { background: repeating-linear-gradient(135deg,#dbe9e7,#dbe9e7 6px,#eef4f3 6px,#eef4f3 12px); border-color: #5b837d; }
+.va-app .va-timeline-event[aria-pressed=true] { outline: 2px solid #5130b5; outline-offset: 1px; }
+.va-timeline-event > span { display: block; min-inline-size: 0; inline-size: 100%; overflow: hidden; text-overflow: ellipsis; }
+.va-source-evidence-list { padding: 20px; background: #fafaff; }
+.va-source-evidence-list h2 { font-size: 20px; }
+.va-source-evidence-list input { inline-size: min(300px, 100%); }
+.va-source-evidence-list .va-transcript { list-style: none; margin: 0; padding: 0; }
+.va-source-evidence-list li { display: flex; gap: 14px; padding-block: 15px; border-block-end: 1px solid #dde2ef; }
+.va-source-evidence-list li > div { min-inline-size: 0; }
+.va-source-evidence-list li p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; font-size: 14px; }
+.va-source-evidence-list li small { color: #535e78; font-size: 11px; }
+.va-source-details { padding: 18px 20px; margin-block-start: 20px; font-size: 13px; }
+.va-source-details > summary { cursor: pointer; color: #424e6d; font-weight: 600; }
+.va-source-details .va-inspector-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-block-start: 14px; }
+.va-source-correction-dialog { inline-size: min(760px, calc(100% - 28px)); }
+@container source-review (max-width: 780px) { .va-source-top { grid-template-columns: minmax(0, 1fr); } .va-source-stage video { max-block-size: 50dvh; } .va-source-inspector { padding: 16px; } }
+@media(max-width:540px) { .va-evidence-timeline,.va-source-evidence-list { padding: 15px 12px; } .va-timeline-ruler,.va-timeline-playhead,.va-evidence-track { grid-template-columns: 95px minmax(0, 1fr); gap: 8px; } }

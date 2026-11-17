@@ -1,0 +1,218 @@
+[
+  {
+    "requestedZoom": 1,
+    "settingsGetDefaultZoom": 1,
+    "windowRequested": [
+      1440,
+      900
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": false,
+    "innerWidth": 1440,
+    "innerHeight": 757,
+    "outerWidth": 1440,
+    "outerHeight": 900,
+    "devicePixelRatio": 1,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 1440,
+    "screenshot": "overview-native-1440x900-100.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  },
+  {
+    "requestedZoom": 1.25,
+    "settingsGetDefaultZoom": 1.25,
+    "windowRequested": [
+      1440,
+      900
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": false,
+    "innerWidth": 1152,
+    "innerHeight": 606,
+    "outerWidth": 1440,
+    "outerHeight": 900,
+    "devicePixelRatio": 1.25,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 1152,
+    "screenshot": "overview-native-1440x900-125.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  },
+  {
+    "requestedZoom": 1.5,
+    "settingsGetDefaultZoom": 1.5,
+    "windowRequested": [
+      1440,
+      900
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": true,
+    "innerWidth": 960,
+    "innerHeight": 505,
+    "outerWidth": 1440,
+    "outerHeight": 900,
+    "devicePixelRatio": 1.5,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 960,
+    "screenshot": "overview-native-1440x900-150.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  },
+  {
+    "requestedZoom": 2,
+    "settingsGetDefaultZoom": 2,
+    "windowRequested": [
+      1440,
+      900
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": true,
+    "innerWidth": 720,
+    "innerHeight": 378,
+    "outerWidth": 1440,
+    "outerHeight": 900,
+    "devicePixelRatio": 2,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 720,
+    "screenshot": "overview-native-1440x900-200.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  },
+  {
+    "requestedZoom": 1,
+    "settingsGetDefaultZoom": 1,
+    "windowRequested": [
+      1280,
+      800
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": false,
+    "innerWidth": 1280,
+    "innerHeight": 657,
+    "outerWidth": 1280,
+    "outerHeight": 800,
+    "devicePixelRatio": 1,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 1280,
+    "screenshot": "overview-native-1280x800-100.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  },
+  {
+    "requestedZoom": 1.25,
+    "settingsGetDefaultZoom": 1.25,
+    "windowRequested": [
+      1280,
+      800
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": true,
+    "innerWidth": 1024,
+    "innerHeight": 526,
+    "outerWidth": 1280,
+    "outerHeight": 800,
+    "devicePixelRatio": 1.25,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 1024,
+    "screenshot": "overview-native-1280x800-125.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  },
+  {
+    "requestedZoom": 1.5,
+    "settingsGetDefaultZoom": 1.5,
+    "windowRequested": [
+      1280,
+      800
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": true,
+    "innerWidth": 853,
+    "innerHeight": 438,
+    "outerWidth": 1280,
+    "outerHeight": 800,
+    "devicePixelRatio": 1.5,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 853,
+    "screenshot": "overview-native-1280x800-150.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  },
+  {
+    "requestedZoom": 2,
+    "settingsGetDefaultZoom": 2,
+    "windowRequested": [
+      1280,
+      800
+    ],
+    "browserVersion": "154.0.8037.57",
+    "narrowBrief": true,
+    "innerWidth": 640,
+    "innerHeight": 328,
+    "outerWidth": 1280,
+    "outerHeight": 800,
+    "devicePixelRatio": 2,
+    "visualViewportScale": 1,
+    "cssZoom": "1",
+    "scrollWidth": 640,
+    "screenshot": "overview-native-1280x800-200.png",
+    "checks": [
+      "no document horizontal overflow",
+      "Send reachable and unobscured",
+      "composer does not cover last message",
+      "Brief review readable",
+      "modal background inert",
+      "Escape restores focus"
+    ]
+  }
+]

@@ -156,6 +156,55 @@ def test_structure_is_resource_scoped_and_citations_use_saved_source_timing(work
         assert source.evidence_revision == 1 and source.start_seconds == 0 and source.end_seconds == 1
 
 
+def test_new_insight_links_resolve_exact_saved_revision_and_never_borrow_report_sources(workspace):
+    store, project, service, _, synthesis = workspace
+    first = project.resources[0].id
+    original = synthesis.json_response
+    def linked(*args, **kwargs):
+        result = original(*args, **kwargs)
+        result["key_insights"] = [{"observation": "A spoken promise introduces this reference.",
+            "application": "Adapt the promise only where the new assignment supports it.",
+            "citations": result["citations"]}]
+        return result
+    synthesis.json_response = linked
+    saved = service.analyze(project.id, [first])
+    insight = saved.analyses[-1].key_insights[0]
+    assert insight.sources[0].resource_id == first and insight.sources[0].evidence_revision == 1
+    assert insight.sources[0].start_seconds == 0 and insight.sources[0].end_seconds == 1
+    event = saved.resources[0].evidence[-1].events[0].model_copy(update={"text": "Human corrected wording"})
+    corrected = service.correct_evidence(project.id, saved.version, first, [event])
+    assert corrected.analyses[0].key_insights[0] == insight
+    assert corrected.resources[0].evidence[0].events[0].text == "One less thing to worry about."
+    # A bad item citation invalidates the replacement, keeping the last successful report.
+    def invalid(*args, **kwargs):
+        result = linked(*args, **kwargs)
+        result["key_insights"][0]["citations"] = [{"resource_id": first, "event_id": "invented", "reason": "Invalid"}]
+        return result
+    synthesis.json_response = invalid
+    with pytest.raises(WorkflowError, match="outside the selected"):
+        service.analyze(project.id, [first])
+    assert store.get(project.id).analyses == corrected.analyses
+    synthesis.json_response = original
+    legacy_shape = service.analyze(project.id, [first])
+    assert legacy_shape.analyses[-1].key_insights == []
+
+
+@pytest.mark.parametrize("folder_trash", [False, True])
+def test_new_analysis_rejects_trashed_sources_and_preserves_saved_report(workspace, folder_trash):
+    from backend.app.project_workspace.resources import ResourceService
+    store, project, service, recognizer, _ = workspace
+    first = project.resources[0].id
+    saved = service.analyze(project.id, [first])
+    manager = ResourceService(store)
+    deleted = (manager.folder_trash(project.id, saved.version, saved.resources[0].folder_id) if folder_trash else
+               manager.resource_trash(project.id, saved.version, first))
+    with pytest.raises(WorkflowError) as error:
+        service.analyze(project.id, [first])
+    assert error.value.code == "resource_trashed"
+    assert store.get(project.id).analyses == deleted.analyses
+    assert recognizer.calls == [first]
+
+
 @pytest.mark.parametrize("invalid", ["foreign_source", "broken_edge", "duplicate_node", "missing_structure"])
 def test_invalid_graph_never_replaces_saved_analysis(workspace, invalid):
     store, project, service, _, synthesis = workspace
@@ -406,7 +455,7 @@ def test_audio_only_chunk_retry_preserves_timebase_and_partial_speech(workspace,
     service = AnalysisService(store, lambda: settings, transport_factory=lambda _: transport)
     path = store.project_dir(project.id) / resource.original_path
     first = service._audio_evidence(project.id, resource, path, settings, "job_test")
-    assert first.coverage["speech"] == "failed" and len(first.events) == 1
+    assert first.coverage["speech"] == "partial" and len(first.events) == 1
     assert first.events[0].start_frame is None
     transport.fail = False
     second = service._audio_evidence(project.id, resource, path, settings, "job_test")
@@ -517,3 +566,71 @@ def test_real_scene_sampling_persists_source_aligned_preparation(workspace, tmp_
     monkeypatch.setattr("backend.app.project_workspace.analysis.prepare_media", reject)
     with service._prepared(project.id, original, video, settings) as reused:
         assert [frame.path for frame in reused.frames] == cached
+
+
+def test_disabled_standalone_transcription_does_not_prepare_or_call(workspace, monkeypatch):
+    store, project, _, _, _ = workspace
+    resource = project.resources[0].model_copy(update={"kind": "audio", "duration_seconds": 2})
+    monkeypatch.setattr("backend.app.project_workspace.analysis._run_media", lambda *a: pytest.fail("Disabled audio preparation"))
+    settings = ProviderSettings(transcription_provider="disabled")
+    service = AnalysisService(store, lambda: settings, transport_factory=lambda _: pytest.fail("Disabled paid transport"))
+    result = service._audio_evidence(project.id, resource, None, settings, "job_disabled")
+    assert result.coverage["speech"] == "not_analyzed" and "disabled" in result.limitations[0]
+
+
+def test_standalone_preparation_validated_and_partial_support_preserved(workspace, monkeypatch):
+    from pathlib import Path
+    import wave
+    store, project, _, _, _ = workspace
+    resource = project.resources[0].model_copy(update={"kind": "audio", "duration_seconds": 2.25})
+    prepared = []
+    def extract(command, _timeout):
+        prepared.append(command[-1])
+        seconds = float(command[command.index("-t") + 1])
+        with wave.open(command[-1], "wb") as output:
+            output.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+            output.writeframes(b"\0" * round(seconds * 32000))
+    monkeypatch.setattr("backend.app.project_workspace.analysis._run_media", extract)
+    class Transport:
+        def __init__(self):
+            self.calls, self.fail = [], True
+
+        def transcribe(self, model, path, **kwargs):
+            self.calls.append(path.name)
+            if path.name == "001.wav" and self.fail:
+                raise ProviderError("provider_timeout", "private detail")
+            return {"segments": [{"start": 0, "end": .2, "text": "Speech fixture"}]}
+    transport = Transport()
+    settings = ProviderSettings(audio_chunk_seconds=1, max_audio_chunks=3)
+    service = AnalysisService(store, lambda: settings, transport_factory=lambda _: transport)
+    first = service._audio_evidence(project.id, resource, None, settings, "job_first")
+    assert first.coverage["speech"] == "partial" and len(first.events) == 2
+    assert transport.calls == ["000.wav", "001.wav", "002.wav"]
+    assert first.support_details[1]["failure_code"] == "provider_timeout"
+    assert first.support_details[-1]["chunk_end_seconds"] == "2.25"
+    failed_wav = next(Path(path) for path in prepared if path.endswith("001.wav"))
+    failed_wav.write_bytes(b"corrupt prepared cache")
+    transport.fail = False
+    second = service._audio_evidence(project.id, resource, None, settings, "job_second")
+    assert second.coverage["speech"] == "observations" and len(second.events) == 3
+    assert transport.calls == ["000.wav", "001.wav", "002.wav", "001.wav"]
+    assert len(prepared) == 4  # Only corrupt/missing work was prepared again.
+    assert [record["cache_status"] for record in second.support_details] == ["hit", "miss", "hit"]
+    assert "private detail" not in str(first.support_details)
+
+
+def test_empty_transcription_is_no_detection_not_proof_of_no_speech(workspace, monkeypatch):
+    import wave
+    store, project, _, _, _ = workspace
+    resource = project.resources[0].model_copy(update={"kind": "audio", "duration_seconds": 1})
+    def extract(command, _timeout):
+        with wave.open(command[-1], "wb") as output:
+            output.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+            output.writeframes(b"\0" * 32000)
+    monkeypatch.setattr("backend.app.project_workspace.analysis._run_media", extract)
+    transport = SimpleNamespace(transcribe=lambda *a, **kw: {"text": "", "segments": []})
+    settings = ProviderSettings()
+    result = AnalysisService(store, lambda: settings, transport_factory=lambda _: transport)._audio_evidence(
+        project.id, resource, None, settings, "job_empty")
+    assert result.coverage["speech"] == "none_found"
+    assert any("does not establish" in note for note in result.limitations)

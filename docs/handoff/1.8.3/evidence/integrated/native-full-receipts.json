@@ -1,0 +1,4722 @@
+{
+  "receipts": [
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1440,
+      "main": {
+        "clientWidth": 1240,
+        "scrollWidth": 1240
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 1247.640625,
+          "y": 145.546875,
+          "width": 139.359375,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 253,
+          "y": 532.03125,
+          "width": 177,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 474,
+          "y": 342.734375,
+          "width": 125.359375,
+          "height": 40.59375,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 912,
+        "scrollWidth": 912,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1440x900-100-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1440,
+      "main": {
+        "clientWidth": 1240,
+        "scrollWidth": 1240
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 1180,
+          "y": 191.375,
+          "width": 232,
+          "height": 42,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 1128.078125,
+          "y": 662.890625,
+          "width": 95.984375,
+          "height": 34,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 1234.0625,
+          "y": 662.890625,
+          "width": 80.0625,
+          "height": 34,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 1142,
+        "scrollWidth": 1715,
+        "scrollLeft": 573,
+        "before": 2,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 229,
+          "y": 20.375,
+          "width": 774,
+          "height": 280,
+          "top": 20.375,
+          "right": 1003,
+          "bottom": 300.375,
+          "left": 229
+        },
+        "maxBlockSize": "280px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1440x900-100-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1440,
+      "main": {
+        "clientWidth": 1240,
+        "scrollWidth": 1240
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 968.296875,
+          "y": 194.0625,
+          "width": 344.796875,
+          "height": 32,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 1270.515625,
+          "y": 398.640625,
+          "width": 96.484375,
+          "height": 40.59375,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 1092,
+        "scrollWidth": 1160,
+        "clientHeight": 278,
+        "scrollHeight": 278,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1440x900-100-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1440,
+      "main": {
+        "clientWidth": 1240,
+        "scrollWidth": 1240
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 314,
+          "y": 412.328125,
+          "width": 168.046875,
+          "height": 40,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 228,
+          "y": 104,
+          "width": 171.53125,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1440x900-100-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1440,
+      "main": {
+        "clientWidth": 1240,
+        "scrollWidth": 1240
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 1270.296875,
+          "y": 124.140625,
+          "width": 141.703125,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 425,
+          "y": 255.90625,
+          "width": 590,
+          "height": 45.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 425,
+          "y": 345.28125,
+          "width": 590,
+          "height": 80,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 425,
+          "y": 468.96875,
+          "width": 590,
+          "height": 42,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 811.03125,
+          "y": 530.96875,
+          "width": 77.921875,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 898.953125,
+          "y": 530.96875,
+          "width": 116.046875,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 1095.78125,
+          "y": 665.015625,
+          "width": 121.234375,
+          "height": 40,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1440x900-100-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1440,
+      "main": {
+        "clientWidth": 1240,
+        "scrollWidth": 1240
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 1033.765625,
+          "y": 316.6875,
+          "width": 105.171875,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 1147.9375,
+          "y": 316.6875,
+          "width": 141.8125,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 1172,
+        "scrollWidth": 1172,
+        "scrollLeft": 0,
+        "overflowX": "auto"
+      },
+      "savedRevision": 12,
+      "export": "native-1440x900-100-sheet.csv",
+      "screenshot": "native-1440x900-100-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1440,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 1272.640625,
+          "y": 124.140625,
+          "width": 139.359375,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 514,
+          "y": 359.59375,
+          "width": 412,
+          "height": 45.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 711.921875,
+          "y": 429.28125,
+          "width": 77.921875,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 799.84375,
+          "y": 429.28125,
+          "width": 126.15625,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 799.84375,
+          "y": 429.28125,
+          "width": 126.15625,
+          "height": 43.6875,
+          "viewportWidth": 1440,
+          "viewportHeight": 757,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1440x900-100-dashboard-dialog.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1152,
+      "main": {
+        "clientWidth": 952,
+        "scrollWidth": 952
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 965.2125244140625,
+          "y": 140.58750915527344,
+          "width": 138.9499969482422,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 247.83750915527344,
+          "y": 525.9375,
+          "width": 177.1999969482422,
+          "height": 43.70000076293945,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 468.63751220703125,
+          "y": 336.1875,
+          "width": 124.95000457763672,
+          "height": 40.20000076293945,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 637,
+        "scrollWidth": 637,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1440x900-125-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1152,
+      "main": {
+        "clientWidth": 952,
+        "scrollWidth": 952
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 897.7625122070312,
+          "y": 185.2375030517578,
+          "width": 231.1999969482422,
+          "height": 41.20000076293945,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 846.8624877929688,
+          "y": 285.4750061035156,
+          "width": 95.5875015258789,
+          "height": 34,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 952.4500122070312,
+          "y": 285.4750061035156,
+          "width": 79.6624984741211,
+          "height": 34,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 864,
+        "scrollWidth": 1298,
+        "scrollLeft": 434.3999938964844,
+        "before": 2.4000000953674316,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 223.83750915527344,
+          "y": 19.837499618530273,
+          "width": 589.0125122070312,
+          "height": 272.51251220703125,
+          "top": 19.837499618530273,
+          "right": 812.8500213623047,
+          "bottom": 292.3500118255615,
+          "left": 223.83750915527344
+        },
+        "maxBlockSize": "272.52px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1440x900-125-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1152,
+      "main": {
+        "clientWidth": 952,
+        "scrollWidth": 952
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 792.1500244140625,
+          "y": 184.8874969482422,
+          "width": 272.4125061035156,
+          "height": 47.60000228881836,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 988.2750244140625,
+          "y": 404.0874938964844,
+          "width": 96.0875015258789,
+          "height": 40.20000076293945,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 815,
+        "scrollWidth": 1160,
+        "clientHeight": 278,
+        "scrollHeight": 278,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1440x900-125-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1152,
+      "main": {
+        "clientWidth": 952,
+        "scrollWidth": 952
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 308.4375,
+          "y": 260.5874938964844,
+          "width": 168.0500030517578,
+          "height": 40,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 223.03750610351562,
+          "y": 99.0374984741211,
+          "width": 171.1374969482422,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1440x900-125-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1152,
+      "main": {
+        "clientWidth": 952,
+        "scrollWidth": 952
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 987.6625366210938,
+          "y": 115.0625,
+          "width": 141.3000030517578,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 280.8000183105469,
+          "y": 181,
+          "width": 590.4000244140625,
+          "height": 45.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 280.8000183105469,
+          "y": 270,
+          "width": 590.4000244140625,
+          "height": 80,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 280.8000183105469,
+          "y": 393.70001220703125,
+          "width": 590.4000244140625,
+          "height": 41.20000076293945,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 668.0499877929688,
+          "y": 454.8999938964844,
+          "width": 77.51250457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 755.5625,
+          "y": 454.8999938964844,
+          "width": 115.63750457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 620.5250244140625,
+          "y": 519.2374877929688,
+          "width": 120.82500457763672,
+          "height": 40,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1440x900-125-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1152,
+      "main": {
+        "clientWidth": 952,
+        "scrollWidth": 952
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 751.9500122070312,
+          "y": 35.98749923706055,
+          "width": 104.76250457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 865.7125244140625,
+          "y": 35.98749923706055,
+          "width": 141.40000915527344,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 896,
+        "scrollWidth": 1000,
+        "scrollLeft": 96,
+        "overflowX": "auto"
+      },
+      "savedRevision": 13,
+      "export": "native-1440x900-125-sheet.csv",
+      "screenshot": "native-1440x900-125-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1152,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 990,
+          "y": 115.0625,
+          "width": 138.96250915527344,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 369.8000183105469,
+          "y": 284.3000183105469,
+          "width": 412.3999938964844,
+          "height": 45.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 568.9375,
+          "y": 353.6000061035156,
+          "width": 77.51250457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 656.4500122070312,
+          "y": 353.6000061035156,
+          "width": 125.75,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 656.4500122070312,
+          "y": 353.6000061035156,
+          "width": 125.75,
+          "height": 43.29999923706055,
+          "viewportWidth": 1152,
+          "viewportHeight": 606,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1440x900-125-dashboard-dialog.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 960,
+      "main": {
+        "clientWidth": 760,
+        "scrollWidth": 760
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 777.4479370117188,
+          "y": 136.73959350585938,
+          "width": 138.6875,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 687.375,
+          "y": 327.8125,
+          "width": 216.75,
+          "height": 43.69791793823242,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 254.53125,
+          "y": 232.48959350585938,
+          "width": 124.6875,
+          "height": 39.927085876464844,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 664,
+        "scrollWidth": 664,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1440x900-150-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 960,
+      "main": {
+        "clientWidth": 760,
+        "scrollWidth": 760
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 710.1354370117188,
+          "y": 181.92709350585938,
+          "width": 230.6666717529297,
+          "height": 40,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 367.8125,
+          "y": 235.625,
+          "width": 95.32292175292969,
+          "height": 34,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 473.13543701171875,
+          "y": 235.625,
+          "width": 79.39583587646484,
+          "height": 34,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 680,
+        "scrollWidth": 1022,
+        "scrollLeft": 342.6666564941406,
+        "before": 2,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 219.86459350585938,
+          "y": 138.92709350585938,
+          "width": 720.2708740234375,
+          "height": 227.09375,
+          "top": 138.92709350585938,
+          "right": 940.1354675292969,
+          "bottom": 366.0208435058594,
+          "left": 219.86459350585938
+        },
+        "maxBlockSize": "227.1px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1440x900-150-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 960,
+      "main": {
+        "clientWidth": 760,
+        "scrollWidth": 760
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 279.19793701171875,
+          "y": 368.5208435058594,
+          "width": 344.125,
+          "height": 32,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 800.6458740234375,
+          "y": 232.11459350585938,
+          "width": 95.82292175292969,
+          "height": 40,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 632,
+        "scrollWidth": 1160,
+        "clientHeight": 279,
+        "scrollHeight": 279,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1440x900-150-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 960,
+      "main": {
+        "clientWidth": 760,
+        "scrollWidth": 760
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 304.19793701171875,
+          "y": 159.8125,
+          "width": 168.05209350585938,
+          "height": 40,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 219.1979217529297,
+          "y": 95.19792175292969,
+          "width": 170.86459350585938,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1440x900-150-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 960,
+      "main": {
+        "clientWidth": 760,
+        "scrollWidth": 760
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 799.7708740234375,
+          "y": 110.27083587646484,
+          "width": 141.03125,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 184.6666717529297,
+          "y": 131.39584350585938,
+          "width": 590.6666870117188,
+          "height": 45.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 184.6666717529297,
+          "y": 220.125,
+          "width": 590.6666870117188,
+          "height": 80,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 184.6666717529297,
+          "y": 343.82293701171875,
+          "width": 590.6666870117188,
+          "height": 40,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 572.7083740234375,
+          "y": 403.82293701171875,
+          "width": 77.25,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 659.9583740234375,
+          "y": 403.82293701171875,
+          "width": 115.375,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 724.1146240234375,
+          "y": 421.53125,
+          "width": 120.5625,
+          "height": 40,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1440x900-150-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 960,
+      "main": {
+        "clientWidth": 760,
+        "scrollWidth": 760
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 564.5833740234375,
+          "y": 35.90625,
+          "width": 104.5,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 678.0833740234375,
+          "y": 35.90625,
+          "width": 141.1354217529297,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 714,
+        "scrollWidth": 1000,
+        "scrollLeft": 280,
+        "overflowX": "auto"
+      },
+      "savedRevision": 14,
+      "export": "native-1440x900-150-sheet.csv",
+      "screenshot": "native-1440x900-150-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 960,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 802.1146240234375,
+          "y": 110.27083587646484,
+          "width": 138.6875,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 273.66668701171875,
+          "y": 234.09375,
+          "width": 412.66668701171875,
+          "height": 45.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 473.60418701171875,
+          "y": 303.125,
+          "width": 77.25,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 560.8541870117188,
+          "y": 303.125,
+          "width": 125.47917175292969,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 560.8541870117188,
+          "y": 303.125,
+          "width": 125.47917175292969,
+          "height": 43.03125,
+          "viewportWidth": 960,
+          "viewportHeight": 505,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1440x900-150-dashboard-dialog.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 720,
+      "main": {
+        "clientWidth": 720,
+        "scrollWidth": 720
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 541.25,
+          "y": 167.4296875,
+          "width": 139.3515625,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 462.1953125,
+          "y": 167.171875,
+          "width": 206.40625,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 50.3984375,
+          "y": 169.0078125,
+          "width": 125.3515625,
+          "height": 40.59375,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 634,
+        "scrollWidth": 634,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1440x900-200-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 720,
+      "main": {
+        "clientWidth": 720,
+        "scrollWidth": 720
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 474.1015625,
+          "y": 170.7734375,
+          "width": 231.5,
+          "height": 41.5,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 164.0078125,
+          "y": 172.375,
+          "width": 95.984375,
+          "height": 34,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 269.9921875,
+          "y": 172.375,
+          "width": 80.0625,
+          "height": 34,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 649,
+        "scrollWidth": 976,
+        "scrollLeft": 327,
+        "before": 2,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 15.3984375,
+          "y": 104.2734375,
+          "width": 689.203125,
+          "height": 170.3203125,
+          "top": 104.2734375,
+          "right": 704.6015625,
+          "bottom": 274.59375,
+          "left": 15.3984375
+        },
+        "maxBlockSize": "170.325px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1440x900-200-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 720,
+      "main": {
+        "clientWidth": 720,
+        "scrollWidth": 720
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 75.3984375,
+          "y": 173.2109375,
+          "width": 344.7890625,
+          "height": 32,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 564.1171875,
+          "y": 168.8046875,
+          "width": 96.484375,
+          "height": 40.59375,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 599,
+        "scrollWidth": 1160,
+        "clientHeight": 278,
+        "scrollHeight": 278,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1440x900-200-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 720,
+      "main": {
+        "clientWidth": 720,
+        "scrollWidth": 720
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 100.3984375,
+          "y": 290,
+          "width": 168.046875,
+          "height": 40,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 14.3984375,
+          "y": 83.3828125,
+          "width": 171.53125,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1440x900-200-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 720,
+      "main": {
+        "clientWidth": 720,
+        "scrollWidth": 720
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 563.8984375,
+          "y": 298.6328125,
+          "width": 141.703125,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 65,
+          "y": 112.59375,
+          "width": 590,
+          "height": 45.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 65,
+          "y": 201.984375,
+          "width": 590,
+          "height": 80,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 65,
+          "y": 306.1796875,
+          "width": 590,
+          "height": 41.5,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 451.046875,
+          "y": 295.6796875,
+          "width": 77.9140625,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 538.9609375,
+          "y": 295.6796875,
+          "width": 116.0390625,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 504.78125,
+          "y": 299.8984375,
+          "width": 121.2265625,
+          "height": 40,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1440x900-200-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 720,
+      "main": {
+        "clientWidth": 720,
+        "scrollWidth": 720
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 327.3828125,
+          "y": 167.2734375,
+          "width": 105.1640625,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 441.546875,
+          "y": 167.2734375,
+          "width": 141.8046875,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 684,
+        "scrollWidth": 1000,
+        "scrollLeft": 311,
+        "overflowX": "auto"
+      },
+      "savedRevision": 15,
+      "export": "native-1440x900-200-sheet.csv",
+      "screenshot": "native-1440x900-200-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 720,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 566.25,
+          "y": 162.1484375,
+          "width": 139.3515625,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 154,
+          "y": 170.3515625,
+          "width": 412,
+          "height": 45.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 351.9375,
+          "y": 240.046875,
+          "width": 77.9140625,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 439.8515625,
+          "y": 240.046875,
+          "width": 126.1484375,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 439.8515625,
+          "y": 240.046875,
+          "width": 126.1484375,
+          "height": 43.6953125,
+          "viewportWidth": 720,
+          "viewportHeight": 378,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1440x900-200-dashboard-dialog.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1280,
+      "main": {
+        "clientWidth": 1080,
+        "scrollWidth": 1080
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 1090.046875,
+          "y": 143.140625,
+          "width": 139.359375,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 250.59375,
+          "y": 529.625,
+          "width": 177,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 471.59375,
+          "y": 340.328125,
+          "width": 125.359375,
+          "height": 40.59375,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 757,
+        "scrollWidth": 757,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1280x800-100-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1280,
+      "main": {
+        "clientWidth": 1080,
+        "scrollWidth": 1080
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 1022.40625,
+          "y": 188.96875,
+          "width": 232,
+          "height": 42,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 970.484375,
+          "y": 311.484375,
+          "width": 95.984375,
+          "height": 34,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 1076.46875,
+          "y": 311.484375,
+          "width": 80.0625,
+          "height": 34,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 987,
+        "scrollWidth": 1482,
+        "scrollLeft": 495,
+        "before": 2,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 226.59375,
+          "y": 19.96875,
+          "width": 670.53125,
+          "height": 280,
+          "top": 19.96875,
+          "right": 897.125,
+          "bottom": 299.96875,
+          "left": 226.59375
+        },
+        "maxBlockSize": "280px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1280x800-100-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1280,
+      "main": {
+        "clientWidth": 1080,
+        "scrollWidth": 1080
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 870.390625,
+          "y": 188.859375,
+          "width": 319.015625,
+          "height": 48,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 1112.921875,
+          "y": 409.4375,
+          "width": 96.484375,
+          "height": 40.59375,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 937,
+        "scrollWidth": 1160,
+        "clientHeight": 278,
+        "scrollHeight": 278,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1280x800-100-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1280,
+      "main": {
+        "clientWidth": 1080,
+        "scrollWidth": 1080
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 311.59375,
+          "y": 312.125,
+          "width": 168.046875,
+          "height": 40,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 225.59375,
+          "y": 101.59375,
+          "width": 171.53125,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1280x800-100-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1280,
+      "main": {
+        "clientWidth": 1080,
+        "scrollWidth": 1080
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 1112.703125,
+          "y": 119.34375,
+          "width": 141.703125,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 345,
+          "y": 205.90625,
+          "width": 590,
+          "height": 45.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 345,
+          "y": 295.28125,
+          "width": 590,
+          "height": 80,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 345,
+          "y": 418.96875,
+          "width": 590,
+          "height": 42,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 731.03125,
+          "y": 480.96875,
+          "width": 77.921875,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 818.953125,
+          "y": 480.96875,
+          "width": 116.046875,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 1015.78125,
+          "y": 567.8125,
+          "width": 121.234375,
+          "height": 40,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1280x800-100-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1280,
+      "main": {
+        "clientWidth": 1080,
+        "scrollWidth": 1080
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 876.171875,
+          "y": 36.484375,
+          "width": 105.171875,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 990.34375,
+          "y": 36.484375,
+          "width": 141.8125,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 1017,
+        "scrollWidth": 1017,
+        "scrollLeft": 0,
+        "overflowX": "auto"
+      },
+      "savedRevision": 16,
+      "export": "native-1280x800-100-sheet.csv",
+      "screenshot": "native-1280x800-100-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1280,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 1115.046875,
+          "y": 119.34375,
+          "width": 139.359375,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 434,
+          "y": 309.59375,
+          "width": 412,
+          "height": 45.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 631.921875,
+          "y": 379.28125,
+          "width": 77.921875,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 719.84375,
+          "y": 379.28125,
+          "width": 126.15625,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 719.84375,
+          "y": 379.28125,
+          "width": 126.15625,
+          "height": 43.6875,
+          "viewportWidth": 1280,
+          "viewportHeight": 657,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1280x800-100-dashboard-dialog.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1024,
+      "main": {
+        "clientWidth": 824,
+        "scrollWidth": 824
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 839.7750244140625,
+          "y": 138.02500915527344,
+          "width": 138.9499969482422,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 426.88751220703125,
+          "y": 329.375,
+          "width": 176.6125030517578,
+          "height": 43.70000076293945,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 256.07501220703125,
+          "y": 242.8249969482422,
+          "width": 124.95000457763672,
+          "height": 40.20000076293945,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 724,
+        "scrollWidth": 724,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1280x800-125-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1024,
+      "main": {
+        "clientWidth": 824,
+        "scrollWidth": 824
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 772.3250122070312,
+          "y": 183.47500610351562,
+          "width": 231.1999969482422,
+          "height": 41.20000076293945,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 369.4875183105469,
+          "y": 246.1875,
+          "width": 95.5875015258789,
+          "height": 34,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 475.07501220703125,
+          "y": 246.1875,
+          "width": 79.6624984741211,
+          "height": 34,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 741,
+        "scrollWidth": 1114,
+        "scrollLeft": 372.79998779296875,
+        "before": 1.600000023841858,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 221.27500915527344,
+          "y": 19.67500114440918,
+          "width": 501.45001220703125,
+          "height": 236.5124969482422,
+          "top": 19.67500114440918,
+          "right": 722.7250213623047,
+          "bottom": 256.18749809265137,
+          "left": 221.27500915527344
+        },
+        "maxBlockSize": "236.52px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1280x800-125-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1024,
+      "main": {
+        "clientWidth": 824,
+        "scrollWidth": 824
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 713.9750366210938,
+          "y": 182.5749969482422,
+          "width": 225.15000915527344,
+          "height": 47.60000228881836,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 862.8375244140625,
+          "y": 417.9750061035156,
+          "width": 96.0875015258789,
+          "height": 40.20000076293945,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 692,
+        "scrollWidth": 1160,
+        "clientHeight": 278,
+        "scrollHeight": 278,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1280x800-125-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1024,
+      "main": {
+        "clientWidth": 824,
+        "scrollWidth": 824
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 305.875,
+          "y": 363.2749938964844,
+          "width": 168.0500030517578,
+          "height": 40,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 220.47500610351562,
+          "y": 96.4749984741211,
+          "width": 171.1374969482422,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1280x800-125-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1024,
+      "main": {
+        "clientWidth": 824,
+        "scrollWidth": 824
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 862.2250366210938,
+          "y": 111.42500305175781,
+          "width": 141.3000030517578,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 216.8000030517578,
+          "y": 141,
+          "width": 590.4000244140625,
+          "height": 45.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 216.8000030517578,
+          "y": 230,
+          "width": 590.4000244140625,
+          "height": 80,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 216.8000030517578,
+          "y": 353.70001220703125,
+          "width": 590.4000244140625,
+          "height": 41.20000076293945,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 604.0499877929688,
+          "y": 414.8999938964844,
+          "width": 77.51250457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 691.5625,
+          "y": 414.8999938964844,
+          "width": 115.63750457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 755.9874877929688,
+          "y": 441.4250183105469,
+          "width": 120.82500457763672,
+          "height": 40,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1280x800-125-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1024,
+      "main": {
+        "clientWidth": 824,
+        "scrollWidth": 824
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 626.5125122070312,
+          "y": 35.67499923706055,
+          "width": 104.76250457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 740.2750244140625,
+          "y": 35.67499923706055,
+          "width": 141.40000915527344,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 773,
+        "scrollWidth": 1000,
+        "scrollLeft": 218.39999389648438,
+        "overflowX": "auto"
+      },
+      "savedRevision": 17,
+      "export": "native-1280x800-125-sheet.csv",
+      "screenshot": "native-1280x800-125-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 1024,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 864.5625,
+          "y": 47.42499923706055,
+          "width": 138.96250915527344,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 305.8000183105469,
+          "y": 244.3000030517578,
+          "width": 412.3999938964844,
+          "height": 45.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 504.9375,
+          "y": 313.6000061035156,
+          "width": 77.51250457763672,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 592.4500122070312,
+          "y": 313.6000061035156,
+          "width": 125.75,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 592.4500122070312,
+          "y": 313.6000061035156,
+          "width": 125.75,
+          "height": 43.29999923706055,
+          "viewportWidth": 1024,
+          "viewportHeight": 526,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1280x800-125-dashboard-dialog.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 853,
+      "main": {
+        "clientWidth": 853,
+        "scrollWidth": 853
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 672.9166870117188,
+          "y": 304.6770935058594,
+          "width": 138.6875,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 41.72916793823242,
+          "y": 197.20834350585938,
+          "width": 177.33334350585938,
+          "height": 43.69791793823242,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 262.3958435058594,
+          "y": 35.875,
+          "width": 124.6875,
+          "height": 39.927085876464844,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 552,
+        "scrollWidth": 552,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1280x800-150-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 853,
+      "main": {
+        "clientWidth": 853,
+        "scrollWidth": 853
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 605.6041870117188,
+          "y": 211.1979217529297,
+          "width": 230.6666717529297,
+          "height": 40,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 165.67709350585938,
+          "y": 201.9375,
+          "width": 95.32292175292969,
+          "height": 34,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 271,
+          "y": 201.9375,
+          "width": 79.39583587646484,
+          "height": 34,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 778,
+        "scrollWidth": 1169,
+        "scrollLeft": 390.6666564941406,
+        "before": 2,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 17.729167938232422,
+          "y": 20.197917938232422,
+          "width": 531.46875,
+          "height": 197.09375,
+          "top": 20.197917938232422,
+          "right": 549.1979179382324,
+          "bottom": 217.29166793823242,
+          "left": 17.729167938232422
+        },
+        "maxBlockSize": "197.1px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1280x800-150-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 853,
+      "main": {
+        "clientWidth": 853,
+        "scrollWidth": 853
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 532.7708740234375,
+          "y": 195.08334350585938,
+          "width": 239.5,
+          "height": 47.333335876464844,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 696.1146240234375,
+          "y": 362.01043701171875,
+          "width": 95.82292175292969,
+          "height": 40,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 729,
+        "scrollWidth": 1160,
+        "clientHeight": 279,
+        "scrollHeight": 279,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1280x800-150-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 853,
+      "main": {
+        "clientWidth": 853,
+        "scrollWidth": 853
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 102.0625,
+          "y": 319.04168701171875,
+          "width": 168.05209350585938,
+          "height": 40,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 17.0625,
+          "y": 114.46875,
+          "width": 170.86459350585938,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1280x800-150-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 853,
+      "main": {
+        "clientWidth": 853,
+        "scrollWidth": 853
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 695.2396240234375,
+          "y": 278.2083435058594,
+          "width": 141.03125,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 131.33334350585938,
+          "y": 112.26042175292969,
+          "width": 590.6666870117188,
+          "height": 45.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 131.33334350585938,
+          "y": 200.98959350585938,
+          "width": 590.6666870117188,
+          "height": 80,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 131.33334350585938,
+          "y": 324.6875,
+          "width": 590.6666870117188,
+          "height": 40,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 519.375,
+          "y": 364.0208435058594,
+          "width": 77.25,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 606.625,
+          "y": 364.0208435058594,
+          "width": 115.375,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 570.78125,
+          "y": 357.1875,
+          "width": 120.5625,
+          "height": 40,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1280x800-150-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 853,
+      "main": {
+        "clientWidth": 853,
+        "scrollWidth": 853
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 460.0520935058594,
+          "y": 197.17709350585938,
+          "width": 104.5,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 573.5521240234375,
+          "y": 197.17709350585938,
+          "width": 141.1354217529297,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 811,
+        "scrollWidth": 1000,
+        "scrollLeft": 182,
+        "overflowX": "auto"
+      },
+      "savedRevision": 18,
+      "export": "native-1280x800-150-sheet.csv",
+      "screenshot": "native-1280x800-150-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 853,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 697.5833740234375,
+          "y": 164.80209350585938,
+          "width": 138.6875,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 220.33334350585938,
+          "y": 200.7604217529297,
+          "width": 412.66668701171875,
+          "height": 45.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 420.2708435058594,
+          "y": 269.79168701171875,
+          "width": 77.25,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 507.5208435058594,
+          "y": 269.79168701171875,
+          "width": 125.47917175292969,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 507.5208435058594,
+          "y": 269.79168701171875,
+          "width": 125.47917175292969,
+          "height": 43.03125,
+          "viewportWidth": 853,
+          "viewportHeight": 438,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1280x800-150-dashboard-dialog.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 640,
+      "main": {
+        "clientWidth": 640,
+        "scrollWidth": 640
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 461.6484375,
+          "y": 142.515625,
+          "width": 139.3515625,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 409,
+          "y": 142.4296875,
+          "width": 180,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 50,
+          "y": 143.765625,
+          "width": 125.3515625,
+          "height": 40.59375,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 555,
+        "scrollWidth": 555,
+        "overflowX": "auto"
+      },
+      "screenshot": "native-1280x800-200-media-pool.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 640,
+      "main": {
+        "clientWidth": 640,
+        "scrollWidth": 640
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 394.5,
+          "y": 145.6796875,
+          "width": 231.5,
+          "height": 41.5,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 163.609375,
+          "y": 147.4765625,
+          "width": 95.984375,
+          "height": 34,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 269.59375,
+          "y": 147.4765625,
+          "width": 80.0625,
+          "height": 34,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 570,
+        "scrollWidth": 857,
+        "scrollLeft": 287,
+        "before": 2,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 15,
+          "y": 90.1796875,
+          "width": 610,
+          "height": 147.8203125,
+          "top": 90.1796875,
+          "right": 625,
+          "bottom": 238,
+          "left": 15
+        },
+        "maxBlockSize": "147.825px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "native-1280x800-200-source-review.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 640,
+      "main": {
+        "clientWidth": 640,
+        "scrollWidth": 640
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 75,
+          "y": 148.15625,
+          "width": 344.7890625,
+          "height": 32,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 484.515625,
+          "y": 143.75,
+          "width": 96.484375,
+          "height": 40.59375,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 520,
+        "scrollWidth": 1160,
+        "clientHeight": 278,
+        "scrollHeight": 278,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "native-1280x800-200-analysis-graph.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 640,
+      "main": {
+        "clientWidth": 640,
+        "scrollWidth": 640
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 100,
+          "y": 252.4453125,
+          "width": 168.046875,
+          "height": 40,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 14,
+          "y": 58.2890625,
+          "width": 171.53125,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "native-1280x800-200-analysis-list-source.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 640,
+      "main": {
+        "clientWidth": 640,
+        "scrollWidth": 640
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 484.296875,
+          "y": 248.8125,
+          "width": 141.703125,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 39,
+          "y": 112.59375,
+          "width": 562,
+          "height": 45.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 39,
+          "y": 201.984375,
+          "width": 562,
+          "height": 80,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 39,
+          "y": 184.1796875,
+          "width": 562,
+          "height": 41.5,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 397.046875,
+          "y": 245.6796875,
+          "width": 77.9140625,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 484.9609375,
+          "y": 245.6796875,
+          "width": 116.0390625,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 150.28125,
+          "y": 250.5546875,
+          "width": 121.2265625,
+          "height": 40,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "native-1280x800-200-content-plan.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 640,
+      "main": {
+        "clientWidth": 640,
+        "scrollWidth": 640
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 247.78125,
+          "y": 142.28125,
+          "width": 105.1640625,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 361.9453125,
+          "y": 142.28125,
+          "width": 141.8046875,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 605,
+        "scrollWidth": 1000,
+        "scrollLeft": 390,
+        "overflowX": "auto"
+      },
+      "savedRevision": 19,
+      "export": "native-1280x800-200-sheet.csv",
+      "screenshot": "native-1280x800-200-production.png"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 640,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 486.6484375,
+          "y": 156.0234375,
+          "width": 139.3515625,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 114,
+          "y": 145.3515625,
+          "width": 412,
+          "height": 45.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 311.9375,
+          "y": 215.046875,
+          "width": 77.9140625,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 399.8515625,
+          "y": 215.046875,
+          "width": 126.1484375,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 399.8515625,
+          "y": 215.046875,
+          "width": 126.1484375,
+          "height": 43.6953125,
+          "viewportWidth": 640,
+          "viewportHeight": 328,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "native-1280x800-200-dashboard-dialog.png"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 390,
+      "main": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "surface": "media-pool",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Upload files",
+          "x": 27,
+          "y": 467.421875,
+          "width": 139.359375,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "New folder",
+          "x": 27,
+          "y": 400.34375,
+          "width": 324,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open in timeline",
+          "x": 38,
+          "y": 60.34375,
+          "width": 125.359375,
+          "height": 40.59375,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "localTable": {
+        "clientWidth": 324,
+        "scrollWidth": 324,
+        "overflowX": "auto"
+      },
+      "screenshot": "narrow-390x844-100-media-pool.png"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 390,
+      "main": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "surface": "source-review",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Evidence revision",
+          "x": 14,
+          "y": 481.296875,
+          "width": 232,
+          "height": 42,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Next evidence",
+          "x": 155.609375,
+          "y": 404.96875,
+          "width": 95.984375,
+          "height": 34,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        },
+        {
+          "label": "Fit timeline",
+          "x": 261.59375,
+          "y": 404.96875,
+          "width": 80.0625,
+          "height": 34,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "localTimeline": {
+        "clientWidth": 336,
+        "scrollWidth": 506,
+        "scrollLeft": 170,
+        "before": 2,
+        "overflowX": "auto"
+      },
+      "player": {
+        "rect": {
+          "x": 15,
+          "y": 320.296875,
+          "width": 360,
+          "height": 202.5,
+          "top": 320.296875,
+          "right": 375,
+          "bottom": 522.796875,
+          "left": 15
+        },
+        "maxBlockSize": "280px",
+        "controls": true,
+        "videoWidth": 160,
+        "videoHeight": 90
+      },
+      "screenshot": "narrow-390x844-100-source-review.png"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 390,
+      "main": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "surface": "analysis-graph",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Insight source",
+          "x": 64,
+          "y": 397.96875,
+          "width": 262,
+          "height": 48,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        },
+        {
+          "label": "View as list",
+          "x": 48,
+          "y": 695.546875,
+          "width": 96.484375,
+          "height": 40.59375,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "12px"
+        }
+      ],
+      "graph": {
+        "clientWidth": 292,
+        "scrollWidth": 1160,
+        "clientHeight": 278,
+        "scrollHeight": 278,
+        "overflowX": "auto"
+      },
+      "labels": [
+        {
+          "text": "Historical observation",
+          "fontSize": "16px",
+          "scrollHeight": 23,
+          "clientHeight": 23
+        },
+        {
+          "text": "Human interpretationremains distinct fromrecorded visualevidence",
+          "fontSize": "16px",
+          "scrollHeight": 92,
+          "clientHeight": 92
+        },
+        {
+          "text": "A readable close invites the next step withoutan unsupported claim",
+          "fontSize": "16px",
+          "scrollHeight": 69,
+          "clientHeight": 69
+        }
+      ],
+      "screenshot": "narrow-390x844-100-analysis-graph.png"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 390,
+      "main": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "surface": "analysis-list-source",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "First structure label",
+          "x": 89,
+          "y": 199.828125,
+          "width": 168.046875,
+          "height": 40,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "16px"
+        },
+        {
+          "label": "Back to Analysis",
+          "x": 14,
+          "y": 326.28125,
+          "width": 171.53125,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "historicalEvidenceRevision": 1,
+      "orderedListItems": 3,
+      "screenshot": "narrow-390x844-100-analysis-list-source.png"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 390,
+      "main": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "surface": "content-plan",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Plan a video",
+          "x": 14,
+          "y": 448.015625,
+          "width": 141.703125,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video INPUT",
+          "x": 39,
+          "y": 299.40625,
+          "width": 312,
+          "height": 45.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video TEXTAREA",
+          "x": 39,
+          "y": 388.78125,
+          "width": 312,
+          "height": 80,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video SELECT",
+          "x": 39,
+          "y": 512.46875,
+          "width": 312,
+          "height": 42,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video button",
+          "x": 147.03125,
+          "y": 574.46875,
+          "width": 77.921875,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Plan a video submit",
+          "x": 234.953125,
+          "y": 574.46875,
+          "width": 116.046875,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Open Production",
+          "x": 145.28125,
+          "y": 771.359375,
+          "width": 121.234375,
+          "height": 40,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "11px"
+        }
+      ],
+      "standaloneDefault": true,
+      "screenshot": "narrow-390x844-100-content-plan.png"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 390,
+      "main": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "surface": "production",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "Save sheet",
+          "x": 14,
+          "y": 764.734375,
+          "width": 105.171875,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Export sheet",
+          "x": 128.171875,
+          "y": 764.734375,
+          "width": 141.8125,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "localSheet": {
+        "clientWidth": 350,
+        "scrollWidth": 1000,
+        "scrollLeft": 640,
+        "overflowX": "auto"
+      },
+      "savedRevision": 20,
+      "export": "narrow-390x844-100-sheet.csv",
+      "screenshot": "narrow-390x844-100-production.png"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "sourceVersion": "1.8.3",
+      "browserVersion": "154.0.8037.57",
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "documentScrollWidth": 390,
+      "main": null,
+      "surface": "dashboard-dialog",
+      "status": "passed",
+      "controls": [
+        {
+          "label": "New project",
+          "x": 14,
+          "y": 230.734375,
+          "width": 139.359375,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project INPUT",
+          "x": 47,
+          "y": 403.09375,
+          "width": 296,
+          "height": 45.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project button",
+          "x": 128.921875,
+          "y": 472.78125,
+          "width": 77.921875,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project BUTTON",
+          "x": 216.84375,
+          "y": 472.78125,
+          "width": 126.15625,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        },
+        {
+          "label": "Create project",
+          "x": 216.84375,
+          "y": 472.78125,
+          "width": 126.15625,
+          "height": 43.6875,
+          "viewportWidth": 390,
+          "viewportHeight": 844,
+          "centerUnobscured": true,
+          "fontSize": "14px"
+        }
+      ],
+      "nativeModalFocus": "passed",
+      "screenshot": "narrow-390x844-100-dashboard-dialog.png"
+    }
+  ],
+  "failures": [],
+  "prohibited": []
+}
