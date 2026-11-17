@@ -85,6 +85,7 @@ export type EndSeconds1 = number;
 export type StartFrame = number | null;
 export type EndFrame = number | null;
 export type Interpretation = string | null;
+export type Precision = "sample" | "interval" | "estimated" | "unknown";
 export type Events = EvidenceEvent[];
 export type Limitations = string[];
 export type Processor = string;
@@ -92,10 +93,18 @@ export type CreatedAt4 = string;
 export type Reviewed = boolean;
 export type CorrectionNote = string | null;
 export type Evidence = EvidenceRevision1[];
+export type FolderId = string | null;
+export type TrashedAt1 = string | null;
 export type Resources = Resource[];
+export type Id6 = string;
+export type Name1 = string;
+export type ParentId = string | null;
+export type BuiltinKey = ("inbox" | "references" | "documents" | "production_assets") | null;
+export type TrashedAt2 = string | null;
+export type ResourceFolders = ResourceFolder[];
 export type Revision2 = number;
 export type ResourceIds1 = string[];
-export type Id6 = string;
+export type Id7 = string;
 export type ContentId = string | null;
 export type Exploratory = boolean;
 export type VisualOnly = boolean;
@@ -118,7 +127,7 @@ export type Sources1 = SourceRef[];
 export type Limitations2 = string[];
 export type ResourceId1 = string;
 export type Summary = string;
-export type Id7 = string;
+export type Id8 = string;
 export type Label = string;
 export type Detail = string;
 export type Kind2 = "observation" | "interpretation" | "source_claim" | "user_context";
@@ -133,25 +142,30 @@ export type Edges = StructureEdge[];
 export type Structures = ReferenceStructure[];
 export type CreatedAt5 = string;
 export type NeedsReview = boolean;
+export type Id9 = string;
+export type Observation = string;
+export type Application = string;
+export type Sources4 = SourceRef[];
+export type KeyInsights = AnalysisInsight[];
 export type Analyses = Analysis[];
-export type Id8 = string;
+export type Id10 = string;
 export type Title1 = string;
 export type Concept = string;
 export type NeedsReview1 = boolean;
 export type Series = Series1[];
-export type Id9 = string;
+export type Id11 = string;
 export type SeriesId = string | null;
 export type Title2 = string;
 export type Description = string;
 export type NeedsReview2 = boolean;
-export type Id10 = string;
+export type Id12 = string;
 export type Revision3 = number;
 export type Title3 = string;
 export type Concept1 = string;
 export type Hook = string;
 export type Narrative = string;
 export type Cta = string;
-export type Sources4 = SourceRef[];
+export type Sources5 = SourceRef[];
 export type Approved = boolean;
 export type ApprovedAt = string | null;
 export type NeedsReview3 = boolean;
@@ -160,14 +174,14 @@ export type Directions = Direction[];
 export type ApprovedDirectionId = string | null;
 export type ApprovedDirectionRevision = number | null;
 export type Contents = ContentItem[];
-export type Id11 = string;
+export type Id13 = string;
 export type Revision4 = number;
 export type ContentId1 = string;
 export type ProductionBrief = string;
 export type Script = string;
 export type Storyboard = string;
 export type ShotList = string;
-export type Id12 = string;
+export type Id14 = string;
 export type StartSeconds2 = number;
 export type EndSeconds2 = number;
 export type Visual = string;
@@ -175,13 +189,16 @@ export type Dialogue = string;
 export type OnScreenText = string;
 export type Sound = string;
 export type Notes = string;
+export type FramingCamera = string;
+export type Sources6 = SourceRef[];
 export type Shots = ProductionShot[];
-export type Sources5 = SourceRef[];
+export type Sources7 = SourceRef[];
 export type NeedsReview4 = boolean;
 export type CreatedAt7 = string;
+export type SheetFormat = "legacy_documents" | "storyboard_sheet";
 export type Packs = ProductionPack[];
 export type ErrorCode = string | null;
-export type Id13 = string;
+export type Id15 = string;
 export type Kind3 = string;
 export type ResourceId2 = string | null;
 export type ContentId2 = string | null;
@@ -196,6 +213,12 @@ export type Error1 = string | null;
 export type CreatedAt8 = string;
 export type UpdatedAt1 = string;
 export type Jobs = Job[];
+export type Id16 = string;
+export type Title4 = string;
+export type Description1 = string;
+export type SeriesId1 = string | null;
+export type AddedContentId = string | null;
+export type TopicSuggestions = TopicSuggestion[];
 
 export interface Project {
   schema_version: SchemaVersion;
@@ -216,6 +239,7 @@ export interface Project {
   unresolved: Unresolved;
   briefs: Briefs;
   resources: Resources;
+  resource_folders: ResourceFolders;
   selection: Selection;
   analyses: Analyses;
   series: Series;
@@ -224,6 +248,7 @@ export interface Project {
   jobs: Jobs;
   editor_drafts: EditorDrafts;
   editor_draft_versions: EditorDraftVersions;
+  topic_suggestions: TopicSuggestions;
 }
 export interface Message {
   id: Id1;
@@ -290,6 +315,8 @@ export interface Resource {
   playback_path: PlaybackPath;
   media_metadata: MediaMetadata;
   evidence: Evidence;
+  folder_id: FolderId;
+  trashed_at: TrashedAt1;
 }
 export interface ExtractedBlock {
   id: Id4;
@@ -324,16 +351,24 @@ export interface EvidenceEvent {
   start_frame: StartFrame;
   end_frame: EndFrame;
   interpretation: Interpretation;
+  precision: Precision;
 }
 export interface Coverage {
   [k: string]: string;
+}
+export interface ResourceFolder {
+  id: Id6;
+  name: Name1;
+  parent_id: ParentId;
+  builtin_key: BuiltinKey;
+  trashed_at: TrashedAt2;
 }
 export interface Selection {
   revision: Revision2;
   resource_ids: ResourceIds1;
 }
 export interface Analysis {
-  id: Id6;
+  id: Id7;
   content_id: ContentId;
   inputs: InputManifest;
   conclusion: Conclusion;
@@ -345,6 +380,7 @@ export interface Analysis {
   structures: Structures;
   created_at: CreatedAt5;
   needs_review: NeedsReview;
+  key_insights: KeyInsights;
 }
 export interface InputManifest {
   exploratory: Exploratory;
@@ -372,7 +408,7 @@ export interface ReferenceStructure {
   edges: Edges;
 }
 export interface StructureNode {
-  id: Id7;
+  id: Id8;
   label: Label;
   detail: Detail;
   kind: Kind2;
@@ -385,15 +421,21 @@ export interface StructureEdge {
   explanation: Explanation;
   sources: Sources3;
 }
+export interface AnalysisInsight {
+  id: Id9;
+  observation: Observation;
+  application: Application;
+  sources: Sources4;
+}
 export interface Series1 {
-  id: Id8;
+  id: Id10;
   title: Title1;
   concept: Concept;
   inputs: InputManifest | null;
   needs_review: NeedsReview1;
 }
 export interface ContentItem {
-  id: Id9;
+  id: Id11;
   series_id: SeriesId;
   title: Title2;
   description: Description;
@@ -405,7 +447,7 @@ export interface ContentItem {
   approved_direction_revision: ApprovedDirectionRevision;
 }
 export interface Direction {
-  id: Id10;
+  id: Id12;
   revision: Revision3;
   title: Title3;
   concept: Concept1;
@@ -413,14 +455,14 @@ export interface Direction {
   narrative: Narrative;
   cta: Cta;
   inputs: InputManifest;
-  sources: Sources4;
+  sources: Sources5;
   approved: Approved;
   approved_at: ApprovedAt;
   needs_review: NeedsReview3;
   created_at: CreatedAt6;
 }
 export interface ProductionPack {
-  id: Id11;
+  id: Id13;
   revision: Revision4;
   content_id: ContentId1;
   inputs: InputManifest;
@@ -429,12 +471,13 @@ export interface ProductionPack {
   storyboard: Storyboard;
   shot_list: ShotList;
   shots: Shots;
-  sources: Sources5;
+  sources: Sources7;
   needs_review: NeedsReview4;
   created_at: CreatedAt7;
+  sheet_format: SheetFormat;
 }
 export interface ProductionShot {
-  id: Id12;
+  id: Id14;
   start_seconds: StartSeconds2;
   end_seconds: EndSeconds2;
   visual: Visual;
@@ -442,10 +485,12 @@ export interface ProductionShot {
   on_screen_text: OnScreenText;
   sound: Sound;
   notes: Notes;
+  framing_camera: FramingCamera;
+  sources: Sources6;
 }
 export interface Job {
   error_code: ErrorCode;
-  id: Id13;
+  id: Id15;
   kind: Kind3;
   resource_id: ResourceId2;
   content_id: ContentId2;
@@ -469,4 +514,12 @@ export interface EditorDrafts {
 }
 export interface EditorDraftVersions {
   [k: string]: number;
+}
+export interface TopicSuggestion {
+  id: Id16;
+  title: Title4;
+  description: Description1;
+  series_id: SeriesId1;
+  inputs: InputManifest;
+  added_content_id: AddedContentId;
 }

@@ -76,6 +76,13 @@
           "default": false,
           "title": "Needs Review",
           "type": "boolean"
+        },
+        "key_insights": {
+          "items": {
+            "$ref": "#/$defs/AnalysisInsight"
+          },
+          "title": "Key Insights",
+          "type": "array"
         }
       },
       "required": [
@@ -90,9 +97,42 @@
         "limitations",
         "structures",
         "created_at",
-        "needs_review"
+        "needs_review",
+        "key_insights"
       ],
       "title": "Analysis",
+      "type": "object"
+    },
+    "AnalysisInsight": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "observation": {
+          "title": "Observation",
+          "type": "string"
+        },
+        "application": {
+          "title": "Application",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "observation",
+        "application",
+        "sources"
+      ],
+      "title": "AnalysisInsight",
       "type": "object"
     },
     "BriefRevision": {
@@ -374,6 +414,17 @@
           ],
           "default": null,
           "title": "Interpretation"
+        },
+        "precision": {
+          "default": "unknown",
+          "enum": [
+            "sample",
+            "interval",
+            "estimated",
+            "unknown"
+          ],
+          "title": "Precision",
+          "type": "string"
         }
       },
       "required": [
@@ -384,7 +435,8 @@
         "end_seconds",
         "start_frame",
         "end_frame",
-        "interpretation"
+        "interpretation",
+        "precision"
       ],
       "title": "EvidenceEvent",
       "type": "object"
@@ -1017,6 +1069,15 @@
         "created_at": {
           "title": "Created At",
           "type": "string"
+        },
+        "sheet_format": {
+          "default": "legacy_documents",
+          "enum": [
+            "legacy_documents",
+            "storyboard_sheet"
+          ],
+          "title": "Sheet Format",
+          "type": "string"
         }
       },
       "required": [
@@ -1031,7 +1092,8 @@
         "shots",
         "sources",
         "needs_review",
-        "created_at"
+        "created_at",
+        "sheet_format"
       ],
       "title": "ProductionPack",
       "type": "object"
@@ -1076,6 +1138,18 @@
           "default": "",
           "title": "Notes",
           "type": "string"
+        },
+        "framing_camera": {
+          "default": "",
+          "title": "Framing Camera",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
         }
       },
       "required": [
@@ -1086,7 +1160,9 @@
         "dialogue",
         "on_screen_text",
         "sound",
-        "notes"
+        "notes",
+        "framing_camera",
+        "sources"
       ],
       "title": "ProductionShot",
       "type": "object"
@@ -1307,6 +1383,30 @@
           },
           "title": "Evidence",
           "type": "array"
+        },
+        "folder_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Folder Id"
+        },
+        "trashed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trashed At"
         }
       },
       "required": [
@@ -1332,9 +1432,77 @@
         "thumbnail_path",
         "playback_path",
         "media_metadata",
-        "evidence"
+        "evidence",
+        "folder_id",
+        "trashed_at"
       ],
       "title": "Resource",
+      "type": "object"
+    },
+    "ResourceFolder": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "parent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Id"
+        },
+        "builtin_key": {
+          "anyOf": [
+            {
+              "enum": [
+                "inbox",
+                "references",
+                "documents",
+                "production_assets"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Builtin Key"
+        },
+        "trashed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trashed At"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "parent_id",
+        "builtin_key",
+        "trashed_at"
+      ],
+      "title": "ResourceFolder",
       "type": "object"
     },
     "Selection": {
@@ -1610,6 +1778,61 @@
       ],
       "title": "StructureNode",
       "type": "object"
+    },
+    "TopicSuggestion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "series_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Series Id"
+        },
+        "inputs": {
+          "$ref": "#/$defs/InputManifest"
+        },
+        "added_content_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Added Content Id"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "series_id",
+        "inputs",
+        "added_content_id"
+      ],
+      "title": "TopicSuggestion",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -1742,6 +1965,13 @@
       "title": "Resources",
       "type": "array"
     },
+    "resource_folders": {
+      "items": {
+        "$ref": "#/$defs/ResourceFolder"
+      },
+      "title": "Resource Folders",
+      "type": "array"
+    },
     "selection": {
       "$ref": "#/$defs/Selection"
     },
@@ -1794,6 +2024,13 @@
       },
       "title": "Editor Draft Versions",
       "type": "object"
+    },
+    "topic_suggestions": {
+      "items": {
+        "$ref": "#/$defs/TopicSuggestion"
+      },
+      "title": "Topic Suggestions",
+      "type": "array"
     }
   },
   "title": "Project",
@@ -1817,6 +2054,7 @@
     "unresolved",
     "briefs",
     "resources",
+    "resource_folders",
     "selection",
     "analyses",
     "series",
@@ -1824,6 +2062,7 @@
     "packs",
     "jobs",
     "editor_drafts",
-    "editor_draft_versions"
+    "editor_draft_versions",
+    "topic_suggestions"
   ]
 }

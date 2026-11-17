@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import Field
 
 from ..storage import WorkflowError
-from .models import Model, Project, Fact, ExtractedBlock, EvidenceEvent, Job, now
+from .models import Model, Project, Fact, ExtractedBlock, EvidenceEvent, Job, ProductionShot, now
 
 
 class Mutation(Model):
@@ -84,6 +84,36 @@ class GenerateBody(Mutation):
     visual_only: bool = False
 
 
+class TopicsBody(GenerateBody):
+    series_id: str | None = None
+
+
+class FolderBody(Mutation):
+    name: str = Field(min_length=1, max_length=200)
+    parent_id: str | None = None
+
+
+class FolderPatch(Mutation):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    parent_id: str | None = None
+
+
+class ResourcePatch(Mutation):
+    name: str | None = Field(default=None, min_length=1, max_length=250)
+    folder_id: str | None = None
+
+
+class ResourceMove(Mutation):
+    resource_ids: list[str] = Field(min_length=1, max_length=500)
+    folder_id: str | None = None
+
+
+class ContentPatch(Mutation):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=4000)
+    series_id: str | None = None
+
+
 class DirectionBody(Mutation):
     title: str = Field(min_length=1, max_length=200)
     concept: str = Field(min_length=1, max_length=20000)
@@ -104,10 +134,12 @@ class Approval(Mutation):
 
 class PackBody(Approval):
     expected_editor_version: int | None = Field(default=None, ge=0)
-    production_brief: str = Field(max_length=100000)
-    script: str = Field(max_length=100000)
-    storyboard: str = Field(max_length=100000)
-    shot_list: str = Field(max_length=100000)
+    production_brief: str | None = Field(default=None, max_length=100000)
+    script: str | None = Field(default=None, max_length=100000)
+    storyboard: str | None = Field(default=None, max_length=100000)
+    shot_list: str | None = Field(default=None, max_length=100000)
+    shots: list[ProductionShot] | None = Field(default=None, max_length=100)
+    sheet_format: Literal["legacy_documents", "storyboard_sheet"] | None = None
 
 
 class ProjectRuntime:
@@ -383,11 +415,46 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/resources", response_model=Project, status_code=202)
     def upload(project_id: str, file: Annotated[UploadFile, File()], expected_version: Annotated[int, Form(ge=1)],
-               role: Annotated[Literal["reference", "document", "asset"], Form()] = "reference"):
+               role: Annotated[Literal["reference", "document", "asset"], Form()] = "reference",
+               folder_id: Annotated[str | None, Form()] = None):
         with runtime.lock:
-            state = runtime.resources.import_file(project_id, expected_version, file.filename or "upload", file.file, role=role)
+            state = runtime.resources.import_file(project_id, expected_version, file.filename or "upload", file.file, role=role, folder_id=folder_id)
             resource_id = state.resources[-1].id
             return runtime.submit(project_id, None, "extract", lambda: runtime.resources.extract(project_id, resource_id), resource_id=resource_id)
+
+    @router.post("/{project_id}/folders", response_model=Project)
+    def folder_create(project_id: str, body: FolderBody):
+        return runtime.resources.create_folder(project_id, body.expected_version, body.name, body.parent_id)
+
+    @router.patch("/{project_id}/folders/{folder_id}", response_model=Project)
+    def folder_edit(project_id: str, folder_id: str, body: FolderPatch):
+        return runtime.resources.edit_folder(project_id, body.expected_version, folder_id,
+                                             body.model_dump(exclude={"expected_version"}, exclude_unset=True))
+
+    @router.post("/{project_id}/folders/{folder_id}/trash", response_model=Project)
+    def folder_trash(project_id: str, folder_id: str, body: Mutation):
+        return runtime.resources.folder_trash(project_id, body.expected_version, folder_id)
+
+    @router.post("/{project_id}/folders/{folder_id}/restore", response_model=Project)
+    def folder_restore(project_id: str, folder_id: str, body: Mutation):
+        return runtime.resources.folder_trash(project_id, body.expected_version, folder_id, restore=True)
+
+    @router.post("/{project_id}/resources/move", response_model=Project)
+    def resource_move(project_id: str, body: ResourceMove):
+        return runtime.resources.move_resources(project_id, body.expected_version, body.resource_ids, body.folder_id)
+
+    @router.patch("/{project_id}/resources/{resource_id}", response_model=Project)
+    def resource_edit(project_id: str, resource_id: str, body: ResourcePatch):
+        return runtime.resources.edit_resource(project_id, body.expected_version, resource_id,
+                                               body.model_dump(exclude={"expected_version"}, exclude_unset=True))
+
+    @router.post("/{project_id}/resources/{resource_id}/trash", response_model=Project)
+    def resource_trash(project_id: str, resource_id: str, body: Mutation):
+        return runtime.resources.resource_trash(project_id, body.expected_version, resource_id)
+
+    @router.post("/{project_id}/resources/{resource_id}/restore", response_model=Project)
+    def resource_restore(project_id: str, resource_id: str, body: Mutation):
+        return runtime.resources.resource_trash(project_id, body.expected_version, resource_id, restore=True)
 
     @router.get("/{project_id}/resources/{resource_id}/file")
     def resource_file(project_id: str, resource_id: str, representation: Literal["original", "playback", "thumbnail"] = "original"):
@@ -435,6 +502,7 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/analyze", response_model=Project, status_code=202)
     def analyze(project_id: str, body: SelectionBody):
+        runtime.analysis.preflight(project_id, body.resource_ids, body.content_id)
         return runtime.submit(project_id, body.expected_version, "analyze", lambda: runtime.analysis.analyze(project_id, body.resource_ids, body.content_id, visual_only=body.visual_only), content_id=body.content_id)
 
     @router.post("/{project_id}/series", response_model=Project)
@@ -444,6 +512,21 @@ def install_project_workspace(app, legacy_service):
     @router.post("/{project_id}/contents", response_model=Project)
     def contents(project_id: str, body: ContentBody):
         return runtime.planning.create_content(project_id, body.expected_version, body.title, body.description, body.series_id)
+
+    @router.patch("/{project_id}/contents/{content_id}", response_model=Project)
+    def content_edit(project_id: str, content_id: str, body: ContentPatch):
+        return runtime.planning.edit_content(project_id, body.expected_version, content_id,
+                                             body.model_dump(exclude={"expected_version"}, exclude_unset=True))
+
+    @router.post("/{project_id}/topics/suggest", response_model=Project, status_code=202)
+    def topics_suggest(project_id: str, body: TopicsBody):
+        runtime.planning.preflight_generation(project_id, instruction=body.instruction, visual_only=body.visual_only)
+        return runtime.submit(project_id, body.expected_version, "topics",
+            lambda: runtime.planning.suggest_topics(project_id, body.instruction, visual_only=body.visual_only, series_id=body.series_id))
+
+    @router.post("/{project_id}/topics/{suggestion_id}/add", response_model=Project)
+    def topic_add(project_id: str, suggestion_id: str, body: Mutation):
+        return runtime.planning.add_topic(project_id, body.expected_version, suggestion_id)
 
     @router.post("/{project_id}/concepts/generate", response_model=Project, status_code=202)
     def concepts(project_id: str, body: GenerateBody):
@@ -480,7 +563,8 @@ def install_project_workspace(app, legacy_service):
     @router.post("/{project_id}/packs/{pack_id}", response_model=Project)
     def pack_save(project_id: str, pack_id: str, body: PackBody):
         return runtime.planning.save_pack(project_id, body.expected_version, pack_id, body.revision,
-                                         body.model_dump(exclude={"expected_version", "revision", "expected_editor_version"}),
+                                         body.model_dump(exclude={"expected_version", "revision", "expected_editor_version"},
+                                                         exclude_unset=True, exclude_none=True),
                                          expected_editor_version=body.expected_editor_version)
 
     @router.get("/{project_id}/packs/{pack_id}/export")

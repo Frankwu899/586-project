@@ -29,11 +29,11 @@ from ..providers.transport import OpenAITransport
 from ..storage import WorkflowError
 from ..timing import seconds_to_frame_range
 from .speech_retry import merge_retry, missing_speech_only, public_failure
-from .models import (Analysis, EvidenceEvent, EvidenceRevision, InputManifest, Job,
+from .models import (Analysis, AnalysisInsight, EvidenceEvent, EvidenceRevision, InputManifest, Job,
                      Model, ReferenceStructure, Selection, SourceRef, StructureEdge,
-                     StructureNode, invalidate, now, uid)
+                     StructureNode, invalidate, now, resource_is_trashed, uid)
 
-ANALYSIS_VERSION = "multi-reference-1.8.1-structure1"
+ANALYSIS_VERSION = "multi-reference-linked-insights-1"
 EXTRACTION_VERSION = "multi-reference-1.8.0-scene1"
 
 
@@ -66,6 +66,12 @@ class StructureResult(Model):
     edges: list[StructureEdgeResult] = Field(max_length=20)
 
 
+class InsightResult(Model):
+    observation: str = Field(min_length=1, max_length=1200)
+    application: str = Field(min_length=1, max_length=1200)
+    citations: list[Citation] = Field(min_length=1, max_length=8)
+
+
 class Conclusion(Model):
     conclusion: str = Field(min_length=1, max_length=400)
     findings: list[Annotated[str, Field(min_length=1, max_length=400)]] = Field(max_length=5)
@@ -74,6 +80,7 @@ class Conclusion(Model):
     limitations: list[str] = Field(max_length=15)
     citations: list[Citation] = Field(max_length=50)
     structures: list[StructureResult] = Field(min_length=1, max_length=24)
+    key_insights: list[InsightResult] = Field(default_factory=list, max_length=5)
 
 
 def current_analysis(project, content_id=None):
@@ -85,6 +92,8 @@ def resource_for(project, resource_id):
     resource = next((r for r in project.resources if r.id == resource_id), None)
     if resource is None:
         raise WorkflowError("resource_not_found", "This resource does not belong to the project.", 404)
+    if resource_is_trashed(project, resource):
+        raise WorkflowError("resource_trashed", "A selected source is in Trash. Restore its file or folder, or explicitly change the selection. Saved analysis and evidence are retained.", 410)
     return resource
 
 
@@ -155,6 +164,18 @@ class AnalysisService:
                         analysis.needs_review = True
         return self.store.update(project_id, expected_version, change)
 
+    def preflight(self, project_id, resource_ids, content_id=None):
+        ids = self._ids(resource_ids)
+        if not ids:
+            raise WorkflowError("empty_selection", "Select at least one local reference to analyze.", 422)
+        project = self.store.get(project_id)
+        if content_id:
+            content_for(project, content_id)
+        for resource_id in ids:
+            if resource_for(project, resource_id).kind not in {"video", "audio"}:
+                raise WorkflowError("invalid_reference", "Select video or audio resources for reference analysis.", 422)
+        return ids
+
     @staticmethod
     def _ids(resource_ids):
         if not isinstance(resource_ids, list) or len(resource_ids) > 24 or any(not isinstance(r, str) for r in resource_ids):
@@ -185,7 +206,8 @@ class AnalysisService:
             corrected = []
             timing = FrameTiming.model_validate(resource.media_metadata["frame_timing"]) if resource.media_metadata.get("frame_timing") else None
             for event in parsed:
-                if event.kind != old[event.id].kind or event.interpretation != old[event.id].interpretation:
+                if (event.kind != old[event.id].kind or event.interpretation != old[event.id].interpretation
+                        or event.precision != old[event.id].precision):
                     raise WorkflowError("invalid_evidence_correction", "Correct source text or timing; retain evidence channel and interpretation provenance.", 422)
                 if not event.text.strip() or not 0 <= event.start_seconds < event.end_seconds <= resource.duration_seconds + 1e-6:
                     raise WorkflowError("invalid_evidence_timing", "Each event needs text and a positive interval inside the original source duration.", 422)
@@ -275,9 +297,7 @@ class AnalysisService:
         return self.store.update(project_id, None, change)
 
     def analyze(self, project_id, resource_ids, content_id=None, *, visual_only=False):
-        ids = self._ids(resource_ids)
-        if not ids:
-            raise WorkflowError("empty_selection", "Select at least one local reference to analyze.", 422)
+        ids = self.preflight(project_id, resource_ids, content_id)
         with self._lock(project_id):
             return self._analyze(project_id, ids, content_id, visual_only=visual_only)
 
@@ -430,7 +450,10 @@ class AnalysisService:
         prompt = (
             instructions + "\n\nHOST CONTRACT FOR VIDEO ANATOMY 1.8:\n"
             "Analyze the selected marketing references for a professional creative assignment. "
-            "Return one short, single-sentence main takeaway and approximately three to five concise insights. "
+            "Return up to three to five distinct source-linked key_insights (fewer when evidence is limited). "
+            "Each key insight has observation (a grounded observation or clearly labeled strategy inference), "
+            "application (why it matters for the task and how to adapt it), and exact supplied event citations. "
+            "Do not duplicate the same insight in a large takeaway. Keep conclusion only as short scope context. "
             "Return an individual structure graph for EACH reference with usable evidence, keeping resource identities separate. "
             "Graph nodes describe this reference's actual meaningful moments or mechanisms, NOT a fixed marketing template. "
             "Never force Hook-Problem-Proof-CTA steps or invent missing steps. Edges express only evidence-supported "
@@ -465,6 +488,8 @@ class AnalysisService:
                                   start_seconds=event.start_seconds, end_seconds=event.end_seconds)
 
         refs = [resolve(citation) for citation in result.citations]
+        insights = [AnalysisInsight(observation=item.observation, application=item.application,
+                                    sources=[resolve(citation) for citation in item.citations]) for item in result.key_insights]
         if not refs:
             raise WorkflowError("analysis_missing_evidence", "The analysis returned no source evidence. Retry to obtain a grounded conclusion.", 422)
         if (len({graph.resource_id for graph in result.structures}) != len(result.structures)
@@ -479,7 +504,8 @@ class AnalysisService:
                     sources=[resolve(citation, graph.resource_id) for citation in edge.citations]) for edge in graph.edges]))
         analysis = Analysis(content_id=content_id, inputs=manifest, conclusion=result.conclusion,
                             findings=result.findings, differences=result.differences, opportunities=result.opportunities,
-                            limitations=list(dict.fromkeys([*failures, *result.limitations])), sources=refs, structures=structures)
+                            limitations=list(dict.fromkeys([*failures, *result.limitations])), sources=refs,
+                            structures=structures, key_insights=insights)
 
         def finish(project):
             current = content_for(project, content_id) if content_id else project
@@ -528,7 +554,8 @@ class AnalysisService:
                 text=event.text or event.description or "", start_frame=event.start_frame, end_frame=event.end_frame,
                 start_seconds=timing.frame_boundaries_seconds[event.start_frame],
                 end_seconds=timing.frame_boundaries_seconds[event.end_frame],
-                interpretation="; ".join(interpretations) or None))
+                interpretation="; ".join(interpretations) or None,
+                precision="sample" if kind in {"visual", "on_screen_text"} else "estimated" if kind == "speech" else "unknown"))
         coverage = {key: value for key, value in result.coverage.model_dump().items()}
         if video.has_audio is False:
             coverage["speech"] = "no_audio"
@@ -730,7 +757,7 @@ class AnalysisService:
                                                     rule=detail.get("validation_rule"), field="segments")
                 for segment, span in enumerate(spans):
                     events.append(EvidenceEvent(id=f"event_{resource.id}_{index}_{segment}", kind="speech", text=span["text"],
-                                                start_seconds=span["start"], end_seconds=span["end"]))
+                                                start_seconds=span["start"], end_seconds=span["end"], precision="estimated"))
             except (ProviderError, ValueError, OSError) as exc:
                 if not isinstance(exc, (ProviderError, WorkflowError)):
                     exc = ProviderError(getattr(exc, "code", "audio_preparation_invalid"), "Audio preparation failed; check the original source and FFmpeg.")
