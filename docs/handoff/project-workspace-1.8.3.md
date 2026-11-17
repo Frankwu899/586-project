@@ -26,6 +26,10 @@
 - `c1f6156`: Media Pool, Source Review, source-linked Analysis and attachment reuse.
 - `0ec97b5`: standalone Video planning and the authoritative sheet UI.
 - `e0ac55e`: independent old-project and source/sheet integration checks.
+- `4026349`: 1.8.3 candidate identity and reproducible native Chromium zoom QA.
+- `3b2bf26`: one release identity for health, API metadata and provider diagnostics.
+- `a8d3310`: explicit playback choices survive late media metadata callbacks.
+- `660e820`: preserved task-workspace tests explicitly open `?legacy=1`.
 
 Integration owns generated contracts, root navigation and final identity. Shared
 model/API changes were reviewed before B/C consumers; generated JSON/TypeScript
@@ -40,22 +44,55 @@ another production Video. A sheet revision is the source for editing and CSV.
 
 ## Verification record
 
-Final integrated commands, counts and package results are recorded here after
-the complete candidate check. Module receipts establish actual scoped checks:
-A focused backend 147 passed; B resource/folder/analysis combinations 63 and 41
-passed; C backend 78 passed; packaging 57 passed; independent backend 4 passed.
-A browser, B 16 resource + 9 Analysis cases, C 8 distinct cases and independent
-6 cases were exercised in Chromium. The final complete suites below are the
-acceptance counts, rather than sums of those overlapping checks.
+The final acceptance components ran in Linux with live inference disabled:
 
-INTEGRATED_RESULTS_PENDING
+| Component | Actual final result |
+| --- | --- |
+| Python dependencies, Ruff, authoritative/generated schema drift | Passed |
+| Complete backend, `.venv/bin/python -m pytest -q` | **1,115 passed**, 218.53 seconds; no skips |
+| Frontend unit tests | **54 passed** |
+| Frontend contracts, TypeScript, ESLint, production build | Passed |
+| Preserved-workspace Chromium group | **52 passed**, 3.8 minutes |
+| Injected-provider Chromium group | **4 passed**, 26.4 seconds |
+| Complete project/compatibility Chromium group | **77 passed**, 5.5 minutes |
+| Desktop Node tests and JavaScript syntax checks | **3 passed**; syntax checks passed |
+| Release identity, package and Mac-launcher scoped tests | **57 passed**, also covered by the backend suite |
+| Full-workspace native Chromium zoom / narrow viewport | **63/63 surface checks**; 81 CDP screenshots, 9 saved-revision CSV receipts, zero processing requests |
 
-The earlier A-only full command completed backend 1053 passed / 1 skipped,
-51 frontend unit tests, 55 legacy browsers and 4 injected-provider browsers.
-Its first project suite ended 34 passed / 1 readiness-selector failure; the
-assertion was fixed to wait for the editor close. Later project runs interrupted
-by execution-session loss were not counted as complete passes. See the final
-integrated result for the actual current candidate.
+The 133 browser cases above are distinct tests. The project group includes three
+preserved `/api/tasks` menu/locale guards with explicit `?legacy=1` routing; the
+other 52 preserved-workspace tests remain in their own group. Native zoom checks
+are a separate surface matrix, not an additional count of those browser tests.
+See [screenshots, dimensions and receipts](1.8.3/evidence/integrated/README.md).
+
+The combined `bash scripts/verify.sh` run completed all components through the
+52/4 browser groups, then exposed three legacy menu tests opening the modern
+default homepage. That project run was deliberately interrupted (27 passed,
+3 failed, 1 interrupted, 46 not run); it is **not** recorded as a successful
+command. After fixing only their explicit entry URLs and passing all three
+independently, the entire 77-case project group was rerun successfully with
+`npm --prefix frontend run test:e2e:projects`. No application code changed in
+that test-entry correction.
+
+An earlier full backend candidate had 1,110 passes / five old-version diagnostic
+assertion failures. Updating those checks also exposed a hardcoded health/API
+metadata version; it now shares `release.VERSION`, and the 35-case diagnostic
+group plus the complete 1,115-case backend passed. Independent review reproduced
+a late `loadedmetadata` callback restoring an old citation after an explicit
+playback choice. Its new regression failed before the fix and passed afterward;
+it is included in the successful 77-case run. Earlier interrupted/partial A-only
+runs are not counted as final acceptance.
+
+Implementation is frozen at `a8d3310`; `660e820` changes only legacy test entry
+URLs. The final documentation/evidence commit supplies the package source SHA.
+After that clean commit, the single Mac ZIP must pass
+`scripts/check_release_package.py --version 1.8.3 --expected-commit FULL_SHA`.
+The exact final commit, archive SHA-256 and extracted-package results are
+recorded in the integration Draft PR and delivery response, avoiding a
+self-referencing archive digest in its source documentation.
+
+Nonblocking diagnostics: Starlette TestClient/httpx deprecation, Vite's 581 kB
+JavaScript chunk advisory and the test runner's color-environment warning.
 
 ## Modern Web Guidance
 
