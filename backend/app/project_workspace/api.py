@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import Field
 
 from ..storage import WorkflowError
-from .models import Model, Project, Fact, ExtractedBlock, EvidenceEvent, Job, ProductionShot, now
+from .models import Model, Project, Fact, ExtractedBlock, EvidenceEvent, Job, ProductionShot, SourceRef, now
 
 
 class Mutation(Model):
@@ -120,12 +120,14 @@ class DirectionBody(Mutation):
     hook: str = Field(default="", max_length=10000)
     narrative: str = Field(default="", max_length=20000)
     cta: str = Field(default="", max_length=10000)
+    source_refs: list[SourceRef] = Field(default_factory=list, max_length=100)
 
 
 class DirectionEdit(Mutation):
     revision: int = Field(ge=1)
     fields: dict[str, str]
     expected_editor_version: int | None = Field(default=None, ge=0)
+    source_refs: list[SourceRef] | None = Field(default=None, max_length=100)
 
 
 class Approval(Mutation):
@@ -540,13 +542,16 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/contents/{content_id}/directions", response_model=Project)
     def direction_create(project_id: str, content_id: str, body: DirectionBody):
-        return runtime.planning.save_direction(project_id, body.expected_version, content_id, body.model_dump(exclude={"expected_version"}))
+        sources = {"source_refs": body.source_refs} if "source_refs" in body.model_fields_set else {}
+        return runtime.planning.save_direction(project_id, body.expected_version, content_id,
+            body.model_dump(exclude={"expected_version", "source_refs"}), **sources)
 
     @router.post("/{project_id}/contents/{content_id}/directions/{direction_id}/edit", response_model=Project)
     def direction_edit(project_id: str, content_id: str, direction_id: str, body: DirectionEdit):
+        sources = {"source_refs": body.source_refs} if "source_refs" in body.model_fields_set else {}
         return runtime.planning.save_direction(project_id, body.expected_version, content_id, body.fields,
                                                 direction_id=direction_id, direction_revision=body.revision,
-                                                expected_editor_version=body.expected_editor_version)
+                                                expected_editor_version=body.expected_editor_version, **sources)
 
     @router.post("/{project_id}/contents/{content_id}/directions/{direction_id}/approve", response_model=Project)
     def approve(project_id: str, content_id: str, direction_id: str, body: Approval):

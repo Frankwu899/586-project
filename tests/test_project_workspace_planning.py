@@ -11,6 +11,7 @@ import pytest
 
 from backend.app.providers.config import ProviderSettings
 from backend.app.project_workspace.exports import export_pack
+from backend.app.project_workspace.analysis import AnalysisService
 from backend.app.project_workspace.models import (
     Analysis, BriefRevision, EvidenceEvent, EvidenceRevision, Fact, InputManifest, Resource, Selection,
 )
@@ -52,6 +53,8 @@ def setup(tmp_path, response=None, reference=False):
     settings = ProviderSettings(api_key="test-key", experiment_budget_enabled=False)
     service = PlanningService(store, lambda: settings, lambda _settings: transport)
     project = service.create_content(project.id, project.version, "The daily routine", "A relatable commute")
+    if reference:
+        project = AnalysisService(store, lambda: settings).set_selection(project.id, project.version, project.selection.resource_ids, project.contents[0].id)
     return store, service, transport, project
 
 
@@ -279,7 +282,7 @@ def test_export_snapshots_are_safe_editable_and_pin_input_history(tmp_path):
         assert b"&lt;script&gt;" in xml
     assert (store.project_dir(project.id) / "outputs" / current.content_id / current.id / "revision-2.docx").read_bytes() == document
     csv_data, _, _ = export_pack(store, project.id, pack.id, 2, "csv")
-    assert b"On-screen text" in csv_data and b"Dialogue" in csv_data
+    assert b"on-screen text" in csv_data.lower() and b"dialogue" in csv_data.lower()
 
 
 def test_csv_protects_spreadsheet_formulas(tmp_path):
@@ -660,9 +663,12 @@ def test_visual_only_is_explicit_filters_speech_and_carries_limitations_into_pac
     result = service.generate_pack(project.id, result.contents[0].id)
     assert result.packs[-1].inputs.visual_only
     assert any("visual evidence only" in text for text in result.packs[-1].inputs.limitations)
-    for format in ("markdown", "csv", "html"):
+    for format in ("markdown", "html"):
         data, _, _ = export_pack(store, result.id, result.packs[-1].id, 1, format)
         assert b"visual evidence only" in data
+    sheet, _, _ = export_pack(store, result.id, result.packs[-1].id, 1, "csv")
+    assert "Shot,Start,End,Framing / Camera" in sheet.decode("utf-8-sig")
+    assert b"Input manifest" not in sheet and b"Supporting reference" not in sheet
     assert store.get(project.id).resources[0].evidence[-1].events[-1].text == "Incomplete recognized speech"
 
 

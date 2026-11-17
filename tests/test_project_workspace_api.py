@@ -379,11 +379,14 @@ def test_four_document_pack_exports_exact_snapshot_and_rejects_pending_edits(tmp
         assert observed_keys == ["test-updated-key"] and len(fixture.calls) == 1
         export_url = f"/api/projects/{project['id']}/packs/{pack['id']}/export?revision=1"
         markdown = client.get(export_url + "&format=markdown")
-        assert markdown.status_code == 200 and "VOICE: Ready for the day?" in markdown.text
+        assert markdown.status_code == 200 and pack["shots"][0]["dialogue"] in markdown.text
+        assert "Storyboard sheet" in markdown.text and "VOICE: Ready for the day?" not in markdown.text
         html = client.get(export_url + "&format=html")
-        assert html.status_code == 200 and "Production brief" in html.text and "Shot list" in html.text
+        assert html.status_code == 200 and "Production brief" in html.text and "Storyboard sheet" in html.text
         csv = client.get(export_url + "&format=csv")
-        assert csv.status_code == 200 and "shot_01" in csv.text
+        assert csv.status_code == 200 and "Shot,Start,End,Framing / Camera" in csv.text
+        assert "01,0.0,3.0" in csv.text and "shot_01" not in csv.text
+        assert "Input manifest" not in csv.text and "Production pack" not in csv.text
         docx = client.get(export_url + "&format=docx")
         assert docx.status_code == 200
         with zipfile.ZipFile(io.BytesIO(docx.content)) as archive:
