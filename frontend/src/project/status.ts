@@ -80,6 +80,7 @@ const supportKeys = new Set([
   'valid_segments', 'invalid_segments', 'rejected_segments', 'rounded_boundaries', 'sample_rate', 'sample_count', 'channels', 'duration_seconds', 'prepared_duration_seconds', 'source_start_seconds', 'source_end_seconds', 'completed_chunks', 'failed_chunks', 'missing_chunks',
   'accepted_proposals', 'rejected_proposals', 'rejected_proposal_count', 'reply_validation',
   'proposal_validation', 'outcome', 'validation_issues', 'attempt', 'retry', 'operation_mode', 'result_origin', 'evidence_revision',
+  'media_error_code', 'media_error_name', 'media_network_state', 'media_ready_state', 'video_codec', 'audio_codec',
 ]);
 export function supportText(records: Record<string, unknown> | Record<string, unknown>[] = {}) {
   return (Array.isArray(records) ? records : [records]).map(record => Object.entries(record)

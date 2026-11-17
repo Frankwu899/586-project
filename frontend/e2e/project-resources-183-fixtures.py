@@ -46,6 +46,9 @@ def seed(state):
         source.start_seconds, source.end_seconds = 99, 100
     elif mode == "source_only":
         source.evidence_revision, source.event_id = None, None
+    elif mode == "playback_failure":
+        resource.evidence[-1].coverage["speech"] = "partial"
+        resource.evidence[-1].diagnostics["speech"] = "audio_timestamps_invalid"
     elif mode.startswith("speech_failure:"):
         resource.evidence[-1].coverage["speech"] = "partial"
         resource.evidence[-1].created_at = "2026-11-17T00:00:00+00:00"

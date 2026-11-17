@@ -13,6 +13,43 @@ async function capture(page: Page, name: string) { const path = process.env.VIDE
 test.beforeAll(() => { folder = mkdtempSync(join(tmpdir(), 'video-anatomy-b-183-')); media = join(folder, 'synthetic-blue.mp4'); execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=c=blue:s=320x180:r=25:d=12', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', media]); });
 test.afterAll(() => rmSync(folder, { recursive: true, force: true }));
 
+test('playback failure exports browser diagnostics separately from saved speech failures', async ({ page }) => {
+  const project = fixture('playback_failure');
+  await page.route('**/file?representation=playback*', route => route.abort('failed'));
+  await open(page, project);
+  await page.getByRole('button', { name: 'Focus commute-demo.mp4', exact: true }).click();
+  await page.getByRole('button', { name: 'Open in timeline', exact: true }).click();
+  const failure = page.getByRole('alert').filter({ hasText: 'Playback is unavailable' });
+  await expect(failure).toBeVisible();
+  await failure.getByText('Support details', { exact: true }).click();
+  await expect(failure.locator('pre')).toContainText('stage: playback');
+  await expect(failure.locator('pre')).toContainText('media_error_code: 4');
+  await expect(failure.locator('pre')).not.toContainText('audio_timestamps_invalid');
+  await page.getByText('Coverage, original file and recovery', { exact: true }).click();
+  await page.getByText('Support diagnostics', { exact: true }).click();
+  await expect(page.locator('.va-source-details pre')).toContainText('audio_timestamps_invalid');
+});
+
+test('rebuilding a preview recovers an errored player without leaving Source Review', async ({ page, request }) => {
+  const project = fixture(); let unavailable = true;
+  await page.route('**/file?representation=playback*', route => unavailable ? route.abort('failed') : route.continue());
+  await open(page, project);
+  await page.getByRole('button', { name: 'Focus commute-demo.mp4', exact: true }).click();
+  await page.getByRole('button', { name: 'Open in timeline', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Playback is unavailable' })).toBeVisible();
+  unavailable = false;
+  await page.getByText('Coverage, original file and recovery', { exact: true }).click();
+  await page.getByRole('button', { name: 'Rebuild media preview', exact: true }).click();
+  const video = page.getByLabel('Reference video player');
+  await expect.poll(() => video.evaluate(node => (node as HTMLVideoElement).readyState)).toBeGreaterThanOrEqual(1);
+  await expect(page.getByRole('alert').filter({ hasText: 'Playback is unavailable' })).toHaveCount(0);
+  await page.getByRole('button', { name: /Visual observations at 00:05/ }).click();
+  await expect.poll(() => video.evaluate(node => (node as HTMLVideoElement).currentTime)).toBeGreaterThan(4.9);
+  const saved: Project = await (await request.get(`/api/projects/${project.id}`)).json();
+  expect(saved.resources[0].evidence).toEqual(project.resources[0].evidence);
+  expect(saved.resources[0].sha256).toBe(project.resources[0].sha256);
+});
+
 test('real folders preserve identity through move, rename, Trash, restore and reload', async ({ page, request }) => {
   const project = fixture(); await open(page, project);
   await expect(page.locator('video,audio')).toHaveCount(0);
