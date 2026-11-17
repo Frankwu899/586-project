@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project } from './contracts';
 import { failureMessage } from './status';
+import { folderIsTrashed } from './resourceLibrary';
 
 const LAST_PROJECT = 'video-anatomy:current-project';
 const RECENT_PROJECTS = 'video-anatomy:recent-projects';
@@ -40,12 +41,14 @@ export async function call<T>(path: string, body?: unknown, method?: string): Pr
   const data = await response.json();
   if (!response.ok) {
     const error = data.error ?? data.detail;
-    throw new ProjectError(failureMessage(typeof error === 'string' ? error : error?.message ?? 'The operation could not be completed.', error?.code), response.status, error?.code);
+    const raw = typeof error === 'string' ? error : error?.message ?? 'The operation could not be completed.';
+    const message = error?.code === 'validation_error' && /^body\.title:/.test(raw) ? 'Enter a name between 1 and 200 characters.' : failureMessage(raw, error?.code);
+    throw new ProjectError(message, response.status, error?.code);
   }
   return data as T;
 }
 
-export type Mutate = (path: string, body?: Record<string, unknown> | FormData, method?: string) => Promise<Project | null>;
+export type Mutate = (path: string, body?: Record<string, unknown> | FormData, method?: string, options?: { localError?: boolean; onError?: (message: string) => void }) => Promise<Project | null>;
 const draftFlushers = new Map<string, Map<string, () => Promise<boolean>>>();
 async function flushProjectDrafts(projectId: string | undefined) {
   if (!projectId) return true;
@@ -94,7 +97,7 @@ export function useProjectController() {
     current.current = null; setProject(null); rememberProject(null); void refreshList();
     if (!saved) setError('Some edits could not be saved to the project. Their local drafts are retained; reopen the project to review them.');
   }, [refreshList]);
-  const mutate = useCallback<Mutate>((path, body = {}, method) => {
+  const mutate = useCallback<Mutate>((path, body = {}, method, options) => {
     const projectId = current.current?.id;
     if (!projectId) return Promise.resolve(null);
     setSaving(value => value + 1);
@@ -111,15 +114,29 @@ export function useProjectController() {
         if (current.current?.id === projectId) accept(next);
         setError(''); return next;
       } catch (failure) {
-        setError(failure instanceof Error ? failure.message : 'Could not save. Your draft is retained.');
-        if (failure instanceof ProjectError && failure.status === 409) {
+        let message = failure instanceof Error ? failure.message : 'Could not save. Your draft is retained.';
+        if (failure instanceof ProjectError && failure.status === 409 && /(?:version_conflict|draft_conflict)/.test(failure.code ?? '')) {
           try {
             const fresh = await call<Project>(`/${projectId}`);
             if (current.current?.id === projectId) accept(fresh);
             const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
             let safe = false;
+            if (body instanceof FormData && path === '/resources' && (!method || method === 'POST') && /^(?:project_)?version_conflict$/.test(failure.code ?? '')) {
+              // A 409 at new-file import occurs before resource admission; the
+              // server removes any staged bytes if its final version check loses.
+              // Retry this one fresh import only, never relink/replace or a
+              // network failure whose admission outcome could be unknown.
+              const requested = body.get('folder_id');
+              const folderId = typeof requested === 'string' && requested ? requested : body.get('role') === 'document' ? 'folder_documents' : 'folder_inbox';
+              if (!folderIsTrashed(fresh, folderId)) {
+                body.set('expected_version', String(fresh.version));
+                const imported = await call<Project>(`/${projectId}${path}`, body, method);
+                if (current.current?.id === projectId) accept(imported);
+                setError(''); return imported;
+              }
+            }
             if (baseline && !(body instanceof FormData)) {
-              if (method === 'PATCH' && !body.expected_editor_versions) safe = Object.keys(body).every(key => key === 'editor_drafts'
+              if (path === '' && method === 'PATCH' && !body.expected_editor_versions) safe = Object.keys(body).every(key => key === 'editor_drafts'
                 ? Object.keys(body.editor_drafts as Record<string, unknown>).every(scope => same(baseline!.editor_drafts[scope], fresh.editor_drafts[scope]))
                 : same(baseline![key as keyof Project], fresh[key as keyof Project]));
               if (path === '/brief/draft' && !/draft.*conflict/.test(failure.code ?? '')) safe = same(baseline.brief_draft, fresh.brief_draft);
@@ -135,9 +152,11 @@ export function useProjectController() {
               if (current.current?.id === projectId) accept(retried);
               setError(''); return retried;
             }
-            setError('This project changed while saving. Your draft is retained. Review the latest saved content before applying it.');
-          } catch { /* Retain current state and draft. */ }
+            message = 'This project changed while saving. Your draft is retained. Review the latest saved content before applying it.';
+          } catch (recoveryFailure) { if (recoveryFailure instanceof Error) message = recoveryFailure.message; }
         }
+        options?.onError?.(message);
+        if (!options?.localError) setError(message);
         return null;
       } finally { setSaving(value => value - 1); }
     });
