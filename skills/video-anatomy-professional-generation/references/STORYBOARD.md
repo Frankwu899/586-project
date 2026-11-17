@@ -26,12 +26,13 @@ constraints and relevant sources. No approved direction means no production gene
    issues produce a clearly marked discussion draft with affected shots identified.
 
 ## Main result
-State the approved concept, planned total duration and material status briefly.
-Then provide exactly these four main columns:
+For the 1.8.3 host, state the approved concept, planned total duration and material
+status as a short Production brief. The main delivery is one Storyboard Sheet
+with these eight display columns:
 
-| Shot | Time | Visual | Audio |
-| --- | --- | --- | --- |
-| Stable shot number | Planned start–end and/or duration | Subject, action, necessary framing and on-screen text | Dialogue/voice-over, sound, music or explicit silence |
+| Shot | Timecode | Framing / Camera | Visual / Action | Dialogue / VO | On-screen Text | Music / SFX | Production Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Human-readable shot number | Planned start–end | Necessary viewpoint and camera movement | Subject and action | Intended dialogue or voice-over | Exact proposed screen wording | Intended music, sound or explicit silence | Resources, continuity, risks and decisions |
 
 One row is one shot/generation segment, not a montage of unrelated views.
 Make the table readable and executable. Concision must not erase essential
@@ -42,8 +43,14 @@ not "explain the benefit" when the actual words are required.
 Link notes to stable shot IDs: beat/purpose, meaningful photographic intent,
 transitions, assets/resources, continuity, evidence, timing risks and unresolved
 decisions. Include the project-level resource needs. Keep routine empty notes out.
-Preserve distinct storage fields for dialogue, screen text, sound and timing;
-four display columns do not justify flattening the data.
+Preserve distinct structured fields for framing/camera, visual/action, dialogue,
+screen text, sound, notes and numeric start/end seconds. The saved shot revision
+is authoritative for editing, reopening and export. The host derives compatible
+script and shot-list views from those same rows; do not create competing primary
+documents. Optional evidence links pin the exact source and evidence revision,
+never the new video's planned time. CSV exports split Start and End into numeric
+columns and keep internal IDs, input manifests and supporting-source metadata
+out of the main table rows. Preserve old free-text packs without inventing shots.
 
 Use one shared plan for both production modes. Add live-action capture guidance
 or AI-video prompts only when requested/needed. Verify the target tool's actual

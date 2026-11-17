@@ -18,6 +18,10 @@ _DOCUMENTS = (("production_brief", "Production brief"), ("script", "Script"),
               ("storyboard", "Storyboard"), ("shot_list", "Shot list"))
 
 
+def _documents(pack):
+    return (("production_brief", "Production brief"), ("storyboard", "Storyboard sheet")) if pack.sheet_format == "storyboard_sheet" else _DOCUMENTS
+
+
 def _selected(project, pack_id, revision):
     matches = [pack for pack in project.packs if pack.id == pack_id]
     if not matches:
@@ -64,7 +68,7 @@ def _metadata(project, pack, historical):
     status = "Historical revision" if historical else "Saved production draft"
     if pack.needs_review:
         status += " · Needs review: confirmed inputs have changed"
-    missing = [label for field, label in _DOCUMENTS if not getattr(pack, field).strip()]
+    missing = [label for field, label in _documents(pack) if not getattr(pack, field).strip()]
     if missing:
         status += " · Incomplete: " + ", ".join(missing)
     return title, [f"Project: {project.title}", f"Content: {title}",
@@ -75,7 +79,7 @@ def _metadata(project, pack, historical):
 def markdown(project, pack, historical=False):
     title, metadata = _metadata(project, pack, historical)
     sections = [f"# {title}", "\n".join(metadata)]
-    for field, label in _DOCUMENTS:
+    for field, label in _documents(pack):
         sections.append(f"## {label}\n\n{getattr(pack, field)}")
     if pack.sources:
         sections.append("## Supporting references\n\n" + "\n".join(f"- {_source_text(source)}" for source in pack.sources))
@@ -86,7 +90,7 @@ def markdown(project, pack, historical=False):
 def printable_html(project, pack, historical=False):
     title, metadata = _metadata(project, pack, historical)
     blocks = [f"<h1>{html.escape(title)}</h1>", "<div class='metadata'>" + "".join(f"<p>{html.escape(line)}</p>" for line in metadata) + "</div>"]
-    for field, label in _DOCUMENTS:
+    for field, label in _documents(pack):
         blocks.append(f"<section><h2>{label}</h2><pre>{html.escape(getattr(pack, field))}</pre></section>")
     if pack.sources:
         blocks.append("<section><h2>Supporting references</h2><ul>" + "".join(f"<li>{html.escape(_source_text(source))}</li>" for source in pack.sources) + "</ul></section>")
@@ -101,12 +105,18 @@ def printable_html(project, pack, historical=False):
 
 def _spreadsheet_cell(value):
     value = str(value)
-    return "'" + value if value.startswith(("=", "+", "-", "@", "\t", "\r")) else value
+    return "'" + value if value.lstrip().startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r")) else value
 
 
 def csv_document(project, pack, historical=False):
     stream = io.StringIO(newline="")
     writer = csv.writer(stream)
+    if pack.sheet_format == "storyboard_sheet":
+        writer.writerow(["Shot", "Start", "End", "Framing / Camera", "Visual / Action", "Dialogue / VO", "On-screen Text", "Music / SFX", "Production Notes"])
+        for index, shot in enumerate(pack.shots, 1):
+            writer.writerow([f"{index:02d}", shot.start_seconds, shot.end_seconds,
+                             *[_spreadsheet_cell(getattr(shot, key)) for key in ("framing_camera", "visual", "dialogue", "on_screen_text", "sound", "notes")]])
+        return stream.getvalue()
     _, metadata = _metadata(project, pack, historical)
     writer.writerow(["Production pack", "\n".join(metadata)])
     shots = getattr(pack, "shots", [])
@@ -137,7 +147,7 @@ def docx_document(project, pack, historical=False):
             runs.append("<w:r>" + ("<w:rPr><w:b/></w:rPr>" if bold else "") + "<w:t xml:space='preserve'>" + html.escape(line) + "</w:t></w:r>")
         return "<w:p>" + "".join(runs) + "</w:p>"
     body = [paragraph(title, True)] + [paragraph(line) for line in metadata]
-    for field, label in _DOCUMENTS:
+    for field, label in _documents(pack):
         body.extend([paragraph(label, True), paragraph(getattr(pack, field))])
     if pack.sources:
         body.append(paragraph("Supporting references", True))
@@ -157,6 +167,8 @@ def export_pack(store, project_id, pack_id, revision=None, format="md"):
     pack, historical = _selected(project, pack_id, revision)
     if all(not getattr(pack, field).strip() for field, _label in _DOCUMENTS):
         raise WorkflowError("production_empty", "Write or generate production content before exporting this empty pack.", 422)
+    if format == "csv" and pack.sheet_format == "storyboard_sheet" and not pack.shots:
+        raise WorkflowError("production_empty", "Add and save at least one planned shot before exporting the storyboard sheet.", 422)
     if not historical:
         from .planning import require_pack_draft_clear
         require_pack_draft_clear(project, pack)

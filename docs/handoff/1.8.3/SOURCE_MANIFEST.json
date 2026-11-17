@@ -1,0 +1,19 @@
+{
+  "source": "Video_Anatomy_1.8.3_COMM_586_Handoff.zip",
+  "baseline": "bd93bfc884b70be81bbf93ddf2c72b42cea7dafc",
+  "sha256": {
+    "START_HERE.md": "31b34c40cf25a197e633761eeb12126df60be0f0414c0bfef0a19419be68eefe",
+    "Video_Anatomy_Product_UX_PRD.md": "b85f7cc12cb489c9c0645699ac286aec13df153541821308cce9076d1db66fc5",
+    "Video_Anatomy_Codex_Master_Handoff.md": "2c67edb1b2ed479630b10a8dbbed52fa646cacd442528e78ead5a7be3b724a32",
+    "MODULE_TASKS.md": "0c4190dcf5924d913a70c1afe8c1cedee5db4e0ccb29fb0cb65c4919faa8caff",
+    "WEB_GUIDANCE.md": "4c3b43144d5d9c9cba7ebda7893940c994443b75e0f8af3c7f0b15c12a797e04",
+    "ui/01_Projects.png": "d6f4deb3f14e996184b77939ab60b11790fea3fcdb8bd743f51349582228e357",
+    "ui/02_Overview.png": "aeccdb12675299b3690940017fce42dffa3021c0d738bf81c5f8cb8a855d412f",
+    "ui/03_Media_Pool.png": "66e797f624d965dd6c49d3a63ecba49a27aad2c711113dcd9efad7217875558e",
+    "ui/04_Source_Review.png": "9d0eb3863a771406cb52fb17432e61ad4de961701fa55e24b55d39408941d7ad",
+    "ui/05_Discover.png": "238e68863dac6c4f9817ac7b3a729dfeb7c404e246bd8dbc157c9d9c04416be4",
+    "ui/06_Analysis.png": "71790770995c10b352bd3628f038a6a30fc070d34331bdf9cb5ec4272dc3a1c8",
+    "ui/07_Content_Plan.png": "fc9bf882dff1670118e27079bd0e6fa4c9c83c2deb77024765ff591a1d2e073d",
+    "ui/08_Production.png": "94116b6db7d32a8461b12bc459cf7da6ffcc5d2d97bb6300f12b92e5f9c913f4"
+  }
+}

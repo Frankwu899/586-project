@@ -26,8 +26,8 @@ export function resourceMessage(resource: Resource) {
   if (resource.status === 'partial') return 'Some results available';
   return ['audio', 'video'].includes(resource.kind) ? 'Media available' : 'File available';
 }
-export const jobLabel: Record<string, string> = { analyze: 'Reference analysis', recognize: 'Reference recognition', reference_extraction: 'Reference recognition', extract: 'File preparation', conversation: 'Project conversation', concepts: 'Series and topic suggestions', directions: 'Creative directions', production: 'Production documents' };
-export const jobStatus: Record<string, string> = { queued: 'Waiting to start', running: 'Processing', succeeded: 'Saved', partial: 'Saved with limitations', failed: 'Needs attention' };
+export const jobLabel: Record<string, string> = { analyze: 'Reference analysis', recognize: 'Reference recognition', reference_extraction: 'Reference recognition', extract: 'File preparation', conversation: 'Project conversation', concepts: 'Series and topic suggestions', topics: 'Topic suggestions', directions: 'Creative directions', production: 'Storyboard sheet' };
+export const jobStatus: Record<string, string> = { queued: 'Waiting to start', running: 'Processing', succeeded: 'Saved', partial: 'Saved with limitations', stopped: 'Stopped', failed: 'Needs attention' };
 export function safeDiagnostic(value: unknown) {
   const raw = typeof value === 'string' ? value : value instanceof Error ? value.message : '';
   return raw.replace(/(?:sk-|sess-)[A-Za-z0-9_-]+/g, '[redacted]').replace(/Bearer\s+\S+/gi, 'Bearer [redacted]').replace(/(?:api[_ -]?key|authorization)\s*[:=]\s*[^\s,}]+/gi, '[credential redacted]').replace(/https?:\/\/[^\s]+/g, '[service URL]').replace(/Traceback[\s\S]*/gi, '[technical traceback omitted]').replace(/\{[\s\S]*\}/g, '[provider payload omitted]').slice(0, 500);

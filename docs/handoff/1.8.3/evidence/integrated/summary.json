@@ -1,0 +1,16 @@
+{
+  "surface_checks": 63,
+  "passed": 63,
+  "failures": 0,
+  "native_window_zoom_combinations": 8,
+  "narrow_viewport": [
+    390,
+    844
+  ],
+  "processing_requests": 0,
+  "screenshots": 81,
+  "exported_csv_receipts": 9,
+  "application_versions": [
+    "1.8.3"
+  ]
+}

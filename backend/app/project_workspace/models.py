@@ -49,7 +49,8 @@ class Message(Model):
     text: str
     resource_ids: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
-    status: Literal["saved", "failed"] = "saved"
+    status: Literal["saved", "failed", "stopped"] = "saved"
+    attempt_id: str | None = None
     reply_to_message_id: str | None = None
     diagnostics: dict[str, str] = Field(default_factory=dict)
     retryable: bool = False
@@ -77,6 +78,7 @@ class EvidenceEvent(Model):
     start_frame: int | None = None
     end_frame: int | None = None
     interpretation: str | None = None
+    precision: Literal["sample", "interval", "estimated", "unknown"] = "unknown"
 
     @model_validator(mode="after")
     def valid_interval(self):
@@ -96,6 +98,26 @@ class EvidenceRevision(Model):
     created_at: str = Field(default_factory=now)
     reviewed: bool = False
     correction_note: str | None = None
+
+
+STARTER_FOLDERS = (
+    ("folder_inbox", "Inbox", "inbox"),
+    ("folder_references", "References", "references"),
+    ("folder_documents", "Documents", "documents"),
+    ("folder_production_assets", "Production Assets", "production_assets"),
+)
+
+
+class ResourceFolder(Model):
+    id: str = Field(default_factory=lambda: uid("folder"))
+    name: str = Field(min_length=1, max_length=200)
+    parent_id: str | None = None
+    builtin_key: Literal["inbox", "references", "documents", "production_assets"] | None = None
+    trashed_at: str | None = None
+
+
+def starter_folders():
+    return [ResourceFolder(id=identity, name=name, builtin_key=key) for identity, name, key in STARTER_FOLDERS]
 
 
 class Resource(Model):
@@ -122,6 +144,24 @@ class Resource(Model):
     playback_path: str | None = None
     media_metadata: dict = Field(default_factory=dict)
     evidence: list[EvidenceRevision] = Field(default_factory=list)
+    folder_id: str | None = None
+    trashed_at: str | None = None
+
+
+def resource_is_trashed(project, resource):
+    if resource.trashed_at:
+        return True
+    folders = {folder.id: folder for folder in project.resource_folders}
+    parent, seen = resource.folder_id, set()
+    while parent and parent not in seen:
+        seen.add(parent)
+        folder = folders.get(parent)
+        if folder is None:
+            return True
+        if folder.trashed_at:
+            return True
+        parent = folder.parent_id
+    return False
 
 
 class Selection(Model):
@@ -144,6 +184,15 @@ class InputManifest(Model):
     context_digest: str | None = None
     claim_ids: list[str] = Field(default_factory=list)
     model: str | None = None
+
+
+class TopicSuggestion(Model):
+    id: str = Field(default_factory=lambda: uid("topic"))
+    title: str
+    description: str = ""
+    series_id: str | None = None
+    inputs: InputManifest = Field(default_factory=InputManifest)
+    added_content_id: str | None = None
 
 
 class StructureNode(Model):
@@ -182,6 +231,13 @@ class ReferenceStructure(Model):
         return self
 
 
+class AnalysisInsight(Model):
+    id: str = Field(default_factory=lambda: uid("insight"))
+    observation: str
+    application: str
+    sources: list[SourceRef] = Field(default_factory=list)
+
+
 class Analysis(Model):
     id: str = Field(default_factory=lambda: uid("analysis"))
     content_id: str | None = None
@@ -195,6 +251,7 @@ class Analysis(Model):
     structures: list[ReferenceStructure] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
     needs_review: bool = False
+    key_insights: list[AnalysisInsight] = Field(default_factory=list)
 
 
 class Direction(Model):
@@ -243,6 +300,8 @@ class ProductionShot(Model):
     on_screen_text: str = ""
     sound: str = ""
     notes: str = ""
+    framing_camera: str = ""
+    sources: list[SourceRef] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def valid_interval(self):
@@ -264,6 +323,7 @@ class ProductionPack(Model):
     sources: list[SourceRef] = Field(default_factory=list)
     needs_review: bool = False
     created_at: str = Field(default_factory=now)
+    sheet_format: Literal["legacy_documents", "storyboard_sheet"] = "legacy_documents"
 
 
 class Job(Model):
@@ -273,9 +333,10 @@ class Job(Model):
     resource_id: str | None = None
     content_id: str | None = None
     message_id: str | None = None
+    attempt_id: str | None = None
     diagnostics: dict[str, str] = Field(default_factory=dict)
     support_details: list[dict[str, str]] = Field(default_factory=list)
-    status: Literal["queued", "running", "succeeded", "partial", "failed"] = "queued"
+    status: Literal["queued", "running", "succeeded", "partial", "failed", "stopped"] = "queued"
     progress: str = "Queued"
     error: str | None = None
     created_at: str = Field(default_factory=now)
@@ -301,6 +362,7 @@ class Project(Model):
     unresolved: list[str] = Field(default_factory=list)
     briefs: list[BriefRevision] = Field(default_factory=list)
     resources: list[Resource] = Field(default_factory=list)
+    resource_folders: list[ResourceFolder] = Field(default_factory=starter_folders)
     selection: Selection = Field(default_factory=Selection)
     analyses: list[Analysis] = Field(default_factory=list)
     series: list[Series] = Field(default_factory=list)
@@ -309,23 +371,55 @@ class Project(Model):
     jobs: list[Job] = Field(default_factory=list)
     editor_drafts: dict[str, dict] = Field(default_factory=dict)
     editor_draft_versions: dict[str, int] = Field(default_factory=dict)
+    topic_suggestions: list[TopicSuggestion] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def legacy_resource_folders(cls, value):
+        """Project old recorded roles once; never move an explicitly located file."""
+        if not isinstance(value, dict):
+            return value
+        value = dict(value)
+        if "resource_folders" not in value:
+            value["resource_folders"] = starter_folders()
+        resources = []
+        for resource in value.get("resources", []):
+            data = resource.model_dump() if isinstance(resource, Resource) else dict(resource)
+            absent = "folder_id" not in data or data["folder_id"] is None
+            if absent:
+                data["folder_id"] = {"reference": "folder_references", "document": "folder_documents",
+                                     "asset": "folder_production_assets"}.get(data.get("role"), "folder_inbox")
+            resources.append(data)
+        value["resources"] = resources
+        return value
 
     @model_validator(mode="after")
     def valid_identities(self):
         def unique(values, label):
             if len(values) != len(set(values)):
                 raise ValueError(f"Duplicate {label} identity")
-        for label in ("resources", "messages", "series", "contents", "jobs"):
+        for label in ("resources", "messages", "series", "contents", "jobs", "resource_folders", "topic_suggestions"):
             unique([item.id for item in getattr(self, label)], label)
         unique([item.revision for item in self.briefs], "brief revision")
         unique([(item.id, item.revision) for item in self.packs], "pack revision")
         resources = {item.id for item in self.resources}
         series = {item.id for item in self.series}
+        folders = {item.id: item for item in self.resource_folders}
+        unique([folder.builtin_key for folder in self.resource_folders if folder.builtin_key], "starter folder")
+        for folder in self.resource_folders:
+            parent, seen = folder.parent_id, {folder.id}
+            while parent:
+                if parent not in folders or parent in seen:
+                    raise ValueError("Resource folders must have an existing parent without cycles")
+                seen.add(parent)
+                parent = folders[parent].parent_id
         for selection in [self.selection, *[item.selection for item in self.contents]]:
             unique(selection.resource_ids, "selected resource")
             if not set(selection.resource_ids).issubset(resources):
                 raise ValueError("A selection references a resource outside its project")
         for resource in self.resources:
+            if resource.folder_id is not None and resource.folder_id not in folders:
+                raise ValueError("A resource references an unknown logical folder")
             unique([item.revision for item in resource.evidence], "evidence revision")
             unique([item.id for item in resource.blocks], "extracted block")
             for revision in resource.evidence:

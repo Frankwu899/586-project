@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .media import MediaError
+from .release import VERSION
 from .models import (M2ApplyRequest, M2ApplyResult, M2DiscardRequest, M2Draft, M2DraftUpdate,
                      Nonempty, TaskState, VersionRef, EditorDraft, EditorDraftUpdate, EditorDiscardRequest)
 from .m2_assistance_models import M2AdoptRequest, M2AssistanceRequest, M2AssistanceResponse
@@ -101,7 +102,7 @@ class EditOutputs(Mutation):
 
 
 def create_app(data_dir: Path | None = None, *, service: WorkflowService | None = None) -> FastAPI:
-    app = FastAPI(title="Video Anatomy", version="1.8.2")
+    app = FastAPI(title="Video Anatomy", version=VERSION)
     svc = service or WorkflowService(Path(data_dir or os.getenv("VIDEO_ANATOMY_DATA_DIR", ".local-data")))
     app.state.service = svc
 
@@ -123,7 +124,7 @@ def create_app(data_dir: Path | None = None, *, service: WorkflowService | None 
     @app.get("/api/health")
     def health():
         return {"status": "ok", "schema_version": "0.7.0",
-                "application_version": "1.8.2", "project_schema_version": "1.8.0",
+                "application_version": VERSION, "project_schema_version": "1.8.0",
                 "real_analysis": "configured" if svc.provider_settings.api_key else "unconfigured",
                 "creative_generation": "provider_for_real_tasks" if svc.provider_settings.api_key else "unconfigured_for_real_tasks",
                 "sample_workflow": "available_offline"}

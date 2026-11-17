@@ -300,7 +300,7 @@ body:has(.va-app) { margin: 0; background: #eaf0fc; color: #161737; overflow: au
 .va-app { color-scheme: light; }
 
 /* 1.8.1: the document owns vertical scrolling; legacy root locks stay isolated. */
-html.va-project-mode { height: auto; min-height: 100%; overflow-y: auto; overflow-x: clip; scroll-padding-block: 20px; }
+html.va-project-mode { height: auto; min-height: 100%; overflow: auto; scroll-padding-block: 20px; }
 html.va-project-mode body, html.va-project-mode #root { height: auto; min-height: 100dvh; max-height: none; overflow: visible; }
 .va-app { width: 100%; overflow-wrap: anywhere; }
 .va-app .va-workspace-main, .va-app .va-dashboard-main { overflow: visible; }
@@ -350,3 +350,42 @@ html.va-project-mode body, html.va-project-mode #root { height: auto; min-height
 
 .va-message-recovery { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
 .va-support .va-actions { flex-wrap: wrap; gap: 8px; }
+
+/* Shared 1.8.3 foundation: the document scrolls; components own bounded panes.
+   Do not conceal overflow at the root: long labels must wrap at their source. */
+.va-app .va-topbar { gap: 12px 24px; padding-inline: clamp(14px, 2vw, 28px); }
+.va-app .va-brand { min-inline-size: 0; max-inline-size: 100%; flex-wrap: wrap; }
+.va-app .va-brand strong { white-space: normal; overflow-wrap: anywhere; }
+.va-app .va-project-heading { flex: 1 1 14rem; max-width: none; min-inline-size: 0; flex-wrap: wrap; gap: 4px 16px; }
+.va-app .va-project-heading > strong { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.va-app .va-project-heading .va-save-state { display: inline-flex; white-space: normal; }
+.va-app .va-topbar-actions { min-inline-size: 0; max-inline-size: 100%; flex-wrap: wrap; }
+.va-app .va-workspace, .va-app .va-dashboard { grid-template-columns: 200px minmax(0, 1fr); }
+.va-app .va-workspace-main, .va-app .va-dashboard-main { min-inline-size: 0; padding: clamp(14px, 2vw, 28px); }
+.va-app .va-workspace-main > div { min-inline-size: 0; max-inline-size: 100%; }
+.va-app .va-rail { min-inline-size: 0; }
+.va-app .va-project-navigation > summary { padding: 10px 12px; min-block-size: 44px; font-size: .875rem; color: #50566f; }
+.va-app .va-project-navigation nav { padding-block: 6px; }
+.va-app .va-project-navigation nav button { min-inline-size: 0; overflow-wrap: anywhere; }
+.va-app :is(button, a, input, textarea, select, summary, [tabindex]) { scroll-margin-block: 16px; }
+.va-app .va-skip-link { position: fixed; inset-block-start: 8px; inset-inline-start: 8px; transform: translateY(-200%); z-index: 120; padding: 12px 16px; border-radius: 8px; background: #fff; color: #30228f; }
+.va-app .va-skip-link:focus { transform: none; }
+.va-app .va-discovery-placeholder { max-inline-size: 640px; margin-block: 28px; padding: clamp(20px, 4vw, 42px); background: #fafaff; }
+.va-app .va-discovery-placeholder > svg { color: var(--va-accent); }
+.va-app .va-discovery-placeholder h2 { margin-block: 18px 8px; }
+.va-app .va-discovery-placeholder p { color: var(--va-muted); max-inline-size: 48ch; margin-block: 12px 24px; }
+.va-app .va-project-dialog:modal { overscroll-behavior: contain; }
+.va-app .va-project-dialog::backdrop { background: #24254460; backdrop-filter: blur(5px); overflow: hidden; overscroll-behavior: contain; }
+@media (max-width: 900px) {
+  .va-app .va-workspace, .va-app .va-dashboard { display: flex; flex-direction: column; }
+  .va-app .va-rail { padding: 8px 14px; border-inline-end: 0; border-block-end: 1px solid #fff; }
+  .va-app .va-rail-title, .va-app .va-rail-bottom { display: none; }
+  .va-app .va-project-navigation nav, .va-app .va-dashboard .va-rail nav { display: flex; flex-wrap: wrap; overflow: visible; gap: 4px; }
+  .va-app .va-project-navigation nav button, .va-app .va-dashboard .va-rail nav button { padding: 8px 12px; font-size: .875rem; min-block-size: 40px; white-space: normal; }
+  .va-app .va-rail .va-all-projects { min-block-size: 36px; padding: 6px 12px; }
+  .va-app .va-project-navigation > summary { padding-block: 6px; min-block-size: 36px; }
+}
+@media (max-width: 700px) {
+  .va-app .va-project-heading { order: 0; flex-basis: 100%; padding: 0; border: 0; }
+  .va-app .va-topbar-actions { margin-inline-start: 0; }
+}

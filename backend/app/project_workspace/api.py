@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import Field
 
 from ..storage import WorkflowError
-from .models import Model, Project, Fact, ExtractedBlock, EvidenceEvent, Job, now
+from .models import Model, Project, Fact, ExtractedBlock, EvidenceEvent, Job, ProductionShot, SourceRef, now
 
 
 class Mutation(Model):
@@ -38,6 +38,10 @@ class Patch(Mutation):
 class MessageBody(Mutation):
     text: str = Field(min_length=1, max_length=30000)
     resource_ids: list[str] = Field(default_factory=list, max_length=30)
+
+
+class StopBody(Mutation):
+    attempt_id: str = Field(min_length=1, max_length=128)
 
 
 class FactsBody(Mutation):
@@ -80,18 +84,50 @@ class GenerateBody(Mutation):
     visual_only: bool = False
 
 
+class TopicsBody(GenerateBody):
+    series_id: str | None = None
+
+
+class FolderBody(Mutation):
+    name: str = Field(min_length=1, max_length=200)
+    parent_id: str | None = None
+
+
+class FolderPatch(Mutation):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    parent_id: str | None = None
+
+
+class ResourcePatch(Mutation):
+    name: str | None = Field(default=None, min_length=1, max_length=250)
+    folder_id: str | None = None
+
+
+class ResourceMove(Mutation):
+    resource_ids: list[str] = Field(min_length=1, max_length=500)
+    folder_id: str | None = None
+
+
+class ContentPatch(Mutation):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=4000)
+    series_id: str | None = None
+
+
 class DirectionBody(Mutation):
     title: str = Field(min_length=1, max_length=200)
     concept: str = Field(min_length=1, max_length=20000)
     hook: str = Field(default="", max_length=10000)
     narrative: str = Field(default="", max_length=20000)
     cta: str = Field(default="", max_length=10000)
+    source_refs: list[SourceRef] = Field(default_factory=list, max_length=100)
 
 
 class DirectionEdit(Mutation):
     revision: int = Field(ge=1)
     fields: dict[str, str]
     expected_editor_version: int | None = Field(default=None, ge=0)
+    source_refs: list[SourceRef] | None = Field(default=None, max_length=100)
 
 
 class Approval(Mutation):
@@ -100,10 +136,12 @@ class Approval(Mutation):
 
 class PackBody(Approval):
     expected_editor_version: int | None = Field(default=None, ge=0)
-    production_brief: str = Field(max_length=100000)
-    script: str = Field(max_length=100000)
-    storyboard: str = Field(max_length=100000)
-    shot_list: str = Field(max_length=100000)
+    production_brief: str | None = Field(default=None, max_length=100000)
+    script: str | None = Field(default=None, max_length=100000)
+    storyboard: str | None = Field(default=None, max_length=100000)
+    shot_list: str | None = Field(default=None, max_length=100000)
+    shots: list[ProductionShot] | None = Field(default=None, max_length=100)
+    sheet_format: Literal["legacy_documents", "storyboard_sheet"] | None = None
 
 
 class ProjectRuntime:
@@ -136,9 +174,9 @@ class ProjectRuntime:
                        creative_model="gpt-6.1-sol", m2_model="gpt-6.1-sol",
                        structure_model="gpt-6.1-sol", research_model="gpt-6.1-sol")
 
-    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None):
+    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None, attempt_id=None):
         from ..release import release_info
-        job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id)
+        job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id, attempt_id=attempt_id)
         job.diagnostics = {"application_version": release_info()["version"],
                            "source_commit": release_info()["source_commit"] or "unknown",
                            "operation": kind, "stage": "queued", "timestamp": job.created_at,
@@ -148,11 +186,17 @@ class ProjectRuntime:
                 job.diagnostics[key] = value
         with self.lock:
             def admit(project):
+                if kind == "conversation" and attempt_id is not None:
+                    request = project.editor_drafts.get("conversation_requests", {}).get(message_id)
+                    if not request or request.get("attempt_id") != attempt_id:
+                        return False  # Stop won the race before background admission.
                 if any(item.status in ("queued", "running") and item.kind == kind
                        and item.resource_id == resource_id and item.content_id == content_id for item in project.jobs):
                     raise WorkflowError("project_busy", "This operation is already running. Its progress is saved.", 409)
                 project.jobs.append(job)
             admitted = self.store.update(project_id, expected_version, admit)
+            if not any(item.id == job.id for item in admitted.jobs):
+                return admitted
             try:
                 self.executor.submit(self._run, project_id, job.id, callback)
             except RuntimeError as exc:
@@ -169,23 +213,29 @@ class ProjectRuntime:
         before_jobs = {job.id for job in self.store.get(project_id).jobs}
         def running(project):
             job = next(item for item in project.jobs if item.id == job_id)
+            if job.status == "stopped":
+                return False
             job.status, job.progress, job.updated_at = "running", "Processing", now()
             job.diagnostics.update(stage="running", timestamp=job.updated_at)
         try:
-            self.store.update(project_id, None, running)
+            admitted = self.store.update(project_id, None, running)
+            if next(job for job in admitted.jobs if job.id == job_id).status == "stopped":
+                return
             callback()
         except Exception as exc:
             from .speech_retry import public_failure
             code, safe = public_failure(exc)
             def failed(project):
                 job = next(item for item in project.jobs if item.id == job_id)
+                if job.status == "stopped":
+                    return False
                 job.status, job.progress, job.error, job.updated_at = "failed", "Failed", safe, now()
                 job.error_code = code
                 job.diagnostics.update(stage="completed", outcome="failed", error_code=code,
                                        timestamp=job.updated_at, elapsed_seconds=f"{time.monotonic() - started:.3f}")
                 if job.kind == "conversation" and job.message_id:
                     reply = next((message for message in reversed(project.messages)
-                                  if message.reply_to_message_id == job.message_id), None)
+                                  if message.reply_to_message_id == job.message_id and message.attempt_id == job.attempt_id), None)
                     if reply:
                         reply.diagnostics["job_id"] = job.id
                         job.diagnostics.update(reply.diagnostics)
@@ -194,13 +244,17 @@ class ProjectRuntime:
         else:
             def completed(project):
                 job = next(item for item in project.jobs if item.id == job_id)
+                if job.status == "stopped":
+                    return False
                 if job.kind == "conversation" and job.message_id:
                     turn = project.editor_drafts.get("conversation_turns", {}).get(job.message_id, {})
+                    if turn.get("attempt_id") != job.attempt_id:
+                        return False
                     outcome = turn.get("status", "failed")
                     job.status = outcome if outcome in ("succeeded", "partial", "failed") else "failed"
                     job.progress = {"succeeded": "Complete", "partial": "Reply saved with limitations", "failed": "Reply needs attention"}[job.status]
                     reply = next((message for message in reversed(project.messages)
-                                  if message.reply_to_message_id == job.message_id), None)
+                                  if message.reply_to_message_id == job.message_id and message.attempt_id == job.attempt_id), None)
                     job.error_code = turn.get("error_code")
                     if reply:
                         job.diagnostics.update(reply.diagnostics)
@@ -322,12 +376,19 @@ def install_project_workspace(app, legacy_service):
             current = runtime.store.get(project_id)
             if any(j.kind == "conversation" and j.status in ("queued", "running") for j in current.jobs):
                 raise WorkflowError("conversation_busy", "A reply is already in progress. Your composer draft is retained.", 409)
-            _, message_id = runtime.conversation.begin_message(project_id, body.expected_version, body.text, body.resource_ids)
+            saved, message_id = runtime.conversation.begin_message(project_id, body.expected_version, body.text, body.resource_ids)
+            attempt_id = saved.editor_drafts["conversation_requests"][message_id]["attempt_id"]
             try:
-                return runtime.submit(project_id, None, "conversation", lambda: runtime.conversation.respond(project_id, message_id), message_id=message_id)
+                return runtime.submit(project_id, None, "conversation", lambda: runtime.conversation.respond(project_id, message_id, attempt_id),
+                                      message_id=message_id, attempt_id=attempt_id)
             except WorkflowError:
-                runtime.conversation._failure(project_id, message_id, "Your message is saved. Assistance could not start; retry after reopening the project.")
+                runtime.conversation._failure(project_id, message_id, "Your message is saved. Assistance could not start; retry after reopening the project.",
+                                              attempt_id=attempt_id)
                 raise
+
+    @router.post("/{project_id}/messages/{message_id}/stop", response_model=Project)
+    def stop_message(project_id: str, message_id: str, body: StopBody):
+        return runtime.conversation.stop(project_id, body.expected_version, message_id, body.attempt_id)
 
     @router.post("/{project_id}/messages/{message_id}/retry", response_model=Project, status_code=202)
     def retry_message(project_id: str, message_id: str, body: Mutation):
@@ -335,13 +396,15 @@ def install_project_workspace(app, legacy_service):
             current = runtime.store.get(project_id)
             if any(job.kind == "conversation" and job.status in ("queued", "running") for job in current.jobs):
                 raise WorkflowError("conversation_busy", "A reply is already in progress. Wait for it to finish.", 409)
-            _, turn_id = runtime.conversation.begin_retry(project_id, body.expected_version, message_id)
+            saved, turn_id = runtime.conversation.begin_retry(project_id, body.expected_version, message_id)
+            attempt_id = saved.editor_drafts["conversation_requests"][turn_id]["attempt_id"]
             try:
                 return runtime.submit(project_id, None, "conversation",
-                                      lambda: runtime.conversation.respond(project_id, turn_id), message_id=turn_id)
+                                      lambda: runtime.conversation.respond(project_id, turn_id, attempt_id),
+                                      message_id=turn_id, attempt_id=attempt_id)
             except WorkflowError:
                 runtime.conversation._failure(project_id, turn_id,
-                    "Your message is saved. Assistance could not start; reopen and retry.")
+                    "Your message is saved. Assistance could not start; reopen and retry.", attempt_id=attempt_id)
                 raise
 
     @router.post("/{project_id}/brief/draft", response_model=Project)
@@ -354,11 +417,46 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/resources", response_model=Project, status_code=202)
     def upload(project_id: str, file: Annotated[UploadFile, File()], expected_version: Annotated[int, Form(ge=1)],
-               role: Annotated[Literal["reference", "document", "asset"], Form()] = "reference"):
+               role: Annotated[Literal["reference", "document", "asset"], Form()] = "reference",
+               folder_id: Annotated[str | None, Form()] = None):
         with runtime.lock:
-            state = runtime.resources.import_file(project_id, expected_version, file.filename or "upload", file.file, role=role)
+            state = runtime.resources.import_file(project_id, expected_version, file.filename or "upload", file.file, role=role, folder_id=folder_id)
             resource_id = state.resources[-1].id
             return runtime.submit(project_id, None, "extract", lambda: runtime.resources.extract(project_id, resource_id), resource_id=resource_id)
+
+    @router.post("/{project_id}/folders", response_model=Project)
+    def folder_create(project_id: str, body: FolderBody):
+        return runtime.resources.create_folder(project_id, body.expected_version, body.name, body.parent_id)
+
+    @router.patch("/{project_id}/folders/{folder_id}", response_model=Project)
+    def folder_edit(project_id: str, folder_id: str, body: FolderPatch):
+        return runtime.resources.edit_folder(project_id, body.expected_version, folder_id,
+                                             body.model_dump(exclude={"expected_version"}, exclude_unset=True))
+
+    @router.post("/{project_id}/folders/{folder_id}/trash", response_model=Project)
+    def folder_trash(project_id: str, folder_id: str, body: Mutation):
+        return runtime.resources.folder_trash(project_id, body.expected_version, folder_id)
+
+    @router.post("/{project_id}/folders/{folder_id}/restore", response_model=Project)
+    def folder_restore(project_id: str, folder_id: str, body: Mutation):
+        return runtime.resources.folder_trash(project_id, body.expected_version, folder_id, restore=True)
+
+    @router.post("/{project_id}/resources/move", response_model=Project)
+    def resource_move(project_id: str, body: ResourceMove):
+        return runtime.resources.move_resources(project_id, body.expected_version, body.resource_ids, body.folder_id)
+
+    @router.patch("/{project_id}/resources/{resource_id}", response_model=Project)
+    def resource_edit(project_id: str, resource_id: str, body: ResourcePatch):
+        return runtime.resources.edit_resource(project_id, body.expected_version, resource_id,
+                                               body.model_dump(exclude={"expected_version"}, exclude_unset=True))
+
+    @router.post("/{project_id}/resources/{resource_id}/trash", response_model=Project)
+    def resource_trash(project_id: str, resource_id: str, body: Mutation):
+        return runtime.resources.resource_trash(project_id, body.expected_version, resource_id)
+
+    @router.post("/{project_id}/resources/{resource_id}/restore", response_model=Project)
+    def resource_restore(project_id: str, resource_id: str, body: Mutation):
+        return runtime.resources.resource_trash(project_id, body.expected_version, resource_id, restore=True)
 
     @router.get("/{project_id}/resources/{resource_id}/file")
     def resource_file(project_id: str, resource_id: str, representation: Literal["original", "playback", "thumbnail"] = "original"):
@@ -406,6 +504,7 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/analyze", response_model=Project, status_code=202)
     def analyze(project_id: str, body: SelectionBody):
+        runtime.analysis.preflight(project_id, body.resource_ids, body.content_id)
         return runtime.submit(project_id, body.expected_version, "analyze", lambda: runtime.analysis.analyze(project_id, body.resource_ids, body.content_id, visual_only=body.visual_only), content_id=body.content_id)
 
     @router.post("/{project_id}/series", response_model=Project)
@@ -415,6 +514,21 @@ def install_project_workspace(app, legacy_service):
     @router.post("/{project_id}/contents", response_model=Project)
     def contents(project_id: str, body: ContentBody):
         return runtime.planning.create_content(project_id, body.expected_version, body.title, body.description, body.series_id)
+
+    @router.patch("/{project_id}/contents/{content_id}", response_model=Project)
+    def content_edit(project_id: str, content_id: str, body: ContentPatch):
+        return runtime.planning.edit_content(project_id, body.expected_version, content_id,
+                                             body.model_dump(exclude={"expected_version"}, exclude_unset=True))
+
+    @router.post("/{project_id}/topics/suggest", response_model=Project, status_code=202)
+    def topics_suggest(project_id: str, body: TopicsBody):
+        runtime.planning.preflight_generation(project_id, instruction=body.instruction, visual_only=body.visual_only)
+        return runtime.submit(project_id, body.expected_version, "topics",
+            lambda: runtime.planning.suggest_topics(project_id, body.instruction, visual_only=body.visual_only, series_id=body.series_id))
+
+    @router.post("/{project_id}/topics/{suggestion_id}/add", response_model=Project)
+    def topic_add(project_id: str, suggestion_id: str, body: Mutation):
+        return runtime.planning.add_topic(project_id, body.expected_version, suggestion_id)
 
     @router.post("/{project_id}/concepts/generate", response_model=Project, status_code=202)
     def concepts(project_id: str, body: GenerateBody):
@@ -428,13 +542,16 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/contents/{content_id}/directions", response_model=Project)
     def direction_create(project_id: str, content_id: str, body: DirectionBody):
-        return runtime.planning.save_direction(project_id, body.expected_version, content_id, body.model_dump(exclude={"expected_version"}))
+        sources = {"source_refs": body.source_refs} if "source_refs" in body.model_fields_set else {}
+        return runtime.planning.save_direction(project_id, body.expected_version, content_id,
+            body.model_dump(exclude={"expected_version", "source_refs"}), **sources)
 
     @router.post("/{project_id}/contents/{content_id}/directions/{direction_id}/edit", response_model=Project)
     def direction_edit(project_id: str, content_id: str, direction_id: str, body: DirectionEdit):
+        sources = {"source_refs": body.source_refs} if "source_refs" in body.model_fields_set else {}
         return runtime.planning.save_direction(project_id, body.expected_version, content_id, body.fields,
                                                 direction_id=direction_id, direction_revision=body.revision,
-                                                expected_editor_version=body.expected_editor_version)
+                                                expected_editor_version=body.expected_editor_version, **sources)
 
     @router.post("/{project_id}/contents/{content_id}/directions/{direction_id}/approve", response_model=Project)
     def approve(project_id: str, content_id: str, direction_id: str, body: Approval):
@@ -451,7 +568,8 @@ def install_project_workspace(app, legacy_service):
     @router.post("/{project_id}/packs/{pack_id}", response_model=Project)
     def pack_save(project_id: str, pack_id: str, body: PackBody):
         return runtime.planning.save_pack(project_id, body.expected_version, pack_id, body.revision,
-                                         body.model_dump(exclude={"expected_version", "revision", "expected_editor_version"}),
+                                         body.model_dump(exclude={"expected_version", "revision", "expected_editor_version"},
+                                                         exclude_unset=True, exclude_none=True),
                                          expected_editor_version=body.expected_editor_version)
 
     @router.get("/{project_id}/packs/{pack_id}/export")
