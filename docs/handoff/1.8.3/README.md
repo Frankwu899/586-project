@@ -4,21 +4,23 @@ The five specification files and eight UI references are verbatim copies of the
 owner-provided handoff. SOURCE_MANIFEST.json records their SHA-256 digests.
 The PRD defines planned behavior; screenshots supply layout direction.
 
-## Current assigned batch
+## Current assignment
 
-Only the shared layout foundation and stream A (Overview) are assigned.
-The implementation base is bd93bfc884b70be81bbf93ddf2c72b42cea7dafc,
+The owner's 17 November follow-up authorizes completing A, B and C, the shared
+layout, Projects dashboard, reserved Discover page, integration regression and
+one Mac testing ZIP without intermediate review stops. A is committed at
+20e33d5. The original base remains bd93bfc884b70be81bbf93ddf2c72b42cea7dafc,
 branch fix/integration/video-anatomy-1-8-2, open Draft PR #19. It depends on
 open Draft #18 at fdfd57f7459050a2b3980d6c0ebe399d0c17749c and #17 at
 5b72ac1f5a33a82c9aeeaa1e519edf8eefcfc5f8. Main was rechecked at
 462bdd67b16a0883c9fd1a04e6778dd77ca4a566. No dependency merge is implied.
 
-The task branch is feat/integration/1-8-3-overview-layout; its Draft PR targets
-fix/integration/video-anatomy-1-8-2 to expose this batch only. Application and
-package release identities remain 1.8.2 until the final integrated candidate.
-Resources, Source Review, Analysis, Content plan and Production redesigns are
-reserved for later assignments. No paid inference, release publication or merge
-is part of this batch.
+The single integration task branch is feat/integration/1-8-3-overview-layout;
+its eventual Draft PR targets fix/integration/video-anatomy-1-8-2. Each batch
+receives its own tested commit. Update the application/package version once on
+the final 1.8.3 candidate. Deliver only Video-Anatomy-1.8.3-mac.zip, with exactly
+README.txt and Video Anatomy.app at its root. No main merge, formal publication,
+discovery crawler, editor, renderer or video generator is authorized.
 
 ## Coordinated ownership
 

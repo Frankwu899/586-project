@@ -370,6 +370,12 @@ html.va-project-mode body, html.va-project-mode #root { height: auto; min-height
 .va-app :is(button, a, input, textarea, select, summary, [tabindex]) { scroll-margin-block: 16px; }
 .va-app .va-skip-link { position: fixed; inset-block-start: 8px; inset-inline-start: 8px; transform: translateY(-200%); z-index: 120; padding: 12px 16px; border-radius: 8px; background: #fff; color: #30228f; }
 .va-app .va-skip-link:focus { transform: none; }
+.va-app .va-discovery-placeholder { max-inline-size: 640px; margin-block: 28px; padding: clamp(20px, 4vw, 42px); background: #fafaff; }
+.va-app .va-discovery-placeholder > svg { color: var(--va-accent); }
+.va-app .va-discovery-placeholder h2 { margin-block: 18px 8px; }
+.va-app .va-discovery-placeholder p { color: var(--va-muted); max-inline-size: 48ch; margin-block: 12px 24px; }
+.va-app .va-project-dialog:modal { overscroll-behavior: contain; }
+.va-app .va-project-dialog::backdrop { background: #24254460; backdrop-filter: blur(5px); overflow: hidden; overscroll-behavior: contain; }
 @media (max-width: 900px) {
   .va-app .va-workspace, .va-app .va-dashboard { display: flex; flex-direction: column; }
   .va-app .va-rail { padding: 8px 14px; border-inline-end: 0; border-block-end: 1px solid #fff; }

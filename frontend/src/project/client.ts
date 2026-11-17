@@ -3,11 +3,27 @@ import type { Project } from './contracts';
 import { failureMessage } from './status';
 
 const LAST_PROJECT = 'video-anatomy:current-project';
+const RECENT_PROJECTS = 'video-anatomy:recent-projects';
+export function recentProjectOpenings(): Record<string, string> {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(RECENT_PROJECTS) ?? '{}');
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      return Object.fromEntries(Object.entries(saved).filter(([, value]) => typeof value === 'string' && !Number.isNaN(Date.parse(value))));
+    }
+  } catch { /* Library records remain usable without browser preferences. */ }
+  return {};
+}
 function rememberProject(id: string | null) {
   const url = new URL(window.location.href);
   if (id) url.searchParams.set('project', id); else url.searchParams.delete('project');
   window.history.replaceState(null, '', url);
-  try { if (id) localStorage.setItem(LAST_PROJECT, id); else localStorage.removeItem(LAST_PROJECT); } catch { /* URL still preserves tab refresh. */ }
+  try {
+    if (id) {
+      localStorage.setItem(LAST_PROJECT, id);
+      const recent = { ...recentProjectOpenings(), [id]: new Date().toISOString() };
+      localStorage.setItem(RECENT_PROJECTS, JSON.stringify(Object.fromEntries(Object.entries(recent).sort((a, b) => b[1].localeCompare(a[1])).slice(0, 100))));
+    } else localStorage.removeItem(LAST_PROJECT);
+  } catch { /* URL still preserves tab refresh. */ }
 }
 
 export class ProjectError extends Error {
