@@ -107,6 +107,12 @@ export function useProjectController() {
                 ? Object.keys(body.editor_drafts as Record<string, unknown>).every(scope => same(baseline!.editor_drafts[scope], fresh.editor_drafts[scope]))
                 : same(baseline![key as keyof Project], fresh[key as keyof Project]));
               if (path === '/brief/draft' && !/draft.*conflict/.test(failure.code ?? '')) safe = same(baseline.brief_draft, fresh.brief_draft);
+              // Job admission can advance the aggregate between click and save.
+              // Only retry Stop for its exact saved attempt, never a newer retry.
+              const stop = path.match(/^\/messages\/([^/]+)\/stop$/);
+              if (stop && failure.code === 'project_version_conflict' && typeof body.attempt_id === 'string') {
+                safe = fresh.jobs.some(job => job.kind === 'conversation' && job.message_id === stop[1] && job.attempt_id === body.attempt_id);
+              }
             }
             if (safe && !(payload instanceof FormData)) {
               const retried = await call<Project>(`/${projectId}${path}`, { ...payload, expected_version: fresh.version }, method);

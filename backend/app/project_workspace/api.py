@@ -40,6 +40,10 @@ class MessageBody(Mutation):
     resource_ids: list[str] = Field(default_factory=list, max_length=30)
 
 
+class StopBody(Mutation):
+    attempt_id: str = Field(min_length=1, max_length=128)
+
+
 class FactsBody(Mutation):
     facts: list[Fact] = Field(max_length=100)
     expected_draft_version: int | None = Field(default=None, ge=1)
@@ -136,9 +140,9 @@ class ProjectRuntime:
                        creative_model="gpt-6.1-sol", m2_model="gpt-6.1-sol",
                        structure_model="gpt-6.1-sol", research_model="gpt-6.1-sol")
 
-    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None):
+    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None, attempt_id=None):
         from ..release import release_info
-        job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id)
+        job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id, attempt_id=attempt_id)
         job.diagnostics = {"application_version": release_info()["version"],
                            "source_commit": release_info()["source_commit"] or "unknown",
                            "operation": kind, "stage": "queued", "timestamp": job.created_at,
@@ -148,11 +152,17 @@ class ProjectRuntime:
                 job.diagnostics[key] = value
         with self.lock:
             def admit(project):
+                if kind == "conversation" and attempt_id is not None:
+                    request = project.editor_drafts.get("conversation_requests", {}).get(message_id)
+                    if not request or request.get("attempt_id") != attempt_id:
+                        return False  # Stop won the race before background admission.
                 if any(item.status in ("queued", "running") and item.kind == kind
                        and item.resource_id == resource_id and item.content_id == content_id for item in project.jobs):
                     raise WorkflowError("project_busy", "This operation is already running. Its progress is saved.", 409)
                 project.jobs.append(job)
             admitted = self.store.update(project_id, expected_version, admit)
+            if not any(item.id == job.id for item in admitted.jobs):
+                return admitted
             try:
                 self.executor.submit(self._run, project_id, job.id, callback)
             except RuntimeError as exc:
@@ -169,23 +179,29 @@ class ProjectRuntime:
         before_jobs = {job.id for job in self.store.get(project_id).jobs}
         def running(project):
             job = next(item for item in project.jobs if item.id == job_id)
+            if job.status == "stopped":
+                return False
             job.status, job.progress, job.updated_at = "running", "Processing", now()
             job.diagnostics.update(stage="running", timestamp=job.updated_at)
         try:
-            self.store.update(project_id, None, running)
+            admitted = self.store.update(project_id, None, running)
+            if next(job for job in admitted.jobs if job.id == job_id).status == "stopped":
+                return
             callback()
         except Exception as exc:
             from .speech_retry import public_failure
             code, safe = public_failure(exc)
             def failed(project):
                 job = next(item for item in project.jobs if item.id == job_id)
+                if job.status == "stopped":
+                    return False
                 job.status, job.progress, job.error, job.updated_at = "failed", "Failed", safe, now()
                 job.error_code = code
                 job.diagnostics.update(stage="completed", outcome="failed", error_code=code,
                                        timestamp=job.updated_at, elapsed_seconds=f"{time.monotonic() - started:.3f}")
                 if job.kind == "conversation" and job.message_id:
                     reply = next((message for message in reversed(project.messages)
-                                  if message.reply_to_message_id == job.message_id), None)
+                                  if message.reply_to_message_id == job.message_id and message.attempt_id == job.attempt_id), None)
                     if reply:
                         reply.diagnostics["job_id"] = job.id
                         job.diagnostics.update(reply.diagnostics)
@@ -194,13 +210,17 @@ class ProjectRuntime:
         else:
             def completed(project):
                 job = next(item for item in project.jobs if item.id == job_id)
+                if job.status == "stopped":
+                    return False
                 if job.kind == "conversation" and job.message_id:
                     turn = project.editor_drafts.get("conversation_turns", {}).get(job.message_id, {})
+                    if turn.get("attempt_id") != job.attempt_id:
+                        return False
                     outcome = turn.get("status", "failed")
                     job.status = outcome if outcome in ("succeeded", "partial", "failed") else "failed"
                     job.progress = {"succeeded": "Complete", "partial": "Reply saved with limitations", "failed": "Reply needs attention"}[job.status]
                     reply = next((message for message in reversed(project.messages)
-                                  if message.reply_to_message_id == job.message_id), None)
+                                  if message.reply_to_message_id == job.message_id and message.attempt_id == job.attempt_id), None)
                     job.error_code = turn.get("error_code")
                     if reply:
                         job.diagnostics.update(reply.diagnostics)
@@ -322,12 +342,19 @@ def install_project_workspace(app, legacy_service):
             current = runtime.store.get(project_id)
             if any(j.kind == "conversation" and j.status in ("queued", "running") for j in current.jobs):
                 raise WorkflowError("conversation_busy", "A reply is already in progress. Your composer draft is retained.", 409)
-            _, message_id = runtime.conversation.begin_message(project_id, body.expected_version, body.text, body.resource_ids)
+            saved, message_id = runtime.conversation.begin_message(project_id, body.expected_version, body.text, body.resource_ids)
+            attempt_id = saved.editor_drafts["conversation_requests"][message_id]["attempt_id"]
             try:
-                return runtime.submit(project_id, None, "conversation", lambda: runtime.conversation.respond(project_id, message_id), message_id=message_id)
+                return runtime.submit(project_id, None, "conversation", lambda: runtime.conversation.respond(project_id, message_id, attempt_id),
+                                      message_id=message_id, attempt_id=attempt_id)
             except WorkflowError:
-                runtime.conversation._failure(project_id, message_id, "Your message is saved. Assistance could not start; retry after reopening the project.")
+                runtime.conversation._failure(project_id, message_id, "Your message is saved. Assistance could not start; retry after reopening the project.",
+                                              attempt_id=attempt_id)
                 raise
+
+    @router.post("/{project_id}/messages/{message_id}/stop", response_model=Project)
+    def stop_message(project_id: str, message_id: str, body: StopBody):
+        return runtime.conversation.stop(project_id, body.expected_version, message_id, body.attempt_id)
 
     @router.post("/{project_id}/messages/{message_id}/retry", response_model=Project, status_code=202)
     def retry_message(project_id: str, message_id: str, body: Mutation):
@@ -335,13 +362,15 @@ def install_project_workspace(app, legacy_service):
             current = runtime.store.get(project_id)
             if any(job.kind == "conversation" and job.status in ("queued", "running") for job in current.jobs):
                 raise WorkflowError("conversation_busy", "A reply is already in progress. Wait for it to finish.", 409)
-            _, turn_id = runtime.conversation.begin_retry(project_id, body.expected_version, message_id)
+            saved, turn_id = runtime.conversation.begin_retry(project_id, body.expected_version, message_id)
+            attempt_id = saved.editor_drafts["conversation_requests"][turn_id]["attempt_id"]
             try:
                 return runtime.submit(project_id, None, "conversation",
-                                      lambda: runtime.conversation.respond(project_id, turn_id), message_id=turn_id)
+                                      lambda: runtime.conversation.respond(project_id, turn_id, attempt_id),
+                                      message_id=turn_id, attempt_id=attempt_id)
             except WorkflowError:
                 runtime.conversation._failure(project_id, turn_id,
-                    "Your message is saved. Assistance could not start; reopen and retry.")
+                    "Your message is saved. Assistance could not start; reopen and retry.", attempt_id=attempt_id)
                 raise
 
     @router.post("/{project_id}/brief/draft", response_model=Project)

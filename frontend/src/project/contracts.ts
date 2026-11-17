@@ -17,7 +17,8 @@ export type Role = "user" | "assistant" | "system";
 export type Text = string;
 export type ResourceIds = string[];
 export type CreatedAt1 = string;
-export type Status = "saved" | "failed";
+export type Status = "saved" | "failed" | "stopped";
+export type AttemptId = string | null;
 export type ReplyToMessageId = string | null;
 export type Retryable = boolean;
 export type Messages = Message[];
@@ -185,10 +186,11 @@ export type Kind3 = string;
 export type ResourceId2 = string | null;
 export type ContentId2 = string | null;
 export type MessageId1 = string | null;
+export type AttemptId1 = string | null;
 export type SupportDetails1 = {
   [k: string]: string;
 }[];
-export type Status3 = "queued" | "running" | "succeeded" | "partial" | "failed";
+export type Status3 = "queued" | "running" | "succeeded" | "partial" | "failed" | "stopped";
 export type Progress = string;
 export type Error1 = string | null;
 export type CreatedAt8 = string;
@@ -230,6 +232,7 @@ export interface Message {
   resource_ids: ResourceIds;
   created_at: CreatedAt1;
   status: Status;
+  attempt_id: AttemptId;
   reply_to_message_id: ReplyToMessageId;
   diagnostics: Diagnostics;
   retryable: Retryable;
@@ -447,6 +450,7 @@ export interface Job {
   resource_id: ResourceId2;
   content_id: ContentId2;
   message_id: MessageId1;
+  attempt_id: AttemptId1;
   diagnostics: Diagnostics2;
   support_details: SupportDetails1;
   status: Status3;

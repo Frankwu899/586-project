@@ -53,16 +53,20 @@ test('persisted running assistance survives navigation and restart exposes expli
   await open(page, project);
   await expect(page.locator('.va-assistant-working')).toContainText('Preparing a reply');
   await page.getByLabel('Describe your assignment').fill('A later message stays in the composer.');
-  await expect(page.getByRole('button', { name: 'Send message', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Send message', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Stop response', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Resources', exact: true }).click();
   await page.getByRole('button', { name: 'Overview', exact: true }).click();
   await page.reload();
   await expect(page.locator('.va-assistant-working')).toBeVisible();
-  await page.getByRole('button', { name: 'Add a correction directly' }).click();
+  await page.getByRole('button', { name: 'Review brief', exact: true }).click();
+  await page.getByRole('button', { name: 'Add information', exact: true }).click();
   await page.getByLabel('Information', { exact: true }).fill('objective');
   await page.getByLabel('Correction', { exact: true }).fill('Keep my newer objective.');
   await page.getByRole('button', { name: 'Save suggestion', exact: true }).click();
+  await expect(page.locator('.va-fact-editor')).toBeHidden();
   await expect(page.getByText('Keep my newer objective.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close review', exact: true }).click();
   fixture('restart', project.id);
   await expect(page.locator('.va-assistant-working')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Retry assistance', exact: true })).toBeVisible();
@@ -75,30 +79,36 @@ test('partial assistance preserves useful discussion and unresolved brief review
   await open(page, project);
   await expect(page.locator('.va-message.assistant')).toContainText('Which outcome matters most');
   await expect(page.locator('.va-message.assistant')).toContainText('Some information could not be added');
+  await page.getByRole('button', { name: /^Review changes/ }).click();
   await expect(page.locator('.va-fact.unresolved')).toContainText('Awareness or sign-ups?');
-  await expect(page.getByText('Extracted · review', { exact: true })).toHaveCount(3);
-  await expect(page.getByRole('button', { name: 'Apply confirmed brief', exact: true })).toBeDisabled();
+  await expect(page.getByText('Suggested', { exact: true })).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Apply updates', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Retry assistance', exact: true })).toHaveCount(0);
   await expect(page.locator('.va-fact').filter({ hasText: 'No clinical benefits have been established.' }).getByLabel('Permit this claim’s use. This does not verify its truth.')).toHaveCount(0);
   await expect(page.getByLabel('Permit this claim’s use. This does not verify its truth.')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Close review', exact: true }).click();
   await page.getByText('Support details', { exact: true }).click();
   await expect(page.locator('.va-support pre')).toContainText('proposals[1].excerpt');
   await expect(page.locator('.va-support pre')).toContainText('source_mismatch');
   await page.reload();
+  await page.getByRole('button', { name: /^Review changes/ }).click();
   await expect(page.locator('.va-fact')).toContainText(['Awareness or sign-ups?', 'No clinical benefits have been established.']);
   // English and Chinese product-claim aliases must both remain adoptable only
   // after the user grants permission and explicitly confirms the fact.
   for (const text of ['WellPath brings wellness information together.', '健康信息集中展示。']) {
     const fact = page.locator('.va-fact').filter({ hasText: text });
     await fact.getByLabel('Permit this claim’s use. This does not verify its truth.').check();
-    await fact.getByLabel('Confirm for brief').check();
+    await fact.getByLabel('Use this update').check();
   }
-  await page.getByRole('button', { name: 'Apply confirmed brief', exact: true }).click();
-  await expect(page.getByText('Applied v1', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Apply updates', exact: true }).click();
+  await expect(page.locator('.va-overview-inspector').getByText('In use · v1', { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Applied v1', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('Permit this claim’s use. This does not verify its truth.').nth(0)).toBeChecked();
-  await expect(page.getByLabel('Permit this claim’s use. This does not verify its truth.').nth(1)).toBeChecked();
+  await expect(page.locator('.va-overview-inspector').getByText('In use · v1', { exact: true })).toBeVisible();
+  // Permission lives in the adopted snapshot; unchanged claims are omitted
+  // from the changes-only review instead of reappearing as pending inputs.
+  const saved = await page.request.get(`/api/projects/${project.id}`);
+  const adopted = (await saved.json()).briefs.at(-1).facts;
+  expect(adopted.filter((fact: { permitted_for_use: boolean }) => fact.permitted_for_use)).toHaveLength(2);
   await capture(page, 'overview-partial-proposals');
 });
 

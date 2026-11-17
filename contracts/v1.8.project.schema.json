@@ -779,6 +779,18 @@
           "default": null,
           "title": "Message Id"
         },
+        "attempt_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempt Id"
+        },
         "diagnostics": {
           "additionalProperties": {
             "type": "string"
@@ -803,7 +815,8 @@
             "running",
             "succeeded",
             "partial",
-            "failed"
+            "failed",
+            "stopped"
           ],
           "title": "Status",
           "type": "string"
@@ -841,6 +854,7 @@
         "resource_id",
         "content_id",
         "message_id",
+        "attempt_id",
         "diagnostics",
         "support_details",
         "status",
@@ -887,10 +901,23 @@
           "default": "saved",
           "enum": [
             "saved",
-            "failed"
+            "failed",
+            "stopped"
           ],
           "title": "Status",
           "type": "string"
+        },
+        "attempt_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempt Id"
         },
         "reply_to_message_id": {
           "anyOf": [
@@ -924,6 +951,7 @@
         "resource_ids",
         "created_at",
         "status",
+        "attempt_id",
         "reply_to_message_id",
         "diagnostics",
         "retryable"

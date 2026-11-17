@@ -22,14 +22,15 @@ test('a local project keeps conversation drafts, resources, standalone productio
   await page.getByRole('button', { name: 'Overview', exact: true }).click();
   await expect(page.getByLabel('Describe your assignment')).toHaveValue(/commuter travel mug/);
 
-  await page.getByRole('button', { name: 'Add a correction directly' }).click();
+  await page.getByRole('button', { name: 'Review brief', exact: true }).click();
+  await page.getByRole('button', { name: 'Add information', exact: true }).click();
   await page.getByLabel('Information', { exact: true }).fill('assignment');
   await page.getByLabel('Correction', { exact: true }).fill('Create a 30-second commuter travel mug video.');
   await page.getByRole('button', { name: 'Save suggestion', exact: true }).click();
-  await page.getByLabel('Confirm for brief').check();
-  await expect(page.getByRole('button', { name: 'Apply confirmed brief' })).toBeEnabled();
-  await page.getByRole('button', { name: 'Apply confirmed brief' }).click();
-  await expect(page.getByText('Applied v1', { exact: true })).toBeVisible();
+  await page.getByLabel('Use this update').check();
+  await expect(page.getByRole('button', { name: 'Apply updates', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Apply updates', exact: true }).click();
+  await expect(page.locator('.va-overview-inspector').getByText('In use · v1', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Resources', exact: true }).click();
   const upload = page.locator('.va-library input[type=file]');

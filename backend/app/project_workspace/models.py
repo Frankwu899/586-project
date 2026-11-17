@@ -49,7 +49,8 @@ class Message(Model):
     text: str
     resource_ids: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
-    status: Literal["saved", "failed"] = "saved"
+    status: Literal["saved", "failed", "stopped"] = "saved"
+    attempt_id: str | None = None
     reply_to_message_id: str | None = None
     diagnostics: dict[str, str] = Field(default_factory=dict)
     retryable: bool = False
@@ -273,9 +274,10 @@ class Job(Model):
     resource_id: str | None = None
     content_id: str | None = None
     message_id: str | None = None
+    attempt_id: str | None = None
     diagnostics: dict[str, str] = Field(default_factory=dict)
     support_details: list[dict[str, str]] = Field(default_factory=list)
-    status: Literal["queued", "running", "succeeded", "partial", "failed"] = "queued"
+    status: Literal["queued", "running", "succeeded", "partial", "failed", "stopped"] = "queued"
     progress: str = "Queued"
     error: str | None = None
     created_at: str = Field(default_factory=now)
