@@ -14,9 +14,10 @@ import wave
 import pytest
 
 from backend.app.media_preparation import AudioChunk
+from backend.app.models import FrameTiming
 from backend.app.project_workspace.analysis import AnalysisService
 from backend.app.project_workspace.models import EvidenceEvent, EvidenceRevision, Resource
-from backend.app.project_workspace.speech_retry import merge_retry
+from backend.app.project_workspace.speech_retry import SPEECH_INTERVALS, merge_retry
 from backend.app.project_workspace.store import ProjectStore
 from backend.app.providers.base import ProviderError
 from backend.app.providers.config import ProviderSettings
@@ -561,3 +562,95 @@ def test_complete_video_speech_cache_records_measured_replacement_scope(tmp_path
     incoming = EvidenceRevision(revision=1, coverage={"speech": "none_found"},
         support_details=[{key: str(value) for key, value in record.items()} for record in completed])
     assert merge_retry(previous, incoming, speech_only=True).events == []
+
+
+@pytest.mark.parametrize("replacement", ["Replacement zero", ""], ids=["spoken", "empty"])
+@pytest.mark.parametrize("short_neighbor", [False, True], ids=["whole-failed-chunk", "failed-subframe"])
+def test_video_profile_retry_replaces_raw_chunk_without_erasing_failed_frame_neighbor(
+        tmp_path, monkeypatch, replacement, short_neighbor):
+    store, project, _, resource, _, _, _ = setup_retry(tmp_path)
+    boundaries = [0, .1, .3, .6, .98, 1.01, 1.2, 2] if short_neighbor else [0, .1, .3, .6, .8, 1.02, 1.2, 2]
+    timing = FrameTiming(fps_numerator=5, fps_denominator=1, frame_count=7,
+        media_start_seconds=2.5, frame_boundaries_seconds=boundaries, rate_mode="variable")
+
+    def clear_evidence(value):
+        source = value.resources[0]
+        source.evidence = []
+        source.duration_seconds = 2
+        source.media_metadata["frame_timing"] = timing.model_dump()
+
+    store.update(project.id, project.version, clear_evidence)
+    _, prepared = recognition_input.__wrapped__(tmp_path)
+    prepared = replace(prepared, source_sha256=resource.sha256, audio_chunks=tuple(
+        AudioChunk(_write_wav(tmp_path / f"chunk-{index}.wav", 1), index, index + 1) for index in range(2)))
+    settings = ProviderSettings(api_key="offline-fixture-only", experiment_budget_enabled=False,
+        audio_chunk_seconds=1, max_audio_chunks=3)
+    service = AnalysisService(store, lambda: settings, recognition_factory=lambda current: ProviderRecognitionAdapter(
+        current, vision_provider=AlternateVision(), transcription_provider=OpenAITranscriptionProvider(current),
+        prepare=lambda *_: prepared))
+
+    def transcribe(_self, model, _path, *, metadata):
+        index = metadata["chunk_index"]
+        if model == "whisper-1":
+            return {"text": f"Old machine {index}", "segments": [{"text": f"Old machine {index}",
+                "start": 0, "end": .001 if short_neighbor and index == 1 else 1}]}
+        if index == 0:
+            return {"text": replacement}
+        raise ProviderError("provider_timeout", "Authored offline timeout")
+
+    monkeypatch.setattr(OpenAITransport, "transcribe", transcribe)
+    monkeypatch.setattr(OpenAITransport, "_request", _forbid_structured_provider)
+    first = service.retry_reference(project.id, resource.id, transcription_model="whisper-1")
+    original = first.resources[0].evidence[-1]
+    old_first = next(event for event in original.events if event.text == "Old machine 0")
+    old_neighbor = next(event for event in original.events if event.text == "Old machine 1")
+    assert old_first.end_seconds > 1
+    assert old_neighbor.start_seconds < 1 if short_neighbor else old_neighbor.start_seconds > 1
+    history = [revision.model_dump() for revision in first.resources[0].evidence]
+
+    switched = service.retry_reference(project.id, resource.id, transcription_model="gpt-transcribe")
+    current = switched.resources[0].evidence[-1]
+    assert [revision.model_dump() for revision in switched.resources[0].evidence[:-1]] == history
+    speech = [event for event in current.events if event.kind == "speech"]
+    assert old_neighbor in speech
+    assert old_first not in speech
+    assert [event.text for event in speech] == ([replacement, "Old machine 1"] if replacement else ["Old machine 1"])
+    assert current.coverage["speech"] in {"partial", "failed"}
+    provenance = json.loads(current.diagnostics[SPEECH_INTERVALS])
+    assert set(provenance) == {event.id for event in speech}
+    assert provenance[old_neighbor.id] == [1, 1.001 if short_neighbor else 2]
+    assert old_first.id not in provenance
+    if replacement:
+        new_event = next(event for event in speech if event.text == replacement)
+        assert new_event.id != old_first.id
+        assert provenance[new_event.id] == [0, 1]
+
+    # Repeat both switches through complete and per-chunk caches. Native spans
+    # must continue following the durable IDs assigned by each retry merge.
+    service.retry_reference(project.id, resource.id, transcription_model="whisper-1")
+    repeated = service.retry_reference(project.id, resource.id, transcription_model="gpt-transcribe")
+    evidence = repeated.resources[0].evidence[-1]
+    speech = [event for event in evidence.events if event.kind == "speech"]
+    assert [event.text for event in speech] == ([replacement, "Old machine 1"] if replacement else ["Old machine 1"])
+    provenance = json.loads(evidence.diagnostics[SPEECH_INTERVALS])
+    assert set(provenance) == {event.id for event in speech}
+    assert provenance[next(event.id for event in speech if event.text == "Old machine 1")] == [
+        1, 1.001 if short_neighbor else 2]
+
+
+@pytest.mark.parametrize("empty", [False, True], ids=["overlap", "empty"])
+def test_legacy_frame_speech_without_native_provenance_is_retained_with_partial_coverage(empty):
+    old = EvidenceEvent(id="old", kind="speech", text="Older machine wording", start_seconds=0,
+        end_seconds=1.02, start_frame=0, end_frame=5, precision="estimated")
+    previous = EvidenceRevision(revision=1, events=[old], coverage={"speech": "partial"})
+    incoming = EvidenceRevision(revision=1, coverage={"speech": "none_found" if empty else "observations"},
+        events=[] if empty else [EvidenceEvent(id="new", kind="speech", text="New chunk wording",
+                                               start_seconds=0, end_seconds=1, precision="interval")],
+        support_details=[{"stage": "transcription_chunk", "validation_outcome": "accepted",
+                          "chunk_start_seconds": "0", "chunk_end_seconds": "1"}])
+
+    merged = merge_retry(previous, incoming, speech_only=True)
+    assert old in merged.events
+    assert merged.coverage["speech"] == "partial"
+    assert merged.diagnostics["speech"] == "speech_merge_provenance_missing"
+    assert any("no native audio interval provenance" in note for note in merged.limitations)

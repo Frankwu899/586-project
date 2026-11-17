@@ -476,7 +476,9 @@ class ProviderRecognitionAdapter:
                                 if chunk_errors:
                                     failure = chunk_errors[0]
                                     errors["speech"] = failure
-                                    speech = speech or None
+                                    if not speech and not any(record.get("stage") == "transcription_chunk"
+                                            and record.get("validation_outcome") == "accepted" for record in records):
+                                        speech = None
                                 if hits:
                                     cache_status = "partial_hit" if local_attempts else "hit"
                         if cached and cache_status == "miss":
@@ -668,8 +670,7 @@ class ProviderRecognitionAdapter:
             for index, span in enumerate(speech):
                 first, stop = seconds_to_frame_range(span["start"], span["end"], video.frame_timing)
                 chunk_timing = speech_model == "gpt-transcribe"
-                if chunk_timing:
-                    self.speech_intervals[f"speech_{index}"] = dict(span)
+                self.speech_intervals[f"speech_{index}"] = dict(span)
                 events.append({"start_frame": first, "end_frame": stop, "event_id": f"speech_{index}",
                     "video_id": video.video_id, "lane": "audio", "kind": "speech", "text": span["text"],
                     "source": f"{speech_provider}/{speech_model}" if reused_speech_origin else speech_provider,

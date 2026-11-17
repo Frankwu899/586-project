@@ -29,8 +29,8 @@ from ..release import release_info
 from ..providers.transport import OpenAITransport
 from ..storage import WorkflowError
 from ..timing import seconds_to_frame_range
-from .speech_retry import (CORRECTED_IDS, corrected_ids, merge_retry,
-                           missing_speech_only, public_failure)
+from .speech_retry import (CORRECTED_IDS, SPEECH_INTERVALS, corrected_ids, merge_retry,
+                           missing_speech_only, public_failure, source_speech_intervals)
 from .models import (Analysis, AnalysisInsight, EvidenceEvent, EvidenceRevision, InputManifest, Job,
                      Model, ReferenceStructure, Selection, SourceRef, StructureEdge,
                      StructureNode, invalidate, now, resource_is_trashed, uid)
@@ -302,6 +302,12 @@ class AnalysisService:
                 getattr(event, field) != getattr(old[event.id], field)
                 for field in ("text", "start_seconds", "end_seconds")))
             diagnostics = {**previous.diagnostics, CORRECTED_IDS: json.dumps(sorted(protected))}
+            speech_intervals = source_speech_intervals(previous)
+            speech_intervals.update({event.id: (event.start_seconds, event.end_seconds) for event in previous.events
+                if event.kind == "speech" and event.id not in protected
+                and event.start_frame is None and event.end_frame is None})
+            if speech_intervals:
+                diagnostics[SPEECH_INTERVALS] = json.dumps(speech_intervals, sort_keys=True)
             resource.evidence.append(EvidenceRevision(
                 revision=previous.revision + 1, events=corrected,
                 coverage=previous.coverage.copy(), limitations=previous.limitations.copy(),
@@ -691,12 +697,14 @@ class AnalysisService:
             raise failure
         timing = video.frame_timing
         events = []
+        speech_intervals = {}
         speech_model = getattr(adapter, "speech_model", settings.transcription_model)
         chunk_timing = speech_model == "gpt-transcribe"
         for index, event in enumerate(result.events):
             kind = {"visual_action": "visual", "music": "sound", "sfx": "sound"}.get(event.kind, event.kind)
             interpretations = [s.interpretation for s in result.segments if event.event_id in s.evidence_ids and s.interpretation]
-            chunk = getattr(adapter, "speech_intervals", {}).get(event.event_id) if kind == "speech" and chunk_timing else None
+            native = getattr(adapter, "speech_intervals", {}).get(event.event_id) if kind == "speech" else None
+            chunk = native if chunk_timing else None
             if kind == "speech" and chunk_timing and chunk is None:
                 raise WorkflowError("audio_preparation_invalid", "The whole-chunk transcript has no measured input interval. Saved evidence is retained.", 422)
             events.append(EvidenceEvent(id=f"event_{resource.id}_{index}", kind=kind,
@@ -707,6 +715,8 @@ class AnalysisService:
                 precision="sample" if kind in {"visual", "on_screen_text"} else "interval" if chunk else "estimated" if kind == "speech" else "unknown"))
             if chunk:
                 events[-1].start_frame = events[-1].end_frame = None
+            if native:
+                speech_intervals[events[-1].id] = [native["start"], native["end"]]
         coverage = {key: value for key, value in result.coverage.model_dump().items()}
         if video.has_audio is False:
             coverage["speech"] = "no_audio"
@@ -718,13 +728,15 @@ class AnalysisService:
         diagnostics = {key: public_failure(ProviderError(error.code, error.message))[0]
                        for key, error in result.extraction_failures.items()}
         diagnostics.update(speech_model=speech_model, speech_timing="chunk" if chunk_timing else "segment")
+        if speech_intervals:
+            diagnostics[SPEECH_INTERVALS] = json.dumps(speech_intervals, sort_keys=True)
         limits.extend(public_failure(ProviderError(error.code, error.message))[1] for error in result.extraction_failures.values())
         if speech_only:
             coverage = {"speech": coverage["speech"]}
             limits = ["Speech timing is estimated; retained visual observations were not reprocessed.",
                       *[public_failure(ProviderError(error.code, error.message))[1]
                         for key, error in result.extraction_failures.items() if key == "speech"]]
-            diagnostics = {key: value for key, value in diagnostics.items() if key in {"speech", "speech_model", "speech_timing"}}
+            diagnostics = {key: value for key, value in diagnostics.items() if key in {"speech", "speech_model", "speech_timing", SPEECH_INTERVALS}}
         if chunk_timing:
             limits.append("Each transcript covers its whole submitted audio chunk. Exact sentence and word timing is unavailable; no within-chunk alignment was invented.")
         records = getattr(adapter, "records", [])
