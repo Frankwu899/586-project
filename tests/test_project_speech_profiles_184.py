@@ -654,3 +654,30 @@ def test_legacy_frame_speech_without_native_provenance_is_retained_with_partial_
     assert merged.coverage["speech"] == "partial"
     assert merged.diagnostics["speech"] == "speech_merge_provenance_missing"
     assert any("no native audio interval provenance" in note for note in merged.limitations)
+
+
+def test_visual_only_correction_keeps_native_machine_speech_before_host_frame_snapping(tmp_path):
+    store, project, service, resource, _, speech, _ = setup_retry(tmp_path)
+
+    def source_only_machine(value):
+        evidence = value.resources[0].evidence[-1]
+        evidence.correction_note = None
+        next(event for event in evidence.events if event.kind == "speech").end_seconds = .29
+
+    machine = store.update(project.id, project.version, source_only_machine)
+    previous = machine.resources[0].evidence[-1]
+    submitted = [event.model_copy(deep=True) for event in previous.events]
+    visual = next(event for event in submitted if event.kind == "visual")
+    visual.text = "Only the visible product wording was corrected"
+    corrected = service.correct_evidence(project.id, machine.version, resource.id, submitted)
+    evidence = corrected.resources[0].evidence[-1]
+    saved_speech = next(event for event in evidence.events if event.kind == "speech")
+
+    assert saved_speech.end_seconds == .3
+    assert json.loads(evidence.diagnostics["human_corrected_event_ids"]) == [visual.id]
+    assert json.loads(evidence.diagnostics[SPEECH_INTERVALS])[saved_speech.id] == [0, .29]
+    retried = service.retry_reference(project.id, resource.id)
+    assert speech.calls == 1
+    assert retried.resources[0].evidence[-1].coverage["speech"] == "observations"
+    assert all(event.text != saved_speech.text for event in retried.resources[0].evidence[-1].events
+               if event.kind == "speech")

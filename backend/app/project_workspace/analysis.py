@@ -298,7 +298,7 @@ class AnalysisService:
                 previous.reviewed = bool(reviewed)
                 return
             protected = corrected_ids(previous)
-            protected.update(event.id for event in corrected if any(
+            protected.update(event.id for event in parsed if any(
                 getattr(event, field) != getattr(old[event.id], field)
                 for field in ("text", "start_seconds", "end_seconds")))
             diagnostics = {**previous.diagnostics, CORRECTED_IDS: json.dumps(sorted(protected))}
