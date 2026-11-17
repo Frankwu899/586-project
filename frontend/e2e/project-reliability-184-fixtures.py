@@ -1,6 +1,8 @@
 """Synthetic UI records and real generated silent WAV originals; no provider calls."""
 import hashlib
+import json
 from pathlib import Path
+import sqlite3
 import sys
 import wave
 
@@ -104,4 +106,14 @@ def populate(state):
         latest_failure.support_details[0]["failure_code"] = latest_failure.error_code
 
 
-print(store.update(project.id, project.version, populate).model_dump_json())
+saved = store.update(project.id, project.version, populate)
+if len(sys.argv) > 2 and sys.argv[2] == "legacy_job":
+    # A genuinely omitted additive Job field, as persisted before 1.8.4.
+    payload = saved.model_dump(mode="json")
+    for job in payload["jobs"]:
+        job.pop("resource_ids", None)
+        job.pop("parent_job_id", None)
+    with sqlite3.connect(store.project_dir(project.id) / "project.sqlite3") as db:
+        db.execute("UPDATE project SET payload=? WHERE id=?", (json.dumps(payload), project.id))
+    saved = store.get(project.id)
+print(saved.model_dump_json())

@@ -216,3 +216,52 @@ test('Media Pool advertises 500 MiB and reports per-file success, local failure 
   expect((await load(request, project.id)).resources.map(item => item.name)).toEqual(['real-note.txt', 'last-note.txt']);
   await capture(page, 'media-pool-import-results-and-parameterized-size-limit');
 });
+
+test('legacy tasks with unknown request scope can explicitly generate a new report from checked saved evidence only', async ({ page, request }) => {
+  const project = seed('legacy_job');
+  expect(project.jobs.find(job => job.id === 'failed_summary')?.resource_ids).toEqual([]);
+  const capabilities = await (await request.get('/api/projects/capabilities')).json();
+  expect(capabilities.configured, 'This regression must never call a paid provider').toBe(false);
+  await open(page, project);
+  await page.getByRole('button', { name: 'Activity', exact: true }).click();
+  const oldReport = page.getByRole('article', { name: 'Reference analysis Needs attention', exact: true });
+  await expect(oldReport.getByRole('button', { name: 'Retry report synthesis', exact: true })).toBeDisabled();
+  await expect(oldReport).toContainText('Choose references in Resources and select Use saved evidence only to create a new report.');
+  await page.getByRole('button', { name: 'Close activity', exact: true }).click();
+  const names = ['Alpha partial.wav', 'Beta partial.wav', 'Gamma chunk.wav'];
+  for (const name of names) await page.getByRole('checkbox', { name: `Select ${name}`, exact: true }).check();
+  await page.getByRole('button', { name: 'Analyze 3 references', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Analyze selected references', exact: true });
+  await expect(dialog.locator('ul li')).toHaveText(names);
+  const savedOnly = dialog.getByRole('checkbox', { name: 'Use saved evidence only — skip visual and speech recognition.', exact: true });
+  await expect(savedOnly).toBeEnabled();
+  await expect(savedOnly).not.toBeChecked();
+  await expect(dialog.getByLabel('Speech model', { exact: true })).toBeEnabled();
+  await savedOnly.check();
+  await expect(dialog.getByLabel('Speech model', { exact: true })).toBeDisabled();
+  await expect(dialog).toContainText('The report uses available saved observations and keeps coverage gaps explicit.');
+  await capture(page, 'legacy-explicit-saved-evidence-only-confirmation');
+  const selected = page.waitForRequest(item => item.method() === 'POST' && item.url().endsWith(`/api/projects/${project.id}/selection`));
+  const analyzed = page.waitForRequest(item => item.method() === 'POST' && item.url().endsWith(`/api/projects/${project.id}/analyze`));
+  await dialog.getByRole('button', { name: 'Generate from saved evidence', exact: true }).click();
+  const ids = ['resource_alpha', 'resource_beta', 'resource_gamma'];
+  expect((await selected).postDataJSON()).toMatchObject({ resource_ids: ids, content_id: null });
+  const payload = (await analyzed).postDataJSON();
+  expect(payload).toMatchObject({ resource_ids: ids, content_id: null, synthesis_only: true, visual_only: false });
+  expect(payload).not.toHaveProperty('transcription_model');
+  await expect.poll(async () => (await load(request, project.id)).jobs.filter(job => job.kind === 'analyze').length).toBe(2);
+  await expect.poll(async () => (await load(request, project.id)).jobs.filter(job => job.kind === 'analyze').at(-1)?.status).toBe('failed');
+  const after = await load(request, project.id);
+  const parent = after.jobs.filter(job => job.kind === 'analyze').at(-1)!;
+  expect(parent.resource_ids).toEqual(ids);
+  expect(parent.content_id).toBeNull();
+  expect(parent.error_code).toBe('provider_not_configured');
+  expect(parent.diagnostics.synthesis_only).toBe('true');
+  expect(after.jobs.filter(job => ['reference_extraction', 'recognize'].includes(job.kind))).toEqual(project.jobs.filter(job => ['reference_extraction', 'recognize'].includes(job.kind)));
+  expect(after.resources.map(item => item.evidence)).toEqual(project.resources.map(item => item.evidence));
+  // The user's explicit selection may mark older reports for review; their
+  // content and saved input manifests must still remain intact.
+  expect(after.analyses.map(item => ({ ...item, needs_review: false }))).toEqual(project.analyses.map(item => ({ ...item, needs_review: false })));
+  expect(after.active_content_id).toBe(project.active_content_id);
+  expect(after.selection.resource_ids).toEqual(ids);
+});
