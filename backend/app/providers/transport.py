@@ -20,7 +20,7 @@ from .base import ProviderError
 from .auth import normalize_api_key, provider_connection_error, provider_http_error
 from .config import ProviderSettings
 from .budget import ExperimentBudget, TEXT_MODELS, module_name
-from .catalog import GPT6_MODELS
+from .catalog import GPT6_MODELS, TRANSCRIPTION_PROFILES
 from .local_usage import estimate_local_attempt
 from .diagnostics import safe_diagnostics
 from ..release import release_info
@@ -30,6 +30,7 @@ STRUCTURED_VISION_MODELS = frozenset({"gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
                                     "gpt-4.1-2025-04-14", "gpt-4.1-mini-2025-04-14", "gpt-4.1-nano-2025-04-14",
                                     "gpt-4o-2024-08-06", "gpt-4o-mini-2024-07-18"}) | GPT6_MODELS
 TIMESTAMP_MODELS = frozenset({"whisper-1"})
+TRANSCRIPTION_MODELS = frozenset(TRANSCRIPTION_PROFILES)
 _REQUEST_SLOTS = threading.BoundedSemaphore(2)
 
 
@@ -365,14 +366,19 @@ class OpenAITransport:
                                 diagnostics=self.last_diagnostics()) from exc
 
     def transcribe(self, model: str, audio_path: Path, *, prompt: str = "", metadata=None) -> dict:
-        if model not in TIMESTAMP_MODELS:
-            raise ProviderError("unsupported_model_capability", "Timestamped transcription currently requires whisper-1; other speech models are not assumed to provide segment timing.")
+        profile = TRANSCRIPTION_PROFILES.get(model)
+        if profile is None:
+            raise ProviderError("unsupported_model_capability", "Choose whisper-1 for provider segment timing or gpt-transcribe for whole-chunk transcription; other speech profiles are not supported.")
         if audio_path.stat().st_size > 24 * 1024 * 1024:
             raise ProviderError("provider_input_too_large", "Prepared audio exceeds the supported upload limit; use shorter chunks.")
-        payload = {"model": model, "response_format": "verbose_json", "timestamp_granularities[]": "segment"}
+        payload = {"model": model, "response_format": profile.response_format}
+        if profile.timing == "segment":
+            payload["timestamp_granularities[]"] = "segment"
         if prompt:
             payload["prompt"] = prompt
-        return self._request("audio/transcriptions", model, payload, metadata=metadata, audio_path=audio_path)
+        return self._request("audio/transcriptions", model, payload,
+            metadata={**(metadata or {}), "speech_model": model, "speech_timing": profile.timing},
+            audio_path=audio_path)
 
     def web_search(self, model: str, prompt: str, *, max_tool_calls=2, metadata=None) -> dict:
         """Bounded hosted search. Returned URLs are provenance, never fetched locally."""

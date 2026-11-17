@@ -6,7 +6,8 @@ import math
 import os
 from pathlib import Path
 
-from .catalog import DEFAULT_REASONING_MODEL, DEFAULT_RESEARCH_MODEL, current_model
+from .catalog import (DEFAULT_REASONING_MODEL, DEFAULT_RESEARCH_MODEL,
+                      DEFAULT_TRANSCRIPTION_MODEL, current_model)
 
 
 @dataclass(frozen=True)
@@ -17,7 +18,7 @@ class ProviderSettings:
     creative_provider: str = "openai"
     m2_provider: str = "openai"
     vision_model: str = DEFAULT_REASONING_MODEL
-    transcription_model: str = "whisper-1"
+    transcription_model: str = DEFAULT_TRANSCRIPTION_MODEL
     creative_model: str = DEFAULT_REASONING_MODEL
     m2_model: str = DEFAULT_REASONING_MODEL
     structure_model: str = DEFAULT_REASONING_MODEL
@@ -71,7 +72,7 @@ class ProviderSettings:
             vision_model=current_model(os.getenv("OPENAI_VISION_MODEL")),
             # Dedicated timestamped speech is the owner-approved exception;
             # reasoning, vision and retrieval remain on the GPT-6 defaults.
-            transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", "whisper-1"),
+            transcription_model=os.getenv("OPENAI_TRANSCRIPTION_MODEL", DEFAULT_TRANSCRIPTION_MODEL),
             creative_model=current_model(os.getenv("OPENAI_CREATIVE_MODEL")),
             m2_model=current_model(os.getenv("OPENAI_M2_MODEL")),
             structure_model=current_model(os.getenv("OPENAI_STRUCTURE_MODEL")),

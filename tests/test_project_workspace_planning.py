@@ -559,7 +559,7 @@ def test_series_context_is_in_prompt_and_changes_invalidate_only_member_outputs(
     assert "Surreal animated comedy" in transport.calls[-1]["prompt"]
 
 
-def test_moving_content_between_series_and_deleting_series_change_creative_inputs(tmp_path):
+def test_reparenting_changes_inputs_but_series_trash_preserves_recoverable_approval(tmp_path):
     _, service, transport, project = make_pack(tmp_path)
     item_id = project.contents[0].id
     project = service.create_series(project.id, project.version, "New series", "An observational story")
@@ -570,10 +570,19 @@ def test_moving_content_between_series_and_deleting_series_change_creative_input
     project = service.generate_directions(project.id, item_id)
     project = approve(service, project)
     assert project.contents[0].approved_direction_id
+    approved = project.contents[0].directions[-1].model_copy(deep=True)
     project = service.delete_series(project.id, project.version, series_id)
     assert project.contents[0].series_id is None
-    assert project.contents[0].approved_direction_id is None
-    assert project.contents[0].directions[-1].needs_review
+    assert project.contents[0].approved_direction_id == approved.id
+    assert project.contents[0].directions[-1] == approved
+    # The saved approval is historical while its meaningful group input is absent.
+    with pytest.raises(WorkflowError) as error:
+        service.generate_pack(project.id, item_id)
+    assert error.value.code == "direction_inputs_outdated"
+    project = service.restore_series(project.id, project.version, series_id)
+    transport.response = pack_response()
+    restored = service.generate_pack(project.id, item_id)
+    assert restored.packs[-1].inputs.context_digest == approved.inputs.context_digest
 
 
 def test_series_changes_during_generation_discard_result_but_unrelated_series_edits_do_not(tmp_path):

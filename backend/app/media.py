@@ -28,7 +28,7 @@ class MediaError(ValueError):
 
 @dataclass(frozen=True)
 class MediaSettings:
-    max_bytes: int = 50 * 1024 * 1024
+    max_bytes: int = 500 * 1024 * 1024
     max_duration_seconds: float = 180
     max_width: int = 1920
     max_height: int = 1920
@@ -47,7 +47,7 @@ class MediaSettings:
     @classmethod
     def from_env(cls) -> "MediaSettings":
         return cls(
-            max_bytes=int(os.getenv("VIDEO_MAX_BYTES", str(50*1024*1024))),
+            max_bytes=int(os.getenv("VIDEO_MAX_BYTES", str(500*1024*1024))),
             max_duration_seconds=float(os.getenv("VIDEO_MAX_DURATION_SECONDS", "180")),
             max_width=int(os.getenv("VIDEO_MAX_WIDTH", "1920")),
             max_height=int(os.getenv("VIDEO_MAX_HEIGHT", "1920")),

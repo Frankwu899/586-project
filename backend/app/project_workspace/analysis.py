@@ -15,7 +15,7 @@ import threading
 from typing import Annotated
 from datetime import datetime, timezone
 
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 from ..adapters import RecognitionRequest
 from ..media import MediaSettings, _run_media
@@ -23,17 +23,19 @@ from ..media_preparation import (AudioChunk, PreparedFrame, PreparedMedia,
                                  PreparationSettings, prepare_media, sample_frame_indices, validate_audio_chunk)
 from ..models import FrameTiming, VideoAsset
 from ..providers.base import ProviderError
+from ..providers.catalog import TRANSCRIPTION_MODELS
 from ..providers.recognition import ProviderRecognitionAdapter, SPEECH_BLOCKING_ERRORS
 from ..release import release_info
 from ..providers.transport import OpenAITransport
 from ..storage import WorkflowError
 from ..timing import seconds_to_frame_range
-from .speech_retry import merge_retry, missing_speech_only, public_failure
+from .speech_retry import (CORRECTED_IDS, corrected_ids, merge_retry,
+                           missing_speech_only, public_failure)
 from .models import (Analysis, AnalysisInsight, EvidenceEvent, EvidenceRevision, InputManifest, Job,
                      Model, ReferenceStructure, Selection, SourceRef, StructureEdge,
                      StructureNode, invalidate, now, resource_is_trashed, uid)
 
-ANALYSIS_VERSION = "multi-reference-linked-insights-1"
+ANALYSIS_VERSION = "multi-reference-validated-citation-union-2"
 EXTRACTION_VERSION = "multi-reference-1.8.0-scene1"
 
 
@@ -78,9 +80,66 @@ class Conclusion(Model):
     differences: list[str] = Field(max_length=12)
     opportunities: list[str] = Field(max_length=12)
     limitations: list[str] = Field(max_length=15)
-    citations: list[Citation] = Field(max_length=50)
+    # Older responses can omit this redundant index while citing every graph.
+    # The provider contract still requests a nonempty index; host validation
+    # builds the saved index only from independently validated citations.
+    citations: list[Citation] = Field(default_factory=list, max_length=50)
     structures: list[StructureResult] = Field(min_length=1, max_length=24)
     key_insights: list[InsightResult] = Field(default_factory=list, max_length=5)
+
+
+def _conclusion_schema():
+    schema = Conclusion.model_json_schema()
+    schema["properties"]["citations"]["minItems"] = 1
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "citations"]))
+    return schema
+
+
+def _resolve_conclusion(result, usable):
+    """Validate every supplied link before deriving the report's source index."""
+    def resolve(citation, resource_id=None):
+        resource = next((r for r in usable if r.id == citation.resource_id), None)
+        event = next((e for e in resource.evidence[-1].events if e.id == citation.event_id), None) if resource else None
+        if event is None or (resource_id is not None and resource.id != resource_id):
+            raise WorkflowError("invalid_analysis_citation", "The analysis cited evidence outside the selected source revisions.", 422)
+        return SourceRef(resource_id=resource.id, evidence_revision=resource.evidence[-1].revision,
+                         event_id=event.id, locator=citation.reason, excerpt=event.text,
+                         start_seconds=event.start_seconds, end_seconds=event.end_seconds)
+
+    refs = [resolve(citation) for citation in result.citations]
+    insights = [AnalysisInsight(observation=item.observation, application=item.application,
+                                sources=[resolve(citation) for citation in item.citations]) for item in result.key_insights]
+    if (len({graph.resource_id for graph in result.structures}) != len(result.structures)
+            or {graph.resource_id for graph in result.structures} != {resource.id for resource in usable}):
+        raise WorkflowError("analysis_missing_structure", "The analysis did not provide a separate supported structure for each usable reference. The previous saved result is retained.", 422)
+    structures = [ReferenceStructure(resource_id=graph.resource_id, summary=graph.summary,
+        nodes=[StructureNode(id=node.id, label=node.label, detail=node.detail, kind=node.kind,
+            sources=[resolve(citation, graph.resource_id) for citation in node.citations]) for node in graph.nodes],
+        edges=[StructureEdge(source=edge.source, target=edge.target, label=edge.label, explanation=edge.explanation,
+            sources=[resolve(citation, graph.resource_id) for citation in edge.citations]) for edge in graph.edges]) for graph in result.structures]
+
+    # Do not discard nested sources just because the model repeated only a
+    # subset in its top-level index. Different locators retain their own wording
+    # in the graph/insight while this index contains each exact event once.
+    groups = [refs, *[item.sources for item in insights],
+              *[item.sources for graph in structures for item in [*graph.nodes, *graph.edges]]]
+    refs, seen = [], set()
+    for group in groups:
+        for source in group:
+            identity = (source.resource_id, source.evidence_revision, source.event_id)
+            if identity not in seen:
+                seen.add(identity)
+                refs.append(source)
+    if not refs:
+        raise WorkflowError("analysis_missing_evidence", "The analysis returned no source evidence. Retry the analysis summary; saved recognition is retained.", 422)
+    return refs, insights, structures
+
+
+def _synthesis_validation(transport, outcome, *, code=None, rule=None, field=None, error=None):
+    if hasattr(transport, "validation_result"):
+        transport.validation_result(outcome, code=code, rule=rule, field=field)
+    if error is not None and hasattr(transport, "last_diagnostics"):
+        error.diagnostics = transport.last_diagnostics()
 
 
 def current_analysis(project, content_id=None):
@@ -101,6 +160,8 @@ def content_for(project, content_id):
     content = next((c for c in project.contents if c.id == content_id), None)
     if content is None:
         raise WorkflowError("content_not_found", "This content item does not belong to the project.", 404)
+    if content.trashed_at:
+        raise WorkflowError("content_trashed", "This video is in Trash. Restore it before changing references or starting a new analysis. Saved reports are retained.", 410)
     return content
 
 
@@ -125,7 +186,8 @@ def _support_records(records, project_id, resource_id):
         "cache_status", "attempts", "elapsed_ms", "http_status", "provider_code", "provider_type",
         "provider_request_id", "failure_code", "validation_outcome", "validation_rule", "validation_field",
         "chunk_index", "chunk_start_seconds", "chunk_end_seconds", "valid_segments", "rejected_segments",
-        "retry_after_seconds", "rounded_boundaries", "sample_rate", "channels", "sample_count", "duration_seconds"}
+        "retry_after_seconds", "rounded_boundaries", "sample_rate", "channels", "sample_count", "duration_seconds",
+        "speech_model", "speech_timing", "evidence_revision"}
     provenance = release_info()
     return [{"application_version": provenance["version"], "source_commit": provenance.get("source_commit") or "unknown",
              "project_id": project_id, "resource_id": resource_id,
@@ -212,7 +274,8 @@ class AnalysisService:
                 if not event.text.strip() or not 0 <= event.start_seconds < event.end_seconds <= resource.duration_seconds + 1e-6:
                     raise WorkflowError("invalid_evidence_timing", "Each event needs text and a positive interval inside the original source duration.", 422)
                 item = event.model_copy(deep=True)
-                if timing:
+                if timing and not (item.precision == "interval" and old[event.id].start_frame is None
+                                   and old[event.id].end_frame is None):
                     first, stop = seconds_to_frame_range(item.start_seconds, item.end_seconds, timing)
                     item.start_frame, item.end_frame = first, stop
                     item.start_seconds = timing.frame_boundaries_seconds[first]
@@ -234,10 +297,15 @@ class AnalysisService:
                     return None if checkpointed else False
                 previous.reviewed = bool(reviewed)
                 return
+            protected = corrected_ids(previous)
+            protected.update(event.id for event in corrected if any(
+                getattr(event, field) != getattr(old[event.id], field)
+                for field in ("text", "start_seconds", "end_seconds")))
+            diagnostics = {**previous.diagnostics, CORRECTED_IDS: json.dumps(sorted(protected))}
             resource.evidence.append(EvidenceRevision(
                 revision=previous.revision + 1, events=corrected,
                 coverage=previous.coverage.copy(), limitations=previous.limitations.copy(),
-                diagnostics=previous.diagnostics.copy(),
+                diagnostics=diagnostics,
                 support_details=[item.copy() for item in previous.support_details],
                 processor=previous.processor, reviewed=bool(reviewed),
                 correction_note="User corrected text/timestamps; original extraction is retained in earlier revisions."))
@@ -287,28 +355,43 @@ class AnalysisService:
         digest = hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
         return f"{EXTRACTION_VERSION}; vision={settings.vision_model}; speech={settings.transcription_model}; configuration={digest}"
 
-    def _job(self, project_id, job_id, *, status, progress, error=None, error_code=None, support_details=None):
+    def _job(self, project_id, job_id, *, status, progress, error=None, error_code=None, support_details=None,
+             diagnostics=None):
         def change(project):
             job = next(j for j in project.jobs if j.id == job_id)
             job.status, job.progress, job.error, job.updated_at = status, progress, error, now()
             job.error_code = error_code
             if support_details is not None:
                 job.support_details = support_details
+            if diagnostics is not None:
+                job.diagnostics.update({key: str(value) for key, value in diagnostics.items()})
         return self.store.update(project_id, None, change)
 
-    def analyze(self, project_id, resource_ids, content_id=None, *, visual_only=False):
+    def analyze(self, project_id, resource_ids, content_id=None, *, visual_only=False,
+                synthesis_only=False, progress=None, parent_job_id=None, transcription_model=None):
         ids = self.preflight(project_id, resource_ids, content_id)
         with self._lock(project_id):
-            return self._analyze(project_id, ids, content_id, visual_only=visual_only)
+            return self._analyze(project_id, ids, content_id, visual_only=visual_only,
+                                 synthesis_only=synthesis_only, progress=progress, parent_job_id=parent_job_id,
+                                 transcription_model=transcription_model)
 
-    def retry_reference(self, project_id, resource_id):
+    def retry_reference(self, project_id, resource_id, *, transcription_model=None, parent_job_id=None):
         """Retry one source's recognition without changing any applied selection."""
+        if transcription_model is not None and transcription_model not in TRANSCRIPTION_MODELS:
+            raise WorkflowError("unsupported_model_capability", "Choose whisper-1 for segment timing or gpt-transcribe for whole-chunk transcription.", 422)
         with self._lock(project_id):
             resource = resource_for(self.store.get(project_id), resource_id)
             if resource.kind not in {"video", "audio"}:
                 raise WorkflowError("unsupported_reference", "Reference recognition supports video and audio resources.", 422)
             settings = replace(self.settings_provider(), cache_dir=self.store.resolve_path(project_id, "evidence/provider-results"))
-            self._extract_reference(project_id, resource_id, settings)
+            if transcription_model is not None:
+                settings = replace(settings, transcription_model=transcription_model)
+            options = {}
+            if parent_job_id is not None:
+                options["parent_job_id"] = parent_job_id
+            if transcription_model is not None:
+                options["transcription_model"] = transcription_model
+            self._extract_reference(project_id, resource_id, settings, **options)
             return self.store.get(project_id)
 
     @staticmethod
@@ -321,19 +404,35 @@ class AnalysisService:
                 or draft.get("events") != [event.model_dump() for event in latest.events]):
             raise WorkflowError("evidence_pending_changes", "Apply or discard the pending evidence corrections before retrying recognition. Saved evidence and your draft are retained.", 409)
 
-    def _extract_reference(self, project_id, resource_id, settings, content_id=None):
+    def _extract_reference(self, project_id, resource_id, settings, content_id=None, *, parent_job_id=None,
+                           transcription_model=None):
         resource = resource_for(self.store.get(project_id), resource_id)
-        job = Job(kind="reference_extraction", resource_id=resource_id, content_id=content_id)
+        latest = resource.evidence[-1] if resource.evidence else None
+        previous_model = latest.diagnostics.get("speech_model") if latest else None
+        if latest and not previous_model:
+            match = re.search(r"(?:^|;\s*)speech=([^;]+)", latest.processor)
+            previous_model = match.group(1) if match else "whisper-1"
+        if transcription_model is not None:
+            if transcription_model not in TRANSCRIPTION_MODELS:
+                raise WorkflowError("unsupported_model_capability", "Choose whisper-1 for segment timing or gpt-transcribe for whole-chunk transcription.", 422)
+            settings = replace(settings, transcription_model=transcription_model)
+        elif (previous_model in TRANSCRIPTION_MODELS and settings.transcription_model != "disabled"
+                and settings.transcription_provider != "disabled"):
+            settings = replace(settings, transcription_model=previous_model)
+        job = Job(kind="reference_extraction", resource_id=resource_id, content_id=content_id,
+                  parent_job_id=parent_job_id, diagnostics={"requested_speech_model": settings.transcription_model})
         self.store.update(project_id, None, lambda project: project.jobs.append(job))
         try:
             self._job(project_id, job.id, status="running", progress="Checking local original and reusable evidence")
             source = self._original(project_id, resource)
             self._require_evidence_draft_clear(self.store.get(project_id), resource)
             fingerprint = self._processor(resource, settings)
-            latest = resource.evidence[-1] if resource.evidence else None
+            model_changed = bool(latest and previous_model != settings.transcription_model
+                                 and settings.transcription_model in TRANSCRIPTION_MODELS
+                                 and (transcription_model is not None or previous_model in TRANSCRIPTION_MODELS))
             incomplete = latest and (any(value in {"failed", "partial", "error"} for value in latest.coverage.values())
                                      or (latest.coverage.get("speech") == "not_analyzed" and settings.transcription_model != "disabled" and settings.transcription_provider != "disabled"))
-            if latest and (latest.correction_note or latest.processor == fingerprint) and not incomplete:
+            if latest and (latest.correction_note or latest.processor == fingerprint) and not incomplete and not model_changed:
                 def reuse(project):
                     current = resource_for(project, resource_id)
                     self._require_evidence_draft_clear(project, current)
@@ -344,14 +443,18 @@ class AnalysisService:
                     current.status, current.error = "ready", None
                 self.store.update(project_id, None, reuse)
                 self._job(project_id, job.id, status="succeeded", progress="Reused saved evidence and corrections",
+                    diagnostics={"evidence_revision": latest.revision, "speech_model": previous_model,
+                                 "speech_timing": latest.diagnostics.get("speech_timing", "segment")},
                     support_details=_support_records([{"stage": "saved_evidence_reuse", "started_at": now(),
-                        "job_id": job.id, "cache_status": "hit", "attempts": 0, "validation_outcome": "accepted"}], project_id, resource_id))
+                        "job_id": job.id, "cache_status": "hit", "attempts": 0, "validation_outcome": "accepted",
+                        "evidence_revision": latest.revision, "speech_model": previous_model,
+                        "speech_timing": latest.diagnostics.get("speech_timing", "segment")}], project_id, resource_id))
                 return None
             disabled_audio = resource.kind == "audio" and (settings.transcription_model == "disabled" or settings.transcription_provider == "disabled")
             if not settings.api_key and self.recognition_factory is None and not disabled_audio:
                 raise WorkflowError("provider_not_configured", "Connect your API key in Settings to analyze references.", 422)
             self._job(project_id, job.id, status="running", progress="Extracting source observations and timestamped speech")
-            speech_only = missing_speech_only(latest)
+            speech_only = bool(latest and (model_changed or missing_speech_only(latest)))
             if resource.kind == "video":
                 evidence = self._video_evidence(project_id, resource, source, settings, job.id, speech_only=speech_only)
             elif resource.kind == "audio":
@@ -359,11 +462,13 @@ class AnalysisService:
             else:
                 raise WorkflowError("unsupported_reference", "Reference analysis supports video and audio resources.", 422)
             for detail in evidence.support_details:
-                detail["operation_mode"] = "retry" if latest and incomplete else "new"
-            if latest and incomplete:
+                detail["operation_mode"] = "retry" if latest and (incomplete or model_changed) else "new"
+            if latest and (incomplete or model_changed):
                 evidence = merge_retry(latest, evidence, speech_only=speech_only)
             evidence.revision = latest.revision + 1 if latest else 1
             evidence.processor = fingerprint
+            for detail in evidence.support_details:
+                detail["evidence_revision"] = str(evidence.revision)
             partial = any(value in {"failed", "partial", "error"} for value in evidence.coverage.values())
 
             def commit(project):
@@ -386,6 +491,9 @@ class AnalysisService:
             self.store.update(project_id, None, commit)
             self._job(project_id, job.id, status="partial" if partial else "succeeded",
                       progress="Partial evidence retained" if partial else "Evidence ready for review",
+                      diagnostics={"evidence_revision": evidence.revision,
+                                   "speech_model": evidence.diagnostics.get("speech_model", settings.transcription_model),
+                                   "speech_timing": evidence.diagnostics.get("speech_timing", "segment")},
                       support_details=evidence.support_details)
             return f"{resource.name}: extraction is partial; consult per-channel coverage." if partial else None
         except (WorkflowError, ProviderError, ValueError, OSError) as exc:
@@ -400,26 +508,57 @@ class AnalysisService:
                 self.store.update(project_id, None, fail)
             return f"{resource.name}: {message}"
 
-    def _analyze(self, project_id, resource_ids, content_id, *, visual_only=False):
+    def _analyze(self, project_id, resource_ids, content_id, *, visual_only=False,
+                 synthesis_only=False, progress=None, parent_job_id=None, transcription_model=None):
+        def report(stage, **details):
+            if progress is not None:
+                progress(stage, **details)
+
+        if transcription_model is not None:
+            if transcription_model not in {"whisper-1", "gpt-transcribe"}:
+                raise WorkflowError("unsupported_model_capability", "Choose whisper-1 or gpt-transcribe for this transcription request.", 422)
+            if synthesis_only or visual_only:
+                raise WorkflowError("invalid_analysis_options", "Summary-only and visual-only analysis do not transcribe. Clear the transcription model choice or explicitly retry source transcription.", 422)
         initial = self.store.get(project_id)
         target = content_for(initial, content_id) if content_id else initial
         if target.selection.resource_ids != resource_ids:
+            if synthesis_only:
+                raise WorkflowError("analysis_inputs_changed", "The selected references changed. A summary-only retry cannot restore the previous scope. Keep the current selection or start a new analysis.", 409)
             initial = self.set_selection(project_id, initial.version, resource_ids, content_id)
             target = content_for(initial, content_id) if content_id else initial
         selection_revision = target.selection.revision
         settings = self.settings_provider()
+        if transcription_model is not None:
+            settings = replace(settings, transcription_model=transcription_model)
         # Paid extraction results are durable project evidence, not clearable derivatives.
         settings = replace(settings, cache_dir=self.store.resolve_path(project_id, "evidence/provider-results"))
         failures = []
-        for resource_id in resource_ids:
+        for index, resource_id in enumerate(resource_ids, 1):
+            if synthesis_only:
+                report("validating", resource_id=resource_id, source_index=index, source_total=len(resource_ids))
+                resource = resource_for(self.store.get(project_id), resource_id)
+                self._original(project_id, resource)
+                self._require_evidence_draft_clear(self.store.get(project_id), resource)
+                if not resource.evidence or not resource.evidence[-1].events:
+                    failures.append(f"{resource.name}: no saved usable evidence is available; summary-only retries do not run recognition.")
+                elif any(value in {"failed", "partial", "error", "not_analyzed"}
+                         for value in resource.evidence[-1].coverage.values()):
+                    failures.append(f"{resource.name}: saved evidence has incomplete coverage; only the analysis summary was retried.")
+                continue
             if visual_only:
                 continue
-            failure = self._extract_reference(project_id, resource_id, settings, content_id)
+            report("extracting", resource_id=resource_id, source_index=index, source_total=len(resource_ids))
+            options = {"parent_job_id": parent_job_id} if parent_job_id is not None else {}
+            if transcription_model is not None:
+                options["transcription_model"] = transcription_model
+            failure = self._extract_reference(project_id, resource_id, settings, content_id, **options)
             if failure:
                 failures.append(failure)
 
         snapshot = self.store.get(project_id)
         selected = [resource_for(snapshot, rid).model_copy(deep=True) for rid in resource_ids]
+        for resource in selected:
+            self._require_evidence_draft_clear(snapshot, resource)
         if visual_only:
             failures.append("Continued with visual evidence only by request. Speech, music and sound effects were excluded; audio-dependent meanings remain unknown.")
             for resource in selected:
@@ -472,36 +611,31 @@ class AnalysisService:
             "Describe unavailable selected sources explicitly; do not pretend every source was analyzed. "
             "Views/likes do not establish effectiveness or causality; source advertising claims are not verified facts. "
             "Cite exact supplied resource_id/event_id pairs; do not invent timestamps, IDs or product claims. "
+            "Return a nonempty top-level citations index of the exact events supporting the report. "
+            "Include the sources cited by key_insights and graph nodes/edges; every nested citation must also be valid. "
             f"Write in {settings.analysis_language}.\nINPUT_JSON:\n" + json.dumps(context, ensure_ascii=False))
         if len(prompt.encode()) > 500_000:
             raise WorkflowError("analysis_input_too_large", "The selected evidence is too large for one synthesis. Analyze a smaller selection.", 422)
-        result = Conclusion.model_validate(transport.json_response(settings.structure_model, prompt,
-            Conclusion.model_json_schema(), "project_reference_analysis", metadata={"capability": "structure",
-                "prompt_version": ANALYSIS_VERSION, "instruction_digest": instruction_digest}))
-        def resolve(citation, resource_id=None):
-            resource = next((r for r in usable if r.id == citation.resource_id), None)
-            event = next((e for e in resource.evidence[-1].events if e.id == citation.event_id), None) if resource else None
-            if event is None or (resource_id is not None and resource.id != resource_id):
-                raise WorkflowError("invalid_analysis_citation", "The analysis cited evidence outside the selected source revisions.", 422)
-            return SourceRef(resource_id=resource.id, evidence_revision=resource.evidence[-1].revision,
-                                  event_id=event.id, locator=citation.reason, excerpt=event.text,
-                                  start_seconds=event.start_seconds, end_seconds=event.end_seconds)
-
-        refs = [resolve(citation) for citation in result.citations]
-        insights = [AnalysisInsight(observation=item.observation, application=item.application,
-                                    sources=[resolve(citation) for citation in item.citations]) for item in result.key_insights]
-        if not refs:
-            raise WorkflowError("analysis_missing_evidence", "The analysis returned no source evidence. Retry to obtain a grounded conclusion.", 422)
-        if (len({graph.resource_id for graph in result.structures}) != len(result.structures)
-                or {graph.resource_id for graph in result.structures} != {resource.id for resource in usable}):
-            raise WorkflowError("analysis_missing_structure", "The analysis did not provide a separate supported structure for each usable reference. The previous saved result is retained.", 422)
-        structures = []
-        for graph in result.structures:
-            structures.append(ReferenceStructure(resource_id=graph.resource_id, summary=graph.summary,
-                nodes=[StructureNode(id=node.id, label=node.label, detail=node.detail, kind=node.kind,
-                    sources=[resolve(citation, graph.resource_id) for citation in node.citations]) for node in graph.nodes],
-                edges=[StructureEdge(source=edge.source, target=edge.target, label=edge.label, explanation=edge.explanation,
-                    sources=[resolve(citation, graph.resource_id) for citation in edge.citations]) for edge in graph.edges]))
+        report("synthesizing")
+        response = transport.json_response(settings.structure_model, prompt,
+            _conclusion_schema(), "project_reference_analysis", metadata={"capability": "structure",
+                "prompt_version": ANALYSIS_VERSION, "instruction_digest": instruction_digest,
+                "project_id": project_id, "operation": "retry_summary" if synthesis_only else "new_analysis",
+                **({"job_id": parent_job_id} if parent_job_id else {})})
+        try:
+            report("validating")
+            result = Conclusion.model_validate(response)
+            refs, insights, structures = _resolve_conclusion(result, usable)
+        except ValidationError as exc:
+            error = WorkflowError("invalid_analysis_response", "The analysis summary did not satisfy its supported structure and citation contract. Saved evidence and the previous report are retained; retry the summary.", 422)
+            _synthesis_validation(transport, "rejected", code=error.code, rule="response_schema", field="response", error=error)
+            raise error from exc
+        except WorkflowError as error:
+            structure_failure = error.code == "analysis_missing_structure"
+            _synthesis_validation(transport, "rejected", code=error.code,
+                rule="structure_coverage" if structure_failure else "exact_source_event",
+                field="structures" if structure_failure else "citations", error=error)
+            raise
         analysis = Analysis(content_id=content_id, inputs=manifest, conclusion=result.conclusion,
                             findings=result.findings, differences=result.differences, opportunities=result.opportunities,
                             limitations=list(dict.fromkeys([*failures, *result.limitations])), sources=refs,
@@ -515,10 +649,20 @@ class AnalysisService:
                 raise WorkflowError("analysis_inputs_changed", "The confirmed brief changed during analysis. Your previous saved result is retained; retry with the updated context.", 409)
             for rid, revision in manifest.evidence_revisions.items():
                 resource = resource_for(project, rid)
-                if not resource.evidence or resource.evidence[-1].revision != revision:
+                previous = next(item for item in selected if item.id == rid)
+                if (not resource.evidence or resource.evidence[-1].revision != revision
+                        or resource.sha256 != previous.sha256):
                     raise WorkflowError("analysis_inputs_changed", "Reference evidence changed during analysis. Your previous saved result and corrections are retained; retry when ready.", 409)
+                self._require_evidence_draft_clear(project, resource)
             project.analyses.append(analysis)
-        return self.store.update(project_id, None, finish)
+        try:
+            report("saving")
+            saved = self.store.update(project_id, None, finish)
+        except WorkflowError as error:
+            _synthesis_validation(transport, "rejected", code=error.code, rule="current_inputs", field="inputs", error=error)
+            raise
+        _synthesis_validation(transport, "accepted", rule="grounded_report", field="response")
+        return saved
 
     def _video_evidence(self, project_id, resource, path, settings, job_id, *, speech_only=False):
         metadata = resource.media_metadata
@@ -547,15 +691,22 @@ class AnalysisService:
             raise failure
         timing = video.frame_timing
         events = []
+        speech_model = getattr(adapter, "speech_model", settings.transcription_model)
+        chunk_timing = speech_model == "gpt-transcribe"
         for index, event in enumerate(result.events):
             kind = {"visual_action": "visual", "music": "sound", "sfx": "sound"}.get(event.kind, event.kind)
             interpretations = [s.interpretation for s in result.segments if event.event_id in s.evidence_ids and s.interpretation]
+            chunk = getattr(adapter, "speech_intervals", {}).get(event.event_id) if kind == "speech" and chunk_timing else None
+            if kind == "speech" and chunk_timing and chunk is None:
+                raise WorkflowError("audio_preparation_invalid", "The whole-chunk transcript has no measured input interval. Saved evidence is retained.", 422)
             events.append(EvidenceEvent(id=f"event_{resource.id}_{index}", kind=kind,
                 text=event.text or event.description or "", start_frame=event.start_frame, end_frame=event.end_frame,
-                start_seconds=timing.frame_boundaries_seconds[event.start_frame],
-                end_seconds=timing.frame_boundaries_seconds[event.end_frame],
+                start_seconds=chunk["start"] if chunk else timing.frame_boundaries_seconds[event.start_frame],
+                end_seconds=chunk["end"] if chunk else timing.frame_boundaries_seconds[event.end_frame],
                 interpretation="; ".join(interpretations) or None,
-                precision="sample" if kind in {"visual", "on_screen_text"} else "estimated" if kind == "speech" else "unknown"))
+                precision="sample" if kind in {"visual", "on_screen_text"} else "interval" if chunk else "estimated" if kind == "speech" else "unknown"))
+            if chunk:
+                events[-1].start_frame = events[-1].end_frame = None
         coverage = {key: value for key, value in result.coverage.model_dump().items()}
         if video.has_audio is False:
             coverage["speech"] = "no_audio"
@@ -566,13 +717,16 @@ class AnalysisService:
                   "Speech timing is estimated; music and sound effects were not analyzed."]
         diagnostics = {key: public_failure(ProviderError(error.code, error.message))[0]
                        for key, error in result.extraction_failures.items()}
+        diagnostics.update(speech_model=speech_model, speech_timing="chunk" if chunk_timing else "segment")
         limits.extend(public_failure(ProviderError(error.code, error.message))[1] for error in result.extraction_failures.values())
         if speech_only:
             coverage = {"speech": coverage["speech"]}
             limits = ["Speech timing is estimated; retained visual observations were not reprocessed.",
                       *[public_failure(ProviderError(error.code, error.message))[1]
                         for key, error in result.extraction_failures.items() if key == "speech"]]
-            diagnostics = {key: value for key, value in diagnostics.items() if key == "speech"}
+            diagnostics = {key: value for key, value in diagnostics.items() if key in {"speech", "speech_model", "speech_timing"}}
+        if chunk_timing:
+            limits.append("Each transcript covers its whole submitted audio chunk. Exact sentence and word timing is unavailable; no within-chunk alignment was invented.")
         records = getattr(adapter, "records", [])
         if any(record.get("rounded_boundaries", 0) for record in records):
             limits.append("Provider timestamp rounding of at most 0.10 seconds was clamped to the source chunk boundary; no words were split.")
@@ -689,7 +843,10 @@ class AnalysisService:
         directory = self.store.resolve_path(project_id, f"cache/audio/{key}")
         directory.mkdir(parents=True, exist_ok=True)
         transport = self.transport_factory(settings)
-        events, errors, diagnostics, records = [], [], {}, []
+        chunk_timing = settings.transcription_model == "gpt-transcribe"
+        events, errors, records = [], [], []
+        diagnostics = {"speech_model": settings.transcription_model,
+                       "speech_timing": "chunk" if chunk_timing else "segment"}
         blocked = None
         for index in range(count):
             start = index * settings.audio_chunk_seconds
@@ -698,13 +855,17 @@ class AnalysisService:
             detail = {"stage": "transcription_chunk", "capability": "timestamped_transcription", "job_id": job_id,
                       "project_id": project_id, "resource_id": resource.id, "requested_model": settings.transcription_model,
                       "started_at": begun.isoformat(), "chunk_index": index, "chunk_start_seconds": start,
-                      "chunk_end_seconds": end, "cache_status": "miss", "attempts": 0}
-            chunk_key = hashlib.sha256(f"{key}:{index}:{settings.transcription_model}:speech-v1".encode()).hexdigest()
+                      "chunk_end_seconds": end, "cache_status": "miss", "attempts": 0,
+                      "speech_model": settings.transcription_model,
+                      "speech_timing": "chunk" if chunk_timing else "segment"}
+            contract = ":json:chunk-v1" if chunk_timing else ""
+            chunk_key = hashlib.sha256(f"{key}:{index}:{settings.transcription_model}:speech-v1{contract}".encode()).hexdigest()
             retained = self.store.resolve_path(project_id, f"evidence/speech-chunks/{chunk_key}.json")
             spans = None
             if retained.is_file():
                 try:
-                    spans = ProviderRecognitionAdapter._validate_cached_speech(json.loads(retained.read_text()), duration)
+                    spans = ProviderRecognitionAdapter._validate_cached_speech(json.loads(retained.read_text()), duration,
+                        model=settings.transcription_model, chunks=(AudioChunk(retained, start, end),))
                     if any(span["start"] < start or span["end"] > end for span in spans):
                         spans = None
                 except (ValueError, OSError, TypeError):
@@ -742,7 +903,8 @@ class AnalysisService:
                     detail["attempts"] = 1
                     raw = transport.transcribe(settings.transcription_model, wav,
                         metadata={**detail, "audio_seconds": end - start})
-                    spans, issues, rounded = ProviderRecognitionAdapter._normalize_speech_result(raw, chunk, duration)
+                    spans, issues, rounded = ProviderRecognitionAdapter._normalize_speech_result(raw, chunk, duration,
+                        model=settings.transcription_model)
                     detail.update(valid_segments=len(spans), rejected_segments=len(issues), rounded_boundaries=rounded,
                                   validation_outcome="partial" if issues and spans else "rejected" if issues else "accepted")
                     if issues:
@@ -757,7 +919,8 @@ class AnalysisService:
                                                     rule=detail.get("validation_rule"), field="segments")
                 for segment, span in enumerate(spans):
                     events.append(EvidenceEvent(id=f"event_{resource.id}_{index}_{segment}", kind="speech", text=span["text"],
-                                                start_seconds=span["start"], end_seconds=span["end"], precision="estimated"))
+                                                start_seconds=span["start"], end_seconds=span["end"],
+                                                precision="interval" if chunk_timing else "estimated"))
             except (ProviderError, ValueError, OSError) as exc:
                 if not isinstance(exc, (ProviderError, WorkflowError)):
                     exc = ProviderError(getattr(exc, "code", "audio_preparation_invalid"), "Audio preparation failed; check the original source and FFmpeg.")
@@ -780,6 +943,8 @@ class AnalysisService:
                 detail["elapsed_ms"] = round((datetime.now(timezone.utc) - begun).total_seconds() * 1000)
                 records.append(detail)
         notes = ["Audio has no video frame rate. Speech timestamps are provider estimates; music/SFX are not analyzed.", *errors]
+        if chunk_timing:
+            notes.append("Each transcript covers its whole submitted audio chunk. Exact sentence and word timing is unavailable; no within-chunk alignment was invented.")
         if not events and not errors:
             notes.append("The transcription engine detected no speech. An empty transcript does not establish that the source contains no speech.")
         if any(record.get("rounded_boundaries", 0) for record in records):

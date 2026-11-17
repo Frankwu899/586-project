@@ -240,6 +240,36 @@
           ],
           "default": null,
           "title": "Approved Direction Revision"
+        },
+        "trashed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trashed At"
+        },
+        "series_assignment_version": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Series Assignment Version",
+          "type": "integer"
+        },
+        "context_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Title"
         }
       },
       "required": [
@@ -252,7 +282,10 @@
         "selection",
         "directions",
         "approved_direction_id",
-        "approved_direction_revision"
+        "approved_direction_revision",
+        "trashed_at",
+        "series_assignment_version",
+        "context_title"
       ],
       "title": "ContentItem",
       "type": "object"
@@ -843,6 +876,25 @@
           "default": null,
           "title": "Attempt Id"
         },
+        "parent_job_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Job Id"
+        },
+        "resource_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resource Ids",
+          "type": "array"
+        },
         "diagnostics": {
           "additionalProperties": {
             "type": "string"
@@ -907,6 +959,8 @@
         "content_id",
         "message_id",
         "attempt_id",
+        "parent_job_id",
+        "resource_ids",
         "diagnostics",
         "support_details",
         "status",
@@ -1560,6 +1614,37 @@
           "default": false,
           "title": "Needs Review",
           "type": "boolean"
+        },
+        "trashed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trashed At"
+        },
+        "detached_contents": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Detached Contents",
+          "type": "object"
+        },
+        "context_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Title"
         }
       },
       "required": [
@@ -1567,7 +1652,10 @@
         "title",
         "concept",
         "inputs",
-        "needs_review"
+        "needs_review",
+        "trashed_at",
+        "detached_contents",
+        "context_title"
       ],
       "title": "Series",
       "type": "object"

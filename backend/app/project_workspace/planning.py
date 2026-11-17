@@ -96,11 +96,22 @@ def _text(value, label, *, maximum=30000, allow_empty=False):
     return value.strip()
 
 
-def _item(project, content_id):
+def _item(project, content_id, *, include_trashed=False):
     item = next((entry for entry in project.contents if entry.id == content_id), None)
     if item is None:
         raise WorkflowError("content_not_found", "This content item does not belong to the project.", 404)
+    if item.trashed_at and not include_trashed:
+        raise WorkflowError("content_trashed", "This video is in Trash. Restore it before editing or generating new work; its saved history is retained.", 410)
     return item
+
+
+def _series(project, series_id, *, include_trashed=False):
+    series = next((entry for entry in project.series if entry.id == series_id), None)
+    if series is None:
+        raise WorkflowError("series_not_found", "This series does not belong to the project.", 404)
+    if series.trashed_at and not include_trashed:
+        raise WorkflowError("series_trashed", "This series is in Trash. Restore it or choose an active series.", 410)
+    return series
 
 
 def _direction(item, direction_id, revision=None):
@@ -184,6 +195,8 @@ def _invalidate_plan_inputs(project, content_id):
 
 def _context(project, item=None, *, require_brief=True, require_evidence=True,
              exploration=False, visual_only=False, instruction="", allow_unavailable=False):
+    if item is not None and item.trashed_at:
+        raise WorkflowError("content_trashed", "Restore this video before preparing new work. Saved revisions remain available.", 410)
     brief = project.briefs[-1] if project.briefs else None
     facts = [] if brief is None else [fact.model_dump(mode="json") for fact in brief.facts
                                      if fact.status == "confirmed" and fact.value.strip()
@@ -247,15 +260,13 @@ def _context(project, item=None, *, require_brief=True, require_evidence=True,
         revisions[resource_id] = latest.revision
         evidence.append({"resource_id": resource.id, "name": resource.name,
                          "source_url": resource.source_url, "evidence": payload})
-    series = next((entry for entry in project.series if entry.id == item.series_id), None) if item and item.series_id else None
-    if item and item.series_id and series is None:
-        raise WorkflowError("series_not_found", "The content item's assigned series is unavailable. Choose an existing series or make it standalone.", 422)
+    series = _series(project, item.series_id) if item and item.series_id else None
     # An empty-concept series is organization only. Its stable grouping must not
     # change a standalone video's creative inputs or manufacture a new approval.
-    series_context = None if series is None or not series.concept.strip() else {"id": series.id, "title": series.title, "concept": series.concept}
+    series_context = None if series is None or not series.concept.strip() else {"id": series.id, "title": series.context_title or series.title, "concept": series.concept}
     limitations = list(dict.fromkeys(limitations))
     context = {"confirmed_facts": facts, "reference_evidence": evidence,
-               "content": None if item is None else {"title": item.title, "description": item.description, "series_id": item.series_id if series_context else None},
+               "content": None if item is None else {"title": item.context_title or item.title, "description": item.description, "series_id": item.series_id if series_context else None},
                "series": series_context, "exploratory": not bool(facts), "visual_only": visual_only,
                "limitations": limitations, "unresolved": project.unresolved}
     manifest = InputManifest(brief_revision=brief.revision if brief else None,
@@ -280,13 +291,11 @@ def _same_inputs(left, right):
 def _topics_context(project, instruction, visual_only, series_id):
     context, manifest = _context(project, require_brief=False, exploration=True,
                                  visual_only=visual_only, instruction=instruction)
-    series = next((entry for entry in project.series if entry.id == series_id), None) if series_id else None
-    if series_id and series is None:
-        raise WorkflowError("series_not_found", "This series is no longer available. Choose an existing series or request standalone topics.", 404)
-    scope = None if series is None else {"id": series.id, "title": series.title, "concept": series.concept}
+    series = _series(project, series_id) if series_id else None
+    scope = None if series is None else {"id": series.id, "title": series.context_title or series.title, "concept": series.concept}
     context["topic_series"] = scope
     context["instruction"] = instruction
-    context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents]
+    context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents if not item.trashed_at]
     manifest.context_digest = _hash({"context": manifest.context_digest, "topic_series": scope})
     return context, manifest
 
@@ -495,6 +504,12 @@ class PlanningService:
     def __init__(self, store, settings_provider, transport_factory=OpenAITransport):
         self.store, self.settings_provider, self.transport_factory = store, settings_provider, transport_factory
 
+    def require_active_content(self, project_id, content_id):
+        return _item(self.store.get(project_id), content_id)
+
+    def require_active_series(self, project_id, series_id):
+        return _series(self.store.get(project_id), series_id)
+
     def _response(self, module, operation, context, response_type):
         settings = self.settings_provider()
         if not settings.api_key:
@@ -549,38 +564,69 @@ class PlanningService:
         if not fields or set(fields) - {"title", "concept"}:
             raise WorkflowError("invalid_series_fields", "Edit only the series title and concept.", 422)
         def change(project):
-            series = next((entry for entry in project.series if entry.id == series_id), None)
-            if series is None:
-                raise WorkflowError("series_not_found", "This series does not belong to the project.", 404)
+            series = _series(project, series_id)
             values = {key: _text(value, key, maximum=200 if key == "title" else 4000, allow_empty=key == "concept") for key, value in fields.items()}
             if all(getattr(series, key) == value for key, value in values.items()):
                 return False
-            meaningful = bool(series.concept.strip() or values.get("concept", series.concept).strip())
+            meaningful = "concept" in values and values["concept"] != series.concept
+            if "title" in values and values["title"] != series.title and series.context_title is None:
+                series.context_title = series.title
             for key, value in values.items():
                 setattr(series, key, value)
             if meaningful:
+                series.context_title = None
+            if meaningful:
                 for item in project.contents:
-                    if item.series_id == series_id:
+                    if item.series_id == series_id and not item.trashed_at:
                         _invalidate_plan_inputs(project, item.id)
         return self.store.update(project_id, expected_version, change)
 
     def delete_series(self, project_id, expected_version, series_id):
+        """Compatibility entry point; deletion is always recoverable."""
+        return self.trash_series(project_id, expected_version, series_id)
+
+    @staticmethod
+    def _require_idle_contents(project, content_ids):
+        if any(job.status in {"queued", "running"} and job.content_id in content_ids for job in project.jobs):
+            raise WorkflowError("content_busy", "Wait for this video's current operation before moving it to Trash.", 409)
+
+    def trash_series(self, project_id, expected_version, series_id):
         def change(project):
-            series = next((entry for entry in project.series if entry.id == series_id), None)
-            if series is None:
-                raise WorkflowError("series_not_found", "This series does not belong to the project.", 404)
-            project.series = [entry for entry in project.series if entry.id != series_id]
-            for item in project.contents:
-                if item.series_id == series_id:
-                    item.series_id = None
-                    if series.concept.strip():
-                        _invalidate_plan_inputs(project, item.id)
+            series = _series(project, series_id, include_trashed=True)
+            if series.trashed_at:
+                return False
+            members = [item for item in project.contents if item.series_id == series_id and not item.trashed_at]
+            self._require_idle_contents(project, {item.id for item in members})
+            series.detached_contents = {}
+            series.trashed_at = now()
+            for item in members:
+                item.series_id = None
+                item.series_assignment_version += 1
+                series.detached_contents[item.id] = item.series_assignment_version
+                # The approved historical direction stays intact. Meaningful
+                # group context is checked against its saved manifest before
+                # any future generation or reapproval.
+        return self.store.update(project_id, expected_version, change)
+
+    def restore_series(self, project_id, expected_version, series_id):
+        def change(project):
+            series = _series(project, series_id, include_trashed=True)
+            if not series.trashed_at:
+                return False
+            members = [item for item in project.contents if not item.trashed_at and item.series_id is None
+                       and series.detached_contents.get(item.id) == item.series_assignment_version]
+            self._require_idle_contents(project, {item.id for item in members})
+            series.trashed_at = None
+            for item in members:
+                item.series_id = series.id
+                item.series_assignment_version += 1
+            series.detached_contents = {}
         return self.store.update(project_id, expected_version, change)
 
     def create_content(self, project_id, expected_version, title, description="", series_id=None):
         def change(project):
-            if series_id is not None and not any(entry.id == series_id for entry in project.series):
-                raise WorkflowError("series_not_found", "This series does not belong to the project.", 404)
+            if series_id is not None:
+                _series(project, series_id)
             item = ContentItem(title=_text(title, "Content title", maximum=200),
                                description=_text(description, "Content description", maximum=4000, allow_empty=True),
                                series_id=series_id, selection=Selection())
@@ -594,32 +640,58 @@ class PlanningService:
         def change(project):
             item = _item(project, content_id)
             values = dict(fields)
-            if "series_id" in values and values["series_id"] is not None and not any(entry.id == values["series_id"] for entry in project.series):
-                raise WorkflowError("series_not_found", "This series does not belong to the project.", 404)
+            if "series_id" in values and values["series_id"] is not None:
+                _series(project, values["series_id"])
             for key in ("title", "description"):
                 if key in values:
                     values[key] = _text(values[key], key, maximum=200 if key == "title" else 4000, allow_empty=key == "description")
-            if all(getattr(item, key) == value for key, value in values.items()):
+            if "series_id" not in values and all(getattr(item, key) == value for key, value in values.items()):
                 return False
-            meaningful = any(key in values and getattr(item, key) != values[key] for key in ("title", "description"))
+            description_changed = "description" in values and item.description != values["description"]
+            meaningful = description_changed
+            if "title" in values and item.title != values["title"] and item.context_title is None:
+                item.context_title = item.title
             if "series_id" in values and item.series_id != values["series_id"]:
                 old_series = next((entry for entry in project.series if entry.id == item.series_id), None)
                 new_series = next((entry for entry in project.series if entry.id == values["series_id"]), None)
                 meaningful = meaningful or any(entry and entry.concept.strip() for entry in (old_series, new_series))
             for key, value in values.items():
                 setattr(item, key, value)
+            if "series_id" in values:
+                item.series_assignment_version += 1
+            if description_changed:
+                item.context_title = None
             if meaningful:
                 _invalidate_plan_inputs(project, content_id)
         return self.store.update(project_id, expected_version, change)
 
     def delete_content(self, project_id, expected_version, content_id):
+        """Compatibility entry point; retain all approvals and saved revisions."""
+        return self.trash_content(project_id, expected_version, content_id)
+
+    def trash_content(self, project_id, expected_version, content_id):
         def change(project):
-            item = _item(project, content_id)
-            if item.directions or any(pack.content_id == content_id for pack in project.packs):
-                raise WorkflowError("content_has_history", "This item has creative history. Keep it to preserve direction and production references.", 422)
-            project.contents = [entry for entry in project.contents if entry.id != content_id]
+            item = _item(project, content_id, include_trashed=True)
+            if item.trashed_at:
+                return False
+            self._require_idle_contents(project, {content_id})
+            item.trashed_at = now()
             if project.active_content_id == content_id:
-                project.active_content_id = project.contents[0].id if project.contents else None
+                index = project.contents.index(item)
+                next_items = project.contents[index + 1:] + list(reversed(project.contents[:index]))
+                project.active_content_id = next((entry.id for entry in next_items if not entry.trashed_at), None)
+        return self.store.update(project_id, expected_version, change)
+
+    def restore_content(self, project_id, expected_version, content_id):
+        def change(project):
+            item = _item(project, content_id, include_trashed=True)
+            if not item.trashed_at:
+                return False
+            parent = next((entry for entry in project.series if entry.id == item.series_id), None)
+            if item.series_id and (parent is None or parent.trashed_at):
+                item.series_id = None
+                item.series_assignment_version += 1
+            item.trashed_at = None
         return self.store.update(project_id, expected_version, change)
 
     def preflight_generation(self, project_id, content_id=None, instruction="", *, visual_only=False):
@@ -683,8 +755,8 @@ class PlanningService:
         instruction = _text(instruction, "Planning instruction", maximum=10000, allow_empty=True)
         context, manifest = _context(project, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
         context["instruction"] = instruction
-        context["existing_series"] = [entry.model_dump() for entry in project.series]
-        context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents]
+        context["existing_series"] = [entry.model_dump() for entry in project.series if not entry.trashed_at]
+        context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents if not item.trashed_at]
         response, model, digest = self._response("IDEAS", "concepts", context, ConceptsContent)
         manifest.model = model
         manifest.instruction_digest = digest
@@ -719,8 +791,8 @@ class PlanningService:
                 if "inputs" in ContentItem.model_fields:
                     content.inputs = manifest.model_copy(deep=True)
                 current.contents.append(content)
-            if not current.active_content_id and current.contents:
-                current.active_content_id = current.contents[0].id
+            if not current.active_content_id:
+                current.active_content_id = next((item.id for item in current.contents if not item.trashed_at), None)
         return self.store.update(project_id, None, change)
 
     def generate_directions(self, project_id, content_id, instruction="", *, visual_only=False):
@@ -856,6 +928,28 @@ class PlanningService:
                         pack.needs_review = True
         return self.store.update(project_id, expected_version, change)
 
+    def direction_readiness(self, project_id, content_id):
+        """Inspect formal direction gates without saving, generating or requiring AI timing."""
+        project = self.store.get(project_id)
+        item = _item(project, content_id)
+        result = {"direction_current": False, "code": None, "message": None,
+                  "direction_id": item.approved_direction_id, "revision": item.approved_direction_revision,
+                  "project_version": project.version}
+        if not item.approved_direction_id or item.approved_direction_revision is None:
+            return {**result, "code": "direction_approval_required",
+                    "message": "Approve an exact saved direction before preparing new production."}
+        try:
+            direction = _direction(item, item.approved_direction_id, item.approved_direction_revision)
+            if _direction(item, direction.id).revision != direction.revision:
+                raise WorkflowError("direction_revision_conflict", "Review and approve the latest saved direction revision.", 409)
+            _require_direction_draft_clear(project, item, direction)
+            _, current = _context(project, item, visual_only=direction.inputs.visual_only)
+            if not direction.approved or direction.needs_review or not _same_inputs(direction.inputs, current):
+                raise WorkflowError("direction_inputs_outdated", "The approved direction uses earlier creative inputs. Review or revise it against the current context before preparing new production. Saved sheets remain available.", 422)
+        except WorkflowError as error:
+            return {**result, "code": error.code, "message": error.message}
+        return {**result, "direction_current": True}
+
     def approve_direction(self, project_id, expected_version, content_id, direction_id, direction_revision):
         def change(project):
             item = _item(project, content_id)
@@ -930,6 +1024,7 @@ class PlanningService:
             if not matches:
                 raise WorkflowError("pack_not_found", "This production pack does not belong to the project.", 404)
             old = max(matches, key=lambda pack: pack.revision)
+            _item(project, old.content_id)
             if old.revision != pack_revision:
                 raise WorkflowError("pack_revision_conflict", "A newer production revision is saved. Reopen it before applying your edits.")
             if "sheet_format" in fields and fields["sheet_format"] not in {"legacy_documents", "storyboard_sheet"}:

@@ -9,6 +9,24 @@ from decimal import Decimal
 
 DEFAULT_REASONING_MODEL = "gpt-6.1-sol"
 DEFAULT_RESEARCH_MODEL = "gpt-6-luna"
+DEFAULT_TRANSCRIPTION_MODEL = "whisper-1"
+
+
+@dataclass(frozen=True)
+class TranscriptionProfile:
+    response_format: str
+    timing: str
+
+
+# Profiles checked against the official file-transcription guide on 2026-11-17:
+# https://developers.openai.com/api/docs/guides/speech-to-text
+# gpt-transcribe returns text, not provider sentence/word timestamps. Its
+# interval is the measured PCM input chunk; never infer sub-chunk alignment.
+TRANSCRIPTION_PROFILES = {
+    "whisper-1": TranscriptionProfile("verbose_json", "segment"),
+    "gpt-transcribe": TranscriptionProfile("json", "chunk"),
+}
+TRANSCRIPTION_MODELS = frozenset(TRANSCRIPTION_PROFILES)
 
 
 @dataclass(frozen=True)

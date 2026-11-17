@@ -66,11 +66,21 @@ class SelectionBody(Mutation):
     resource_ids: list[str] = Field(max_length=30)
     content_id: str | None = None
     visual_only: bool = False
+    synthesis_only: bool = False
+    transcription_model: Literal["whisper-1", "gpt-transcribe"] | None = None
+
+
+class RecognitionBody(Mutation):
+    transcription_model: Literal["whisper-1", "gpt-transcribe"] | None = None
 
 
 class SeriesBody(Mutation):
     title: str = Field(min_length=1, max_length=200)
     concept: str = Field(default="", max_length=10000)
+
+
+class SeriesPatch(Mutation):
+    title: str = Field(min_length=1, max_length=200)
 
 
 class ContentBody(Mutation):
@@ -174,13 +184,15 @@ class ProjectRuntime:
                        creative_model="gpt-6.1-sol", m2_model="gpt-6.1-sol",
                        structure_model="gpt-6.1-sol", research_model="gpt-6.1-sol")
 
-    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None, attempt_id=None):
+    def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None, attempt_id=None, resource_ids=None, pass_job_id=False, diagnostics=None):
         from ..release import release_info
-        job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id, attempt_id=attempt_id)
+        job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id, attempt_id=attempt_id,
+                  resource_ids=list(resource_ids or ([resource_id] if resource_id else [])))
         job.diagnostics = {"application_version": release_info()["version"],
                            "source_commit": release_info()["source_commit"] or "unknown",
                            "operation": kind, "stage": "queued", "timestamp": job.created_at,
                            "project_id": project_id, "job_id": job.id}
+        job.diagnostics.update(diagnostics or {})
         for key, value in (("resource_id", resource_id), ("message_id", message_id)):
             if value:
                 job.diagnostics[key] = value
@@ -198,7 +210,8 @@ class ProjectRuntime:
             if not any(item.id == job.id for item in admitted.jobs):
                 return admitted
             try:
-                self.executor.submit(self._run, project_id, job.id, callback)
+                bound = (lambda: callback(job.id)) if pass_job_id else callback
+                self.executor.submit(self._run, project_id, job.id, bound)
             except RuntimeError as exc:
                 def rejected(project):
                     queued = next(item for item in project.jobs if item.id == job.id)
@@ -208,9 +221,23 @@ class ProjectRuntime:
                 raise WorkflowError("project_job_unavailable", "The application is closing. Reopen and retry.", 503) from exc
             return admitted
 
+    def progress(self, project_id, job_id, stage, **details):
+        labels = {"extracting": "Preparing reference evidence", "synthesizing": "Comparing saved source evidence",
+                  "validating": "Checking source citations", "saving": "Saving the validated report"}
+        def update(project):
+            job = next(item for item in project.jobs if item.id == job_id)
+            if job.status not in {"queued", "running"}:
+                return False
+            job.progress = labels.get(stage, "Processing source evidence")
+            job.updated_at = now()
+            job.diagnostics.update(stage=stage, timestamp=job.updated_at)
+            for key in ("resource_id", "source_index", "source_total"):
+                if key in details:
+                    job.diagnostics[key] = str(details[key])[:100]
+        return self.store.update(project_id, None, update)
+
     def _run(self, project_id, job_id, callback):
         started = time.monotonic()
-        before_jobs = {job.id for job in self.store.get(project_id).jobs}
         def running(project):
             job = next(item for item in project.jobs if item.id == job_id)
             if job.status == "stopped":
@@ -225,14 +252,19 @@ class ProjectRuntime:
         except Exception as exc:
             from .speech_retry import public_failure
             code, safe = public_failure(exc)
+            error_diagnostics = dict(getattr(exc, "diagnostics", {}) or {})
             def failed(project):
                 job = next(item for item in project.jobs if item.id == job_id)
                 if job.status == "stopped":
                     return False
                 job.status, job.progress, job.error, job.updated_at = "failed", "Failed", safe, now()
                 job.error_code = code
-                job.diagnostics.update(stage="completed", outcome="failed", error_code=code,
+                job.diagnostics.update(failure_stage=job.diagnostics.get("stage", "processing"),
+                                       stage="completed", outcome="failed", error_code=code,
                                        timestamp=job.updated_at, elapsed_seconds=f"{time.monotonic() - started:.3f}")
+                for key, value in error_diagnostics.items():
+                    if key in {"validation_outcome", "validation_rule", "validation_field", "http_status", "provider_request_id", "failure_code"} and type(value) in (str, int, float, bool):
+                        job.diagnostics[key] = str(value)[:200]
                 if job.kind == "conversation" and job.message_id:
                     reply = next((message for message in reversed(project.messages)
                                   if message.reply_to_message_id == job.message_id and message.attempt_id == job.attempt_id), None)
@@ -265,16 +297,21 @@ class ProjectRuntime:
                                            elapsed_seconds=f"{time.monotonic() - started:.3f}")
                     return
                 resource = next((r for r in project.resources if r.id == job.resource_id), None)
-                failed_children = [child for child in project.jobs if child.id not in before_jobs
-                                   and child.kind == "reference_extraction" and child.content_id == job.content_id
+                failed_children = [child for child in project.jobs if child.parent_job_id == job.id
+                                   and child.kind == "reference_extraction"
                                    and child.status in ("failed", "partial")]
                 if job.kind == "recognize" and failed_children:
                     child = failed_children[-1]
                     job.status, job.progress, job.error = child.status, child.progress, child.error
                     job.error_code = child.error_code
                     job.support_details = list(child.support_details)
-                elif job.kind == "analyze" and failed_children:
-                    job.status, job.progress = "partial", "Completed with source limitations"
+                elif job.kind == "analyze":
+                    report = next((item for item in reversed(project.analyses) if item.content_id == job.content_id), None)
+                    limited = bool(failed_children or (report and report.inputs.limitations))
+                    job.status = "partial" if limited else "succeeded"
+                    job.progress = "Report saved with source limitations" if limited else "Analysis report saved"
+                    if report:
+                        job.diagnostics["analysis_id"] = report.id
                 elif resource is not None and resource.status in ("failed", "unsupported", "missing"):
                     job.status, job.progress, job.error = "failed", "Needs attention", resource.error
                 elif resource is not None and resource.status == "partial":
@@ -316,7 +353,13 @@ def install_project_workspace(app, legacy_service):
     @router.get("/capabilities")
     def capabilities():
         from ..release import release_info
+        media = runtime.resources.media_settings
         return {**release_info(), "model": "gpt-6.1-sol", "transcription_model": runtime.settings().transcription_model,
+                "transcription_models": [
+                    {"id": "whisper-1", "label": "Whisper · segment timestamps", "timing": "segment"},
+                    {"id": "gpt-transcribe", "label": "GPT Transcribe · audio-chunk timing", "timing": "chunk"}],
+                "media_limits": {"max_bytes": media.max_bytes, "max_duration_seconds": media.max_duration_seconds,
+                                 "max_width": media.max_width, "max_height": media.max_height},
                 "configured": bool(runtime.settings().api_key), "migration_errors": runtime.migration_errors,
                 "library_errors": getattr(runtime.store, "library_errors", []),
                 "discovery": "Reserved — awaiting Frank’s specification."}
@@ -343,6 +386,8 @@ def install_project_workspace(app, legacy_service):
             values = body.model_dump(exclude_unset=True, exclude={"expected_version", "editor_drafts", "expected_editor_versions"})
             if "active_content_id" in values and values["active_content_id"] is not None and not any(c.id == values["active_content_id"] for c in project.contents):
                 raise WorkflowError("content_not_found", "Choose a content item in this project.", 404)
+            if values.get("active_content_id") and any(c.id == values["active_content_id"] and c.trashed_at for c in project.contents):
+                raise WorkflowError("content_trashed", "Restore this Video from Content plan Trash before opening it.", 410)
             for key, value in values.items():
                 if key != "active_content_id" and value is None:
                     continue
@@ -476,9 +521,12 @@ def install_project_workspace(app, legacy_service):
         return runtime.submit(project_id, body.expected_version, "extract", lambda: runtime.resources.extract(project_id, resource_id), resource_id=resource_id)
 
     @router.post("/{project_id}/resources/{resource_id}/recognize", response_model=Project, status_code=202)
-    def recognize(project_id: str, resource_id: str, body: Mutation):
+    def recognize(project_id: str, resource_id: str, body: RecognitionBody):
         return runtime.submit(project_id, body.expected_version, "recognize",
-                              lambda: runtime.analysis.retry_reference(project_id, resource_id), resource_id=resource_id)
+                              lambda job_id: runtime.analysis.retry_reference(project_id, resource_id,
+                                  transcription_model=body.transcription_model, parent_job_id=job_id),
+                              resource_id=resource_id, pass_job_id=True,
+                              diagnostics={"requested_speech_model": body.transcription_model} if body.transcription_model else {})
 
     @router.post("/{project_id}/resources/{resource_id}/relink", response_model=Project)
     def relink(project_id: str, resource_id: str, file: Annotated[UploadFile, File()], expected_version: Annotated[int, Form(ge=1)]):
@@ -505,11 +553,38 @@ def install_project_workspace(app, legacy_service):
     @router.post("/{project_id}/analyze", response_model=Project, status_code=202)
     def analyze(project_id: str, body: SelectionBody):
         runtime.analysis.preflight(project_id, body.resource_ids, body.content_id)
-        return runtime.submit(project_id, body.expected_version, "analyze", lambda: runtime.analysis.analyze(project_id, body.resource_ids, body.content_id, visual_only=body.visual_only), content_id=body.content_id)
+        if body.synthesis_only and body.transcription_model is not None:
+            raise WorkflowError("invalid_analysis_retry", "Retrying the report uses saved evidence. Change the speech model in Source Review first.", 422)
+        if body.visual_only and body.transcription_model is not None:
+            raise WorkflowError("invalid_analysis_retry", "Visual-only analysis does not request speech recognition. Remove the speech-model override.", 422)
+        if body.synthesis_only:
+            snapshot = runtime.store.get(project_id)
+            target = next((item for item in snapshot.contents if item.id == body.content_id), None) if body.content_id else snapshot
+            if target is not None and target.selection.resource_ids != body.resource_ids:
+                raise WorkflowError("analysis_inputs_changed", "The reference selection changed. Start a new analysis from Resources; retry will not restore the old selection.", 409)
+        return runtime.submit(project_id, body.expected_version, "analyze",
+            lambda job_id: runtime.analysis.analyze(project_id, body.resource_ids, body.content_id,
+                visual_only=body.visual_only, synthesis_only=body.synthesis_only, transcription_model=body.transcription_model,
+                parent_job_id=job_id, progress=lambda stage, **details: runtime.progress(project_id, job_id, stage, **details)),
+            content_id=body.content_id, resource_ids=body.resource_ids, pass_job_id=True,
+            diagnostics={"visual_only": str(body.visual_only).lower(), "synthesis_only": str(body.synthesis_only).lower(),
+                         "transcription_model": body.transcription_model or runtime.settings().transcription_model})
 
     @router.post("/{project_id}/series", response_model=Project)
     def series(project_id: str, body: SeriesBody):
         return runtime.planning.create_series(project_id, body.expected_version, body.title, body.concept)
+
+    @router.patch("/{project_id}/series/{series_id}", response_model=Project)
+    def series_rename(project_id: str, series_id: str, body: SeriesPatch):
+        return runtime.planning.edit_series(project_id, body.expected_version, series_id, {"title": body.title})
+
+    @router.post("/{project_id}/series/{series_id}/trash", response_model=Project)
+    def series_trash(project_id: str, series_id: str, body: Mutation):
+        return runtime.planning.trash_series(project_id, body.expected_version, series_id)
+
+    @router.post("/{project_id}/series/{series_id}/restore", response_model=Project)
+    def series_restore(project_id: str, series_id: str, body: Mutation):
+        return runtime.planning.restore_series(project_id, body.expected_version, series_id)
 
     @router.post("/{project_id}/contents", response_model=Project)
     def contents(project_id: str, body: ContentBody):
@@ -520,8 +595,22 @@ def install_project_workspace(app, legacy_service):
         return runtime.planning.edit_content(project_id, body.expected_version, content_id,
                                              body.model_dump(exclude={"expected_version"}, exclude_unset=True))
 
+    @router.get("/{project_id}/contents/{content_id}/readiness")
+    def direction_readiness(project_id: str, content_id: str):
+        return runtime.planning.direction_readiness(project_id, content_id)
+
+    @router.post("/{project_id}/contents/{content_id}/trash", response_model=Project)
+    def content_trash(project_id: str, content_id: str, body: Mutation):
+        return runtime.planning.trash_content(project_id, body.expected_version, content_id)
+
+    @router.post("/{project_id}/contents/{content_id}/restore", response_model=Project)
+    def content_restore(project_id: str, content_id: str, body: Mutation):
+        return runtime.planning.restore_content(project_id, body.expected_version, content_id)
+
     @router.post("/{project_id}/topics/suggest", response_model=Project, status_code=202)
     def topics_suggest(project_id: str, body: TopicsBody):
+        if body.series_id is not None:
+            runtime.planning.require_active_series(project_id, body.series_id)
         runtime.planning.preflight_generation(project_id, instruction=body.instruction, visual_only=body.visual_only)
         return runtime.submit(project_id, body.expected_version, "topics",
             lambda: runtime.planning.suggest_topics(project_id, body.instruction, visual_only=body.visual_only, series_id=body.series_id))
@@ -559,6 +648,7 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/contents/{content_id}/production/generate", response_model=Project, status_code=202)
     def production(project_id: str, content_id: str, body: Mutation):
+        runtime.planning.require_active_content(project_id, content_id)
         return runtime.submit(project_id, body.expected_version, "production", lambda: runtime.planning.generate_pack(project_id, content_id), content_id=content_id)
 
     @router.post("/{project_id}/contents/{content_id}/production/manual", response_model=Project)
