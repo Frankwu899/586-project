@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import json
+import math
 
 from ..providers.base import ProviderError
 from ..workflow_errors import WorkflowError
@@ -71,6 +72,36 @@ def corrected_ids(evidence: EvidenceRevision) -> set[str]:
     return {event.id for event in evidence.events} if evidence.correction_note else set()
 
 
+def _completed_speech_intervals(incoming, protected):
+    """Only validated input chunks authorize replacing speech across silence."""
+    suppressed = [event for event in incoming.events if event.kind == "speech" and any(
+        old.start_seconds < event.end_seconds and event.start_seconds < old.end_seconds for old in protected)]
+    intervals = []
+    for detail in incoming.support_details:
+        if (detail.get("stage") != "transcription_chunk"
+                or detail.get("validation_outcome") != "accepted" or detail.get("failure_code")):
+            continue
+        try:
+            start, end = float(detail["chunk_start_seconds"]), float(detail["chunk_end_seconds"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not math.isfinite(start) or not math.isfinite(end) or not 0 <= start < end:
+            continue
+        # A candidate spanning a correction may be suppressed in full below,
+        # including source-frame rounding beyond its measured input chunk.
+        # Keep the other saved wording in that chunk until the conflict clears.
+        if any(old.start_seconds < end and start < old.end_seconds for old in [*protected, *suppressed]):
+            continue
+        intervals.append((start, end))
+    completed = []
+    for start, end in sorted(intervals):
+        if completed and start <= completed[-1][1]:
+            completed[-1] = (completed[-1][0], max(completed[-1][1], end))
+        else:
+            completed.append((start, end))
+    return completed
+
+
 def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speech_only=False):
     """Replace recoverable machine output, preserving exact human corrections/history."""
     result = incoming.model_copy(deep=True)
@@ -78,11 +109,14 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
         key for key, value in previous.coverage.items() if value in FAILED and key not in {"music", "sfx"}}
     kinds = {CHANNELS[key] for key in retried if key in CHANNELS}
     protected = corrected_ids(previous)
-    # A successful retry may contain only the previously missing chunk. Its
-    # channel status cannot authorize deleting speech retained elsewhere.
-    # Replace machine events only when a concrete new span covers them below.
-    kept = [event.model_copy(deep=True) for event in previous.events]
-    used_ids = {event.id for event in kept}
+    # Channel status alone cannot authorize deleting speech retained elsewhere.
+    # Successful measured chunks do, including silent gaps and empty transcripts.
+    completed = _completed_speech_intervals(incoming, [event for event in previous.events
+        if event.id in protected and event.kind == "speech"]) if "speech" in kinds else []
+    kept = [event.model_copy(deep=True) for event in previous.events
+            if event.id in protected or event.kind != "speech"
+            or not any(start <= event.start_seconds and event.end_seconds <= end for start, end in completed)]
+    used_ids = {event.id for event in previous.events}
     conflicts = {}
     for event in incoming.events:
         if event.kind not in kinds:
