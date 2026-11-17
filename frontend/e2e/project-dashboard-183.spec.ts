@@ -66,3 +66,27 @@ test('a saved library document attaches to Overview without uploading again or r
   expect(saved.messages[0].resource_ids).toEqual([resourceId]);
   expect(saved.briefs).toEqual([]);
 });
+
+test('opening another project cannot inherit the previous source review', async ({ page, request }) => {
+  const one = await (await request.post('/api/projects', { data: { title: `Source project ${Date.now()}` } })).json();
+  const two = await (await request.post('/api/projects', { data: { title: `Unrelated project ${Date.now()}` } })).json();
+  const imported = await (await request.post(`/api/projects/${one.id}/resources`, { multipart: {
+    expected_version: String(one.version),
+    file: { name: 'project-one-note.txt', mimeType: 'text/plain', buffer: Buffer.from('This belongs only to project one.') },
+  } })).json();
+  await expect.poll(async () => (await (await request.get(`/api/projects/${one.id}`)).json()).jobs[0].status).toBe('succeeded');
+  const fresh = await (await request.get(`/api/projects/${one.id}`)).json();
+  await request.post(`/api/projects/${one.id}/messages`, { data: {
+    expected_version: fresh.version, text: 'Keep this saved source.', resource_ids: [imported.resources[0].id],
+  } });
+  await page.goto(`/?project=${one.id}`);
+  await page.locator('.va-message.user').getByRole('button', { name: 'project-one-note.txt', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'project-one-note.txt', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'All projects', exact: true }).click();
+  await page.getByRole('button', { name: `Open ${two.title}`, exact: true }).click();
+  await page.getByRole('button', { name: 'Resources', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Media Pool', exact: true })).toBeVisible();
+  await expect(page.getByText('Source unavailable', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('project-one-note.txt', { exact: true })).toHaveCount(0);
+  expect((await (await request.get(`/api/projects/${two.id}`)).json()).resources).toEqual([]);
+});

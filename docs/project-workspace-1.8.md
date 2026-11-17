@@ -1,5 +1,36 @@
 # Video Anatomy 1.8 project workspace
 
+## Current 1.8.3 testing candidate
+
+Read [release notes](releases/1.8.3.md) and the
+[verification handoff](handoff/project-workspace-1.8.3.md). The approved behavior
+and UI references are preserved in [the 1.8.3 packet](handoff/1.8.3/START_HERE.md).
+These current changes supersede the original behavior described below wherever
+they differ; earlier release records remain historical evidence.
+
+- Overview limits proactive intake, offers explicit reviewable drafts, and uses
+  attempt-scoped Stop/Retry. Its compact snapshot shows adopted facts only.
+- Resources has stable logical folders, Inbox, list/grid, reversible file/folder
+  Trash and independent focus/selection. Logical moves never replace media bytes.
+  Original storage paths below stay stable. Existing library documents can attach
+  to Overview without another upload.
+- Source Review is a single Resources subview with the original/proxy clock,
+  real evidence tracks and exact saved revision navigation. Unknown old timing
+  stays unknown; source-only ranges never borrow current evidence.
+- Analysis starts with source-linked Key insights, then comparison/structure and
+  an ordered-list alternative. Report browsing does not select a production Video.
+- Standalone Video is the Content plan default; Series is optional. Topic previews
+  create no plan items until Add to plan. Reference inputs are explicit.
+- Production opens the same approved Video. A short brief plus one structured
+  eight-column Storyboard Sheet is the current output. Edit/save/reopen/export
+  share one pack revision. Clean CSV splits Start/End into numeric columns;
+  historical documents keep their original export behavior.
+
+The canonical Project model adds defaulted folders, trash, insight, attempt, topic
+and shot metadata; its storage/schema family remains 1.8.0. Both project schema
+and TypeScript contracts are generated together. Legacy task APIs are preserved.
+
+
 For the current 1.8.2 conversation/transcription reliability candidate, read
 [release notes](releases/1.8.2.md) and [verification handoff](handoff/project-workspace-1.8.2.md).
 Overview now validates conversational replies and individual fact proposals
@@ -30,7 +61,7 @@ hosted storage, shared-key service, rendering backend, or public deployment.
 ## Application and navigation
 
 The default application is `frontend/src/ProjectApp.tsx`. Its dashboard provides
-project cards, search, name/updated-time sorting, create/open/rename, independent
+project cards, search, recent-opening/name/updated-time sorting, create/open/rename, independent
 duplication, and recoverable Trash/restore. Cards show resource/content counts,
 updated time, a resource thumbnail when available, and a summary status.
 
@@ -42,9 +73,9 @@ stable navigation identifier, not a separate web-server route.
 | Overview | `overview` | Saved conversation, attachments, working facts, unresolved items, and confirmed-brief review. |
 | Resources | `resources` | Project resources, local previews, document extraction, transcript/evidence correction, and reference selection. |
 | Discover | `discover` | Empty reserved section with the status below. |
-| Analysis | `analysis` | Conclusion-first individual/comparative results with source references and limitations. |
+| Analysis | `analysis` | Source-linked insights, comparison, structure graph/list and exact source navigation. |
 | Content plan | `content` | Optional series, standalone content items, manual/generated directions, history, and exact direction approval. |
-| Production | `production` | Four editable documents, saved pack history, manual blank packs, generation, and exports. |
+| Production | `production` | One editable Storyboard Sheet and short brief, exact saved revisions, legacy documents and exports. |
 
 Discovery status is **Reserved — awaiting Frank’s specification.** There are no
 Discovery search forms, sample results, connectors, ranking rules, download
