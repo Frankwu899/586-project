@@ -152,6 +152,8 @@ export type Id10 = string;
 export type Title1 = string;
 export type Concept = string;
 export type NeedsReview1 = boolean;
+export type TrashedAt3 = string | null;
+export type ContextTitle = string | null;
 export type Series = Series1[];
 export type Id11 = string;
 export type SeriesId = string | null;
@@ -173,6 +175,9 @@ export type CreatedAt6 = string;
 export type Directions = Direction[];
 export type ApprovedDirectionId = string | null;
 export type ApprovedDirectionRevision = number | null;
+export type TrashedAt4 = string | null;
+export type SeriesAssignmentVersion = number;
+export type ContextTitle1 = string | null;
 export type Contents = ContentItem[];
 export type Id13 = string;
 export type Revision4 = number;
@@ -204,6 +209,8 @@ export type ResourceId2 = string | null;
 export type ContentId2 = string | null;
 export type MessageId1 = string | null;
 export type AttemptId1 = string | null;
+export type ParentJobId = string | null;
+export type ResourceIds3 = string[];
 export type SupportDetails1 = {
   [k: string]: string;
 }[];
@@ -433,6 +440,12 @@ export interface Series1 {
   concept: Concept;
   inputs: InputManifest | null;
   needs_review: NeedsReview1;
+  trashed_at: TrashedAt3;
+  detached_contents: DetachedContents;
+  context_title: ContextTitle;
+}
+export interface DetachedContents {
+  [k: string]: number;
 }
 export interface ContentItem {
   id: Id11;
@@ -445,6 +458,9 @@ export interface ContentItem {
   directions: Directions;
   approved_direction_id: ApprovedDirectionId;
   approved_direction_revision: ApprovedDirectionRevision;
+  trashed_at: TrashedAt4;
+  series_assignment_version: SeriesAssignmentVersion;
+  context_title: ContextTitle1;
 }
 export interface Direction {
   id: Id12;
@@ -496,6 +512,8 @@ export interface Job {
   content_id: ContentId2;
   message_id: MessageId1;
   attempt_id: AttemptId1;
+  parent_job_id: ParentJobId;
+  resource_ids: ResourceIds3;
   diagnostics: Diagnostics2;
   support_details: SupportDetails1;
   status: Status3;

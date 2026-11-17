@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import json
 
 from ..providers.base import ProviderError
 from ..workflow_errors import WorkflowError
@@ -11,6 +12,7 @@ FAILED = {"failed", "partial", "error", "not_analyzed"}
 CHANNELS = {"visual_action": "visual", "visual": "visual", "on_screen_text": "on_screen_text",
             "speech": "speech", "music": "sound", "sfx": "sound"}
 _CONFLICT_PREFIX = "Recovery needs review:"
+CORRECTED_IDS = "human_corrected_event_ids"
 
 _MESSAGES = {
     "provider_quota": "The provider reports insufficient credit or a billing limit. Check billing for the project that owns this key.",
@@ -34,7 +36,8 @@ _MESSAGES = {
     "media_preparation_failed": "Media preparation failed before transcription. Check the original file and FFmpeg, then rebuild the preview.",
     "audio_timestamps_missing": "Transcription returned text without usable timestamps. Retry the affected chunk; saved evidence is retained.",
     "audio_timestamps_invalid": "Some transcription timestamps are invalid. Valid segments are retained; retry missing coverage.",
-    "unsupported_model_capability": "The configured transcription engine cannot supply the required timestamps. Check Settings.",
+    "audio_transcript_invalid": "Transcription returned no usable text field. Retry the affected audio chunk; saved evidence is retained.",
+    "unsupported_model_capability": "This transcription profile is unavailable. Choose whisper-1 for segment timing or gpt-transcribe for whole-chunk text.",
 }
 
 
@@ -55,24 +58,36 @@ def missing_speech_only(evidence):
                         for channel, value in evidence.coverage.items() if channel != "speech"))
 
 
-def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speech_only=False):
-    """Keep exact saved event IDs/text/timing; add recovered uncovered intervals.
+def corrected_ids(evidence: EvidenceRevision) -> set[str]:
+    """New revisions record exact edited IDs; ambiguous old corrections stay safe."""
+    marker = evidence.diagnostics.get(CORRECTED_IDS)
+    if marker is not None:
+        try:
+            values = json.loads(marker)
+            if isinstance(values, list) and all(isinstance(value, str) for value in values):
+                return set(values)
+        except (ValueError, TypeError):
+            pass
+    return {event.id for event in evidence.events} if evidence.correction_note else set()
 
-    Legacy corrections do not identify every edited field, so existing events
-    are authoritative. A newly recognized span overlapping retained evidence is
-    not allowed to replace it. Historical machine output remains separately saved.
-    """
+
+def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speech_only=False):
+    """Replace recoverable machine output, preserving exact human corrections/history."""
     result = incoming.model_copy(deep=True)
     retried = {"speech"} if speech_only else {
         key for key, value in previous.coverage.items() if value in FAILED and key not in {"music", "sfx"}}
     kinds = {CHANNELS[key] for key in retried if key in CHANNELS}
+    protected = corrected_ids(previous)
+    # A successful retry may contain only the previously missing chunk. Its
+    # channel status cannot authorize deleting speech retained elsewhere.
+    # Replace machine events only when a concrete new span covers them below.
     kept = [event.model_copy(deep=True) for event in previous.events]
     used_ids = {event.id for event in kept}
     conflicts = {}
     for event in incoming.events:
         if event.kind not in kinds:
             continue
-        overlapping = [old for old in previous.events if old.kind == event.kind
+        overlapping = [old for old in previous.events if old.id in protected and old.kind == event.kind
                        and old.start_seconds < event.end_seconds and event.start_seconds < old.end_seconds]
         if overlapping:
             # Never split words by proportional timing. A span extending beyond
@@ -85,6 +100,11 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
             if covered_until < event.end_seconds - 1e-6:
                 conflicts.setdefault(event.kind, []).append(event)
             continue
+        kept = [old for old in kept if old.id in protected or old.kind != event.kind
+                or not (event.start_seconds <= old.start_seconds and old.end_seconds <= event.end_seconds)]
+        if any(old.kind == event.kind and old.start_seconds == event.start_seconds
+               and old.end_seconds == event.end_seconds and old.text == event.text for old in kept):
+            continue
         recovered = event.model_copy(deep=True)
         if recovered.id in used_ids:
             recovered.id = f"{recovered.id}_retry{previous.revision + 1}"
@@ -93,6 +113,10 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
     result.events = sorted(kept, key=lambda event: (event.start_seconds, event.id))
     result.coverage = dict(previous.coverage)
     result.diagnostics = dict(previous.diagnostics)
+    result.diagnostics.update({key: value for key, value in incoming.diagnostics.items()
+                               if key not in CHANNELS and key != CORRECTED_IDS})
+    if protected or CORRECTED_IDS in previous.diagnostics:
+        result.diagnostics[CORRECTED_IDS] = json.dumps(sorted(protected))
     for channel in retried:
         if channel in incoming.coverage:
             result.coverage[channel] = incoming.coverage[channel]

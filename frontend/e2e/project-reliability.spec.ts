@@ -119,7 +119,11 @@ test('partial speech exposes coverage, reuse and sanitized chunk diagnostics', a
   await page.getByRole('button', { name: 'Open in timeline', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic silent audio.wav' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry missing speech', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Recognition summary')).toContainText('Partial transcript available');
+  const saved = await (await page.request.get(`/api/projects/${project.id}`)).json() as Project;
+  const evidence = saved.resources.find(item => item.id === project.resources[0].id)!.evidence.at(-1)!;
+  expect(evidence.coverage.speech).toBe('partial');
+  expect(evidence.diagnostics.speech).toBe('audio_timestamps_invalid');
+  await expect(page.getByLabel('Recognition summary')).toContainText('Some speech timing is invalid. Valid transcript segments are saved; retry missing speech.');
   await expect(page.getByLabel('Recognition summary')).toContainText('Saved transcription reused');
   await expect(page.locator('.va-transcript')).toContainText('User-corrected original-language wording 中文.');
   await page.getByText('Coverage, original file and recovery', { exact: true }).click();

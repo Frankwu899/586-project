@@ -1,0 +1,304 @@
+{
+  "projectId": "project_4cf5d833430041a397b0577efccd5152",
+  "app": "http://127.0.0.1:5226",
+  "browser": "System Chromium; headless native browser zoom via chrome.settingsPrivate; CDP Page.captureScreenshot",
+  "harnessSetupNotes": [
+    "Initial QA harness assumed Media Pool on entry before the saved Source Review state restored. The final harness waits for pending navigation and uses Back to Media Pool. Both configurations passed on rerun; initial-harness-navigation-failure.json is harness setup evidence, not a product failure."
+  ],
+  "processingPosts": [],
+  "savedJobsUnchanged": true,
+  "evidenceUnchanged": true,
+  "totalChecks": 6,
+  "results": [
+    {
+      "configuration": {
+        "name": "wide-native-200",
+        "width": 1440,
+        "height": 900,
+        "zoom": 2
+      },
+      "nativeZoom": 2,
+      "metrics": {
+        "innerWidth": 720,
+        "innerHeight": 450,
+        "devicePixelRatio": 2,
+        "visualViewport": {
+          "width": 720,
+          "height": 450,
+          "scale": 1
+        },
+        "cssZoom": "1"
+      },
+      "check": "speech-model-passive-access",
+      "status": "passed",
+      "modelControl": {
+        "name": "Speech model",
+        "bounds": {
+          "x": 31.3984375,
+          "y": 204.0859375,
+          "width": 657.203125,
+          "height": 41.5
+        },
+        "viewport": {
+          "width": 720,
+          "height": 450
+        }
+      },
+      "availableModels": [
+        {
+          "value": "whisper-1",
+          "label": "Whisper · segment timestamps"
+        },
+        {
+          "value": "gpt-transcribe",
+          "label": "GPT Transcribe · audio-chunk timing"
+        }
+      ],
+      "note": "GPT Transcribe returns text. Evidence uses the actual audio-chunk range; word and sentence timestamps are unavailable. Existing corrections remain protected.",
+      "processingPosts": 0
+    },
+    {
+      "configuration": {
+        "name": "wide-native-200",
+        "width": 1440,
+        "height": 900,
+        "zoom": 2
+      },
+      "nativeZoom": 2,
+      "metrics": {
+        "innerWidth": 720,
+        "innerHeight": 450,
+        "devicePixelRatio": 2,
+        "visualViewport": {
+          "width": 720,
+          "height": 450,
+          "scale": 1
+        },
+        "cssZoom": "1"
+      },
+      "check": "gamma-whole-chunk-precision",
+      "status": "passed",
+      "gammaControl": {
+        "name": "Gamma whole-chunk speech event",
+        "bounds": {
+          "x": 179.3984375,
+          "y": 208.921875,
+          "width": 505.203125,
+          "height": 32
+        },
+        "viewport": {
+          "width": 720,
+          "height": 450
+        }
+      },
+      "summary": "New speech blocks use audio-chunk ranges, without word or sentence timestamps. Preserved events keep their recorded precision.",
+      "precision": "Whole audio-chunk range; sentence and word timing are unavailable."
+    },
+    {
+      "configuration": {
+        "name": "wide-native-200",
+        "width": 1440,
+        "height": 900,
+        "zoom": 2
+      },
+      "nativeZoom": 2,
+      "metrics": {
+        "innerWidth": 720,
+        "innerHeight": 450,
+        "devicePixelRatio": 2,
+        "visualViewport": {
+          "width": 720,
+          "height": 450,
+          "scale": 1
+        },
+        "cssZoom": "1"
+      },
+      "check": "activity-exact-children-diagnostics-history",
+      "status": "passed",
+      "children": [
+        "Alpha partial.wav Saved with limitations",
+        "Beta partial.wav Saved with limitations",
+        "Gamma chunk.wav Saved"
+      ],
+      "detailsControl": {
+        "name": "Alpha processing details",
+        "bounds": {
+          "x": 388,
+          "y": 202.8125,
+          "width": 297,
+          "height": 44
+        },
+        "viewport": {
+          "width": 720,
+          "height": 450
+        }
+      },
+      "savedControl": {
+        "name": "Open exact Alpha evidence v1",
+        "bounds": {
+          "x": 388,
+          "y": 36.625,
+          "width": 297,
+          "height": 65.390625
+        },
+        "viewport": {
+          "width": 720,
+          "height": 450
+        }
+      },
+      "detailText": "evidence_revision: 1\nspeech_model: whisper-1\napplication_version: 1.8.4\nsource_commit: 559ce38f191cd75290cd51fe16a9efd14dd37662\nproject_id: project_4cf5d833430041a397b0577efccd5152\njob_id: child_alpha\nparent_job_id: failed_summary\nstatus: partial\nfailure_code: \n\nstage: transcription_chunk\nrequested_model: whisper-1\ncache_status: hit\nevidence_revision: 1\nchunk_start_seconds: 0\nchunk_end_seconds: 2\nvalidation_outcome: partial\nfailure_code: audio_timestamps_invalid",
+      "diagnosticScroll": {
+        "scrollTop": 296,
+        "scrollHeight": 476,
+        "clientHeight": 180
+      },
+      "historicalRevision": 1,
+      "historicalText": "00:00.0SpeechAuthored alpha saved text; this is not recognized speech."
+    },
+    {
+      "configuration": {
+        "name": "narrow-native-100",
+        "width": 390,
+        "height": 844,
+        "zoom": 1
+      },
+      "nativeZoom": 1,
+      "metrics": {
+        "innerWidth": 390,
+        "innerHeight": 844,
+        "devicePixelRatio": 1,
+        "visualViewport": {
+          "width": 390,
+          "height": 844,
+          "scale": 1
+        },
+        "cssZoom": "1"
+      },
+      "check": "speech-model-passive-access",
+      "status": "passed",
+      "modelControl": {
+        "name": "Speech model",
+        "bounds": {
+          "x": 31,
+          "y": 400.921875,
+          "width": 328,
+          "height": 42
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844
+        }
+      },
+      "availableModels": [
+        {
+          "value": "whisper-1",
+          "label": "Whisper · segment timestamps"
+        },
+        {
+          "value": "gpt-transcribe",
+          "label": "GPT Transcribe · audio-chunk timing"
+        }
+      ],
+      "note": "GPT Transcribe returns text. Evidence uses the actual audio-chunk range; word and sentence timestamps are unavailable. Existing corrections remain protected.",
+      "processingPosts": 0
+    },
+    {
+      "configuration": {
+        "name": "narrow-native-100",
+        "width": 390,
+        "height": 844,
+        "zoom": 1
+      },
+      "nativeZoom": 1,
+      "metrics": {
+        "innerWidth": 390,
+        "innerHeight": 844,
+        "devicePixelRatio": 1,
+        "visualViewport": {
+          "width": 390,
+          "height": 844,
+          "scale": 1
+        },
+        "cssZoom": "1"
+      },
+      "check": "gamma-whole-chunk-precision",
+      "status": "passed",
+      "gammaControl": {
+        "name": "Gamma whole-chunk speech event",
+        "bounds": {
+          "x": 130,
+          "y": 405.875,
+          "width": 233,
+          "height": 32
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844
+        }
+      },
+      "summary": "New speech blocks use audio-chunk ranges, without word or sentence timestamps. Preserved events keep their recorded precision.",
+      "precision": "Whole audio-chunk range; sentence and word timing are unavailable."
+    },
+    {
+      "configuration": {
+        "name": "narrow-native-100",
+        "width": 390,
+        "height": 844,
+        "zoom": 1
+      },
+      "nativeZoom": 1,
+      "metrics": {
+        "innerWidth": 390,
+        "innerHeight": 844,
+        "devicePixelRatio": 1,
+        "visualViewport": {
+          "width": 390,
+          "height": 844,
+          "scale": 1
+        },
+        "cssZoom": "1"
+      },
+      "check": "activity-exact-children-diagnostics-history",
+      "status": "passed",
+      "children": [
+        "Alpha partial.wav Saved with limitations",
+        "Beta partial.wav Saved with limitations",
+        "Gamma chunk.wav Saved"
+      ],
+      "detailsControl": {
+        "name": "Alpha processing details",
+        "bounds": {
+          "x": 52,
+          "y": 400.28125,
+          "width": 297,
+          "height": 44
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844
+        }
+      },
+      "savedControl": {
+        "name": "Open exact Alpha evidence v1",
+        "bounds": {
+          "x": 52,
+          "y": 283.609375,
+          "width": 297,
+          "height": 65.375
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844
+        }
+      },
+      "detailText": "evidence_revision: 1\nspeech_model: whisper-1\napplication_version: 1.8.4\nsource_commit: 559ce38f191cd75290cd51fe16a9efd14dd37662\nproject_id: project_4cf5d833430041a397b0577efccd5152\njob_id: child_alpha\nparent_job_id: failed_summary\nstatus: partial\nfailure_code: \n\nstage: transcription_chunk\nrequested_model: whisper-1\ncache_status: hit\nevidence_revision: 1\nchunk_start_seconds: 0\nchunk_end_seconds: 2\nvalidation_outcome: partial\nfailure_code: audio_timestamps_invalid",
+      "diagnosticScroll": {
+        "scrollTop": 296,
+        "scrollHeight": 476,
+        "clientHeight": 180
+      },
+      "historicalRevision": 1,
+      "historicalText": "00:00.0SpeechAuthored alpha saved text; this is not recognized speech."
+    }
+  ]
+}

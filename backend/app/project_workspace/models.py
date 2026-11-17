@@ -276,6 +276,9 @@ class Series(Model):
     concept: str = ""
     inputs: InputManifest | None = None
     needs_review: bool = False
+    trashed_at: str | None = None
+    detached_contents: dict[str, int] = Field(default_factory=dict)
+    context_title: str | None = None
 
 
 class ContentItem(Model):
@@ -289,6 +292,9 @@ class ContentItem(Model):
     directions: list[Direction] = Field(default_factory=list)
     approved_direction_id: str | None = None
     approved_direction_revision: int | None = None
+    trashed_at: str | None = None
+    series_assignment_version: int = Field(default=1, ge=1)
+    context_title: str | None = None
 
 
 class ProductionShot(Model):
@@ -334,6 +340,8 @@ class Job(Model):
     content_id: str | None = None
     message_id: str | None = None
     attempt_id: str | None = None
+    parent_job_id: str | None = None
+    resource_ids: list[str] = Field(default_factory=list)
     diagnostics: dict[str, str] = Field(default_factory=dict)
     support_details: list[dict[str, str]] = Field(default_factory=list)
     status: Literal["queued", "running", "succeeded", "partial", "failed", "stopped"] = "queued"

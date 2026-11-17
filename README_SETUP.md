@@ -1,8 +1,8 @@
-# Video Anatomy — 1.8.3 local project workspace
+# Video Anatomy — 1.8.4 local project workspace
 
 The default application is the 1.8 project workspace. Start with the
 [implemented architecture and operating limits](docs/project-workspace-1.8.md)
-and [current handoff](docs/handoff/project-workspace-1.8.3.md). The local setup,
+and [current handoff](docs/handoff/project-workspace-1.8.4.md). The local setup,
 user-provided API key, and Python/FFmpeg requirements below remain applicable.
 
 Projects open into a card dashboard and contain Overview, Resources, Discover,
@@ -94,14 +94,14 @@ For real media, an absent backend key produces an explicit configuration failure
 | Setting | Default / purpose |
 |---|---|
 | `OPENAI_API_KEY` | Unset; backend only. |
-| `VIDEO_M2_PROVIDER`, `OPENAI_M2_MODEL` | `openai`, `gpt-4.1-mini`; independent bounded notes extraction/task suggestions. `disabled` keeps manual editing available. |
+| `VIDEO_M2_PROVIDER`, `OPENAI_M2_MODEL` | `openai`, `gpt-6.1-sol`; independent bounded notes extraction/task suggestions. `disabled` keeps manual editing available. |
 | `VIDEO_VISION_PROVIDER`, `VIDEO_TRANSCRIPTION_PROVIDER`, `VIDEO_CREATIVE_PROVIDER` | `openai`; independent capabilities. |
-| `OPENAI_VISION_MODEL`, `OPENAI_CREATIVE_MODEL` | `gpt-4.1-mini`; independent settings. |
-| `OPENAI_STRUCTURE_MODEL`, `OPENAI_RESEARCH_MODEL` | `gpt-4.1-mini`; structured reasoning and bounded hosted search. |
+| `OPENAI_VISION_MODEL`, `OPENAI_CREATIVE_MODEL` | `gpt-6.1-sol`; independent settings. |
+| `OPENAI_STRUCTURE_MODEL`, `OPENAI_RESEARCH_MODEL` | `gpt-6.1-sol`; structured reasoning and bounded hosted search. |
 | `STRUCTURE_RESEARCH_MAX_CALLS`, `STRUCTURE_MAX_SECONDS` | `2`, `120`; finite automatic research/run bounds. |
 | `VIDEO_EXPERIMENT_MAX_USD` | `3`; cannot exceed the authorized experiment limit. Shared persistent reservations apply before requests. |
 | `VIDEO_EXPERIMENT_BUDGET_PATH` | `<data-dir>/provider-budget.sqlite3`; preserve this ledger across evaluation modules/restarts. |
-| `OPENAI_TRANSCRIPTION_MODEL` | `whisper-1`, for usable segment timestamps. |
+| `OPENAI_TRANSCRIPTION_MODEL` | `whisper-1` by default, with estimated segment timestamps. The project UI also offers explicit `gpt-transcribe` with measured audio-chunk ranges, without word/sentence alignment. |
 | `ANALYSIS_OUTPUT_LANGUAGE`, `CREATIVE_OUTPUT_LANGUAGE` | `English`; analysis descriptive prose only. Creative workspace choice overrides the environment for M6/M7. OCR/ASR and approved fixed wording retain their original language. |
 | `OPENAI_TIMEOUT_SECONDS`, `OPENAI_MAX_RETRIES` | `45`, `2`; finite timeout and transient retries. |
 | `OPENAI_MAX_OUTPUT_TOKENS` | `8000`. |
@@ -122,9 +122,9 @@ To add another provider, implement `VisionProvider.extract` and/or `Transcriptio
 | No audio stream | No ASR request; explicit no-audio determination. Music/SFX remain `not_analyzed`. |
 | MOV, HEVC 10-bit/HDR/PQ/HLG, unusual profiles, unsupported streams or corrupt media | Actionable rejection; no universal profile/color fidelity claim. |
 
-Defaults remain 50 MiB original upload, 180 seconds, 1920×1920. Probe/decode/transcode timeout defaults are 15/60/180 seconds; configure through `.env.example`. Derivatives can exceed the original upload size cap. Reference intervals use original zero-based integer frames with exclusive ends; the player maps those indices through the selected playback clock. Storyboards retain independent planned seconds. Fractional/VFR nominal timecode is approximate.
+Defaults are 500 MiB original upload, 180 seconds, 1920×1920. An existing explicit `VIDEO_MAX_BYTES` setting takes precedence; Resources displays the running server's limits. Probe/decode/transcode timeout defaults are 15/60/180 seconds; configure through `.env.example`. Derivatives can exceed the original upload size cap. Reference intervals use original zero-based integer frames with exclusive ends where measured frame precision is available; the player maps those indices through the selected playback clock. Storyboards retain independent planned seconds. Fractional/VFR nominal timecode is approximate.
 
-Visual/OCR findings cover sampled frames, not every frame or precise shot boundaries. Sparse sampling can miss brief text/actions. Speech timestamps are model estimates normalized to measured frames; frame indices do not prove semantic frame accuracy. Nonoverlapping audio chunks can split words. Validate these limitations using permitted annotated clips.
+Visual/OCR findings cover sampled frames, not every frame or precise shot boundaries. Sparse sampling can miss brief text/actions. Whisper speech timestamps are model estimates normalized to measured frames where available; frame indices do not prove semantic frame accuracy. Project GPT Transcribe evidence instead uses measured whole audio-chunk intervals with no invented frame, word or sentence alignment. Nonoverlapping audio chunks can split words. Validate these limitations using permitted annotated clips.
 
 ## Storage and migration
 

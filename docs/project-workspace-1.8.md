@@ -1,6 +1,17 @@
 # Video Anatomy 1.8 project workspace
 
-## Current 1.8.3 testing candidate
+## Current 1.8.4 testing candidate
+
+Read the [1.8.4 release notes](releases/1.8.4.md) and
+[verification handoff](handoff/project-workspace-1.8.4.md). This candidate adds
+recoverable Video/Series management, validated citation-index normalization,
+report-only retries, explicit job lineage and source-revision diagnostics. A
+new optional GPT Transcribe profile uses measured audio-chunk ranges without
+invented sentence/word timing; Whisper and old evidence remain compatible.
+Machine-speech recovery respects per-event human corrections and preserves
+history. The default file bound is 500 MiB, with live server limits displayed.
+
+## 1.8.3 foundation
 
 Read [release notes](releases/1.8.3.md) and the
 [verification handoff](handoff/project-workspace-1.8.3.md). The approved behavior

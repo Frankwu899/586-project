@@ -138,6 +138,8 @@ class ProviderRecognitionAdapter:
         self.transcription_provider = transcription_provider or OpenAITranscriptionProvider(self.settings)
         self.prepare = prepare
         self.records: list[dict] = []
+        self.speech_intervals: dict[str, dict] = {}
+        self.speech_model = self.transcription_provider.model
         self._lock = threading.Lock()
 
     def analyze(self, request, *, speech_only=False) -> AnalysisResult:
@@ -238,14 +240,17 @@ class ProviderRecognitionAdapter:
             begun = datetime.now(timezone.utc)
             detail = {**metadata, "stage": "transcription_chunk", "chunk_index": index,
                       "chunk_start_seconds": chunk.start_seconds, "chunk_end_seconds": chunk.end_seconds,
-                      "started_at": begun.isoformat(), "cache_status": "miss", "attempts": 0}
+                      "started_at": begun.isoformat(), "cache_status": "miss", "attempts": 0,
+                      "speech_model": provider.model,
+                      "speech_timing": "chunk" if provider.model == "gpt-transcribe" else "segment"}
             chunk_key = hashlib.sha256(json.dumps({"speech_key": speech_key,
                 "start": chunk.start_seconds, "end": chunk.end_seconds}, sort_keys=True).encode()).hexdigest()
             chunk_path = self.settings.cache_dir / "speech-chunks" / f"{chunk_key}.json" if self.settings.cache_dir else None
             spans = None
             if chunk_path and chunk_path.is_file():
                 try:
-                    spans = self._validate_cached_speech(json.loads(chunk_path.read_text(encoding="utf-8")), duration)
+                    spans = self._validate_cached_speech(json.loads(chunk_path.read_text(encoding="utf-8")), duration,
+                        model=provider.model, chunks=(chunk,))
                     if any(span["start"] < chunk.start_seconds or span["end"] > chunk.end_seconds for span in spans):
                         spans = None
                 except (OSError, ValueError, TypeError, KeyError):
@@ -262,7 +267,7 @@ class ProviderRecognitionAdapter:
                     attempts += 1
                     detail["attempts"] = 1
                     raw = provider.transcribe(chunk, metadata=detail)
-                    spans, issues, rounded = self._normalize_speech_result(raw, chunk, duration)
+                    spans, issues, rounded = self._normalize_speech_result(raw, chunk, duration, model=provider.model)
                     detail.update(valid_segments=len(spans), rejected_segments=len(issues), rounded_boundaries=rounded,
                                   validation_outcome="partial" if issues and spans else "rejected" if issues else "accepted")
                     if issues:
@@ -305,6 +310,7 @@ class ProviderRecognitionAdapter:
 
     def _analyze(self, request, *, speech_only=False):
         video = request.video
+        self.speech_intervals = {}
         analysis_id = f"analysis_{uuid4().hex}"
         records = []
         if (video.task_id != request.task_id or video.intake_status != "ready" or video.frame_timing is None
@@ -350,6 +356,8 @@ class ProviderRecognitionAdapter:
                     "settings": {key: value for key, value in asdict(self.settings).items()
                                  if key not in ("api_key", "cache_dir", "budget_path", "experiment_budget_enabled")},
                     "timing": video.frame_timing.model_dump(), "has_audio": video.has_audio}
+                if self.transcription_provider.model == "gpt-transcribe":
+                    key_payload["speech_contract"] = {"response_format": "json", "timing": "chunk", "version": 1}
                 cache_key = hashlib.sha256(json.dumps(key_payload, sort_keys=True).encode()).hexdigest()
                 cache_path = self.settings.cache_dir / f"{cache_key}.json" if self.settings.cache_dir else None
                 cached = None
@@ -357,7 +365,8 @@ class ProviderRecognitionAdapter:
                     try:
                         cached = json.loads(cache_path.read_text(encoding="utf-8"))
                         self._validate_visual(cached["vision"], prepared.frames)
-                        self._validate_cached_speech(cached["speech"], video.duration_seconds)
+                        self._validate_cached_speech(cached["speech"], video.duration_seconds,
+                            model=self.transcription_provider.model, chunks=prepared.audio_chunks)
                     except (OSError, ValueError, TypeError, KeyError):
                         cached = None
                 # Audio is untouched by a visual crop. Reuse independently keyed
@@ -368,19 +377,23 @@ class ProviderRecognitionAdapter:
                 # history and user-edited transcript text are never copied.
                 speech_cache_provider = (["openai", "whisper-1"] if (self.transcription_provider.model == "disabled" or self.settings.transcription_provider == "disabled")
                                          else [self.transcription_provider.provider, self.transcription_provider.model])
-                speech_key = hashlib.sha256(json.dumps({
+                speech_identity = {
                     "source_sha256": prepared.source_sha256, "normalization": NORMALIZATION_VERSION,
                     "preparation": prepared.preparation_version,
                     "speech_prompt": SPEECH_PROMPT_VERSION,
                     "provider": speech_cache_provider,
                     "timing": video.frame_timing.model_dump(), "has_audio": video.has_audio,
                     "chunks": [(chunk.start_seconds, chunk.end_seconds) for chunk in prepared.audio_chunks],
-                }, sort_keys=True).encode()).hexdigest()
+                }
+                if speech_cache_provider[1] == "gpt-transcribe":
+                    speech_identity["speech_contract"] = {"response_format": "json", "timing": "chunk", "version": 1}
+                speech_key = hashlib.sha256(json.dumps(speech_identity, sort_keys=True).encode()).hexdigest()
                 speech_cache_path = self.settings.cache_dir / f"speech-{speech_key}.json" if self.settings.cache_dir else None
                 cached_speech = None
                 if speech_cache_path and speech_cache_path.is_file():
                     try:
-                        cached_speech = self._validate_cached_speech(json.loads(speech_cache_path.read_text(encoding="utf-8")), video.duration_seconds)
+                        cached_speech = self._validate_cached_speech(json.loads(speech_cache_path.read_text(encoding="utf-8")), video.duration_seconds,
+                            model=speech_cache_provider[1], chunks=prepared.audio_chunks)
                     except (OSError, ValueError, TypeError, KeyError):
                         cached_speech = None
                 base = {"job_id": request.job_id, "project_id": request.task_id, "resource_id": video.video_id,
@@ -434,12 +447,13 @@ class ProviderRecognitionAdapter:
                         else:
                             if self.settings.transcription_provider != provider.provider and isinstance(provider, OpenAITranscriptionProvider):
                                 raise ProviderError("unsupported_provider", "Configure a supported transcription provider or inject an alternate adapter.")
-                            if not provider.capabilities.timestamped_transcription:
+                            if not provider.capabilities.timestamped_transcription and provider.model != "gpt-transcribe":
                                 raise ProviderError("unsupported_model_capability", "Configured speech provider does not supply usable timestamps.")
                             if not prepared.audio_chunks:
                                 raise ProviderError("missing_prepared_audio", "The audio stream could not be prepared for timestamped transcription.")
                             if cached:
-                                speech = self._validate_cached_speech(cached["speech"], video.duration_seconds)
+                                speech = self._validate_cached_speech(cached["speech"], video.duration_seconds,
+                                    model=provider.model, chunks=prepared.audio_chunks)
                             elif cached_speech is not None:
                                 speech = cached_speech
                                 cache_status = "hit"
@@ -525,19 +539,27 @@ class ProviderRecognitionAdapter:
         return parsed
 
     @staticmethod
-    def _normalize_speech_result(raw, chunk, duration):
-        """Keep independently timed segments; clamp at most 100 ms of edge rounding.
+    def _normalize_speech_result(raw, chunk, duration, *, model="whisper-1"):
+        """Keep native segments or one explicitly coarse submitted-chunk interval.
 
-        No words are divided or supplied with invented timing. A rejected segment
-        leaves coverage incomplete and prevents writing a complete chunk cache.
+        Native segment bounds retain the 100 ms rounding limit. No words are
+        divided or supplied with invented timing. Rejected segments keep coverage
+        incomplete and prevent writing a complete chunk cache.
         """
+        length = chunk.end_seconds - chunk.start_seconds
+        if not math.isfinite(length) or length <= 0 or chunk.start_seconds < 0 or chunk.end_seconds > duration + 1e-6:
+            raise ProviderError("audio_preparation_invalid", "Prepared audio boundaries do not match the source duration.")
+        if model == "gpt-transcribe":
+            if not isinstance(raw, dict) or not isinstance(raw.get("text"), str):
+                raise ProviderError("audio_transcript_invalid", "Transcription returned no usable text field; retry this audio chunk. Saved evidence is retained.")
+            text = raw["text"].strip()
+            # This is the measured submitted interval, not a model-generated
+            # sentence timestamp. Never partition its text into inferred spans.
+            return ([{"start": chunk.start_seconds, "end": chunk.end_seconds, "text": text}] if text else []), [], 0
         if not isinstance(raw, dict) or not isinstance(raw.get("segments"), list):
             raise ProviderError("audio_timestamps_missing", "Transcription returned no usable timestamped segments; retry the affected chunk.")
         if not raw["segments"] and str(raw.get("text", "")).strip():
             raise ProviderError("audio_timestamps_missing", "Transcription returned text without timestamps; untimed text cannot become evidence.")
-        length = chunk.end_seconds - chunk.start_seconds
-        if not math.isfinite(length) or length <= 0 or chunk.start_seconds < 0 or chunk.end_seconds > duration + 1e-6:
-            raise ProviderError("audio_preparation_invalid", "Prepared audio boundaries do not match the source duration.")
         spans, issues, rounded = [], [], 0
         previous = -1.0
         for item in raw["segments"]:
@@ -574,7 +596,7 @@ class ProviderRecognitionAdapter:
         return spans
 
     @staticmethod
-    def _validate_cached_speech(spans, duration):
+    def _validate_cached_speech(spans, duration, *, model="whisper-1", chunks=None):
         if (not isinstance(spans, list) or any(not isinstance(span, dict)
                 or type(span.get("start")) not in (int, float) or type(span.get("end")) not in (int, float)
                 for span in spans)):
@@ -583,6 +605,11 @@ class ProviderRecognitionAdapter:
         if (any(span.start >= span.end or span.end > duration for span in parsed)
                 or any(right.start < left.start for left, right in zip(parsed, parsed[1:]))):
             raise ValueError("invalid cached speech")
+        if model == "gpt-transcribe":
+            bounds = {(chunk.start_seconds, chunk.end_seconds) for chunk in chunks or ()}
+            if (any((span.start, span.end) not in bounds for span in parsed)
+                    or len({(span.start, span.end) for span in parsed}) != len(parsed)):
+                raise ValueError("cached whole-chunk transcription has incompatible timing")
         return [span.model_dump() for span in parsed]
 
     def _build_result(self, request, analysis_id, visual, speech, errors, *, reused_speech_origin=None, speech_only=False):
@@ -590,6 +617,7 @@ class ProviderRecognitionAdapter:
         language = self.settings.analysis_language
         speech_provider, speech_model = reused_speech_origin or (
             self.transcription_provider.provider, self.transcription_provider.model)
+        self.speech_model = speech_model
         visual_note = authored_text(language,
             "Observed at one sampled frame; action/shot boundaries between samples are unknown.",
             "仅观察了一个采样帧；采样间的动作与镜头边界尚不确定。")
@@ -626,11 +654,16 @@ class ProviderRecognitionAdapter:
         if speech is not None:
             for index, span in enumerate(speech):
                 first, stop = seconds_to_frame_range(span["start"], span["end"], video.frame_timing)
+                chunk_timing = speech_model == "gpt-transcribe"
+                if chunk_timing:
+                    self.speech_intervals[f"speech_{index}"] = dict(span)
                 events.append({"start_frame": first, "end_frame": stop, "event_id": f"speech_{index}",
                     "video_id": video.video_id, "lane": "audio", "kind": "speech", "text": span["text"],
                     "source": f"{speech_provider}/{speech_model}" if reused_speech_origin else speech_provider,
-                    "method": "cached_timestamped_audio_transcription" if reused_speech_origin else "timestamped_audio_transcription",
+                    "method": "whole_chunk_audio_transcription" if chunk_timing else "cached_timestamped_audio_transcription" if reused_speech_origin else "timestamped_audio_transcription",
                     "uncertainty": authored_text(language,
+                        "Text belongs to the whole submitted audio chunk; exact sentence and word timing is unavailable.",
+                        "文本属于整块输入音频；没有精确的逐句或逐词时间。") if chunk_timing else authored_text(language,
                         "Provider segment timing quantized to measured source-frame boundaries; verify wording and timing.",
                         "语音片段时间已对齐实测原视频帧边界；请核对原文与时间。")})
         events.sort(key=lambda item: (item["start_frame"], item["event_id"]))

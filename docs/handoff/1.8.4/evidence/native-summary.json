@@ -1,0 +1,227 @@
+{
+  "status": "passed",
+  "surface_checks": 63,
+  "passed": 63,
+  "failed": 0,
+  "processing_requests": [],
+  "screenshots": 81,
+  "csv_exports": 9,
+  "runtime_versions": [
+    "1.8.4"
+  ],
+  "native_zoom": [
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "innerWidth": 1440,
+      "innerHeight": 757,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "innerWidth": 1152,
+      "innerHeight": 606,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "innerWidth": 960,
+      "innerHeight": 505,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1440,
+        900
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "innerWidth": 720,
+      "innerHeight": 378,
+      "outerWidth": 1440,
+      "outerHeight": 900,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "innerWidth": 1280,
+      "innerHeight": 657,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.25,
+      "settingsGetDefaultZoom": 1.25,
+      "innerWidth": 1024,
+      "innerHeight": 526,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.25,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 1.5,
+      "settingsGetDefaultZoom": 1.5,
+      "innerWidth": 853,
+      "innerHeight": 438,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 1.5,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "native Chromium Page zoom",
+      "requestedWindow": [
+        1280,
+        800
+      ],
+      "requestedZoom": 2,
+      "settingsGetDefaultZoom": 2,
+      "innerWidth": 640,
+      "innerHeight": 328,
+      "outerWidth": 1280,
+      "outerHeight": 800,
+      "devicePixelRatio": 2,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    },
+    {
+      "mode": "narrow CSS viewport at native 100%",
+      "requestedWindow": [
+        390,
+        844
+      ],
+      "requestedZoom": 1,
+      "settingsGetDefaultZoom": 1,
+      "innerWidth": 390,
+      "innerHeight": 844,
+      "outerWidth": 500,
+      "outerHeight": 844,
+      "devicePixelRatio": 1,
+      "visualViewportScale": 1,
+      "cssZoom": "1",
+      "sourceVersion": "1.8.4"
+    }
+  ],
+  "changed_source_during_main_QA": [],
+  "main_receipts": "verified/native-full-receipts.json",
+  "main_log": "native-full.log",
+  "not_run": [
+    "macOS native wrapper/Gatekeeper",
+    "Safari",
+    "paid model/provider recognition",
+    "real user library/data",
+    "IME OS composition in Cloud"
+  ],
+  "limitations": [
+    "Fixtures are authored synthetic records and local generated MP4/WAV bytes, not provider output or model-quality evidence.",
+    "390px case is explicitly a CSS viewport at native 100%, not native browser zoom.",
+    "QA evaluates the frozen working tree, not an identified final clean packaging commit."
+  ],
+  "extra_checks": 6,
+  "extra_passed": 6,
+  "extra_failed": 0,
+  "player_checks": 1,
+  "player_status": "passed",
+  "total_checks": 73,
+  "total_passed": 73,
+  "extra_receipts": "extra/receipts.json",
+  "player_receipt": "native-player-receipt.json",
+  "extra_processing_requests": [],
+  "extra_jobs_unchanged": true,
+  "extra_evidence_unchanged": true,
+  "screenshots_main": 81,
+  "screenshots_extra": 10,
+  "screenshots_player": 1,
+  "qa_servers_stopped": true,
+  "qa_ports": [
+    8063,
+    5226
+  ],
+  "changed_source_through_QA_completion": [],
+  "harness_notes": [
+    "The final 63-surface helper ran unchanged.",
+    "Two supplementary harness setup navigation races were corrected by waiting for workspace and respecting restored Source Review; the successful final reruns are in receipts, and initial harness failure logs are preserved.",
+    "Main 390px and supplementary 390px cases are CSS viewports at native100%; the eight wide-window cases use actual Chromium Page zoom.",
+    "Preflight7/7 is separate and excluded from final70checks."
+  ],
+  "main_qa_servers_stopped_after_run": true,
+  "dialog_supplement_pending": false,
+  "scope_note": "Original63+6+player1 receipts and unchanged-source conclusion apply only to frozen-source-snapshot.json. Later Resources/Activity changes are independently covered by3 native dialog cases with per-case file hashes in dialog-supplement/receipts.json; the full original matrix was not rerun after those2 changes.",
+  "original_total_checks": 70,
+  "postchange_dialog_checks": 3,
+  "postchange_dialog_passed": 3,
+  "postchange_dialog_receipts": "dialog-supplement/receipts.json",
+  "postchange_source_snapshot": "postchange-source-snapshot.json",
+  "changed_source_during_postchange_dialog": [
+    "frontend/e2e/project-reliability-184-fixtures.py"
+  ],
+  "screenshots_postchange_dialog": 9,
+  "postchange_processing_posts": [],
+  "postchange_dialog_notes": [
+    "Each of the3 cases audits all5 controls visible for the selected audio source: Analysis for, saved-evidence checkbox, Speech model, Cancel, Generate from saved evidence.",
+    "Alpha is audio-only, so the conditional visual-only checkbox is correctly absent and is not claimed to have been audited by this supplement.",
+    "Default false; selected saved-only disables Speech model; Generate button never clicked; Cancel and Escape restore opener focus; jobs and evidence unchanged."
+  ]
+}

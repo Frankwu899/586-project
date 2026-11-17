@@ -17,7 +17,8 @@ TEXT_FIELDS = frozenset({"application_version", "source_commit", "requested_mode
     "provider", "capability", "operation", "stage", "project_id", "resource_id", "job_id", "task_id",
     "conversation_turn_id", "message_id", "analysis_id", "prompt_version", "schema_version", "preparation_version",
     "cache_status", "failure_code", "validation_outcome", "validation_rule", "validation_field",
-    "started_at", "ended_at", "chunk_id", "source_sha256", "content_region_digest"})
+    "started_at", "ended_at", "chunk_id", "source_sha256", "content_region_digest",
+    "speech_model", "speech_timing"})
 NUMBER_FIELDS = frozenset({"http_status", "attempts", "elapsed_ms", "audio_seconds", "chunk_index",
     "chunk_start_seconds", "chunk_end_seconds", "chunk_start", "chunk_end", "retry_after_seconds",
     "completed_chunks", "total_chunks", "invalid_segments", "analysis_revision"})

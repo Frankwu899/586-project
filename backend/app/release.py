@@ -4,7 +4,7 @@ import json
 import re
 import subprocess
 
-VERSION = "1.8.3"
+VERSION = "1.8.4"
 ROOT = Path(__file__).resolve().parents[2]
 
 

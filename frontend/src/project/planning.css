@@ -1,0 +1,78 @@
+.va-app .va-content-plan-managed .va-plan-layout {
+  grid-template-columns: minmax(240px, 270px) minmax(0, 1fr);
+  gap: 22px;
+}
+.va-planning-library { min-inline-size: 0; align-self: start; }
+.va-app .va-planning-library > summary {
+  padding: 16px;
+  font-size: .9375rem;
+  color: #343b56;
+  overflow-wrap: anywhere;
+}
+.va-planning-library > summary > span { color: #626a83; font-size: .75rem; font-weight: 500; margin-inline-start: 6px; }
+.va-planning-library-body { padding: 0 16px 18px; min-inline-size: 0; }
+.va-app .va-planning-library-body > h2 { font-size: 1.0625rem; margin-block: 0 14px; }
+.va-planning-library search { display: grid; gap: 6px; margin-block-end: 14px; }
+.va-app .va-planning-library search > label { margin: 0; font-size: .75rem; color: #4d5671; }
+.va-app .va-planning-library input[type="search"] { inline-size: 100%; min-inline-size: 0; background: #fff; font-size: 1rem; border-color: #8790a8; }
+.va-planning-view { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 18px; }
+.va-app .va-planning-view > button { flex: 1 1 70px; font-size: .8125rem; min-block-size: 40px; }
+.va-app .va-planning-view > button[aria-pressed="true"] { background: #ece8fc; color: #4434a0; border-color: #7c6bc9; }
+.va-planning-group-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px; }
+.va-app .va-planning-group-heading > h3 { font-size: .875rem; color: #525b77; margin: 0; }
+.va-planning-standalone { padding-block-end: 16px; border-block-end: 1px solid #d8ddef; }
+.va-planning-series-list { padding-block-start: 14px; }
+.va-app .va-planning-items { list-style: none; padding: 0; margin-block: 8px; }
+.va-app .va-planning-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; align-items: start; padding-block: 5px; margin: 0; }
+.va-app .va-planning-select { inline-size: 100%; min-inline-size: 0; min-block-size: 44px; padding: 9px 7px; justify-content: start; text-align: start; font-size: .8125rem; background: #ffffff80; box-shadow: none; border-color: transparent!important; }
+.va-planning-select > span { min-inline-size: 0; flex: 1; overflow-wrap: anywhere; }
+.va-planning-select > svg { flex: none; }
+.va-app .va-planning-select.active { border-color: #a79ae6!important; background: #e9e3ff; color: #3f2f94; }
+.va-planning-actions { display: contents; }
+.va-app .va-planning-actions-trigger { grid-column: 2; min-block-size: 44px; font-size: .6875rem; padding: 7px 6px; gap: 3px; background: #ffffffb3; box-shadow: none; }
+.va-app .va-planning-actions-trigger[aria-expanded="true"] { background: #ece8fc; border-color: #7c6bc9; color: #4434a0; }
+.va-planning-actions-panel { grid-column: 1 / -1; display: grid; gap: 5px; padding: 8px; border: 1px solid #cdd3e7; border-radius: 10px; background: #f8f7ff; }
+.va-app .va-planning-actions-panel > button { inline-size: 100%; min-block-size: 40px; text-align: start; justify-content: start; font-size: .8125rem; white-space: normal; background: #fff; }
+.va-app .va-planning-actions-panel > .va-planning-danger { color: #963844; }
+.va-planning-series { min-inline-size: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 5px; padding-block: 16px; border-block-end: 1px solid #d8ddef; }
+.va-planning-series-title { grid-column: 1; grid-row: 1; min-inline-size: 0; display: flex; flex-wrap: wrap; align-items: start; gap: 6px; }
+.va-planning-series-title > h4 { margin: 8px 0 0; font-size: .875rem; line-height: 1.5; color: #343b56; overflow-wrap: anywhere; }
+.va-planning-series-title > .va-badge { margin-block-start: 7px; }
+.va-planning-series > .va-planning-actions > .va-planning-actions-trigger { grid-row: 1; }
+.va-planning-series > :is(p, ul, .va-badge, .va-link-button) { grid-column: 1 / -1; }
+.va-planning-series > p { font-size: .75rem; color: #5c657f; overflow-wrap: anywhere; margin-block: 8px; }
+.va-app .va-planning-series > .va-link-button { justify-self: start; min-block-size: 40px; }
+.va-planning-empty { font-size: .75rem; color: #626a83; line-height: 1.65; }
+.va-app .va-planning-library .va-link-button { white-space: normal; font-size: .8125rem; }
+.va-app .va-planning-series-list > button,.va-app .va-planning-suggest { inline-size: 100%; min-block-size: 44px; margin-block-start: 12px; white-space: normal; font-size: .8125rem; }
+.va-planning-notice { padding: 10px 14px; background: #f4f2ff; border: 1px solid #d3cbee; border-radius: 10px; font-size: .8125rem; line-height: 1.6; overflow-wrap: anywhere; }
+.va-planning-trash-index { color: #5c657f; font-size: .8125rem; line-height: 1.7; }
+.va-planning-trash { min-inline-size: 0; padding: 24px; background: #fafaff; }
+.va-planning-trash > .va-section-heading { align-items: start; flex-wrap: wrap; }
+.va-planning-trash h2 { font-size: 1.5rem; }
+.va-planning-trash p { color: #59627c; font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.va-planning-trash-cards { display: grid; gap: 14px; margin-block-start: 20px; }
+.va-planning-trash-cards > article { display: flex; align-items: start; flex-wrap: wrap; gap: 12px; padding: 18px; border: 1px solid #d4d9eb; border-radius: 12px; background: #fff; }
+.va-planning-trash-cards > article > div { flex: 1 1 220px; min-inline-size: 0; }
+.va-planning-trash-cards h3 { margin-block: 8px; font-size: 1.125rem; overflow-wrap: anywhere; }
+.va-planning-trash-cards p { margin-block: 6px; }
+.va-planning-manage-dialog p { line-height: 1.7; overflow-wrap: anywhere; }
+.va-planning-manage-dialog :is(input,select) { font-size: 1rem; min-block-size: 44px; }
+.va-planning-impact-list { max-block-size: min(35dvh, 260px); overflow-y: auto; padding-inline-start: 22px; scrollbar-gutter: stable; }
+.va-planning-impact-list > li { margin-block: 10px; font-size: .875rem; overflow-wrap: anywhere; }
+.va-planning-impact-list > li > span { display: block; font-size: .75rem; color: #5c657f; margin-block-start: 4px; }
+.va-planning-manage-dialog .va-actions > button { min-block-size: 44px; white-space: normal; }
+@container content-production (max-width: 850px) {
+  .va-app .va-content-plan-managed .va-plan-layout { grid-template-columns: minmax(0, 1fr); }
+  .va-planning-library-body { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .va-planning-library { inline-size: 100%; }
+  .va-planning-library > summary { min-block-size: 48px; }
+  .va-planning-library-body > h2 { display: none; }
+}
+@container content-production (max-width: 600px) {
+  .va-planning-trash { padding: 18px; }
+  .va-planning-manage-dialog { padding: 20px; }
+  .va-planning-manage-dialog .va-actions { align-items: stretch; }
+  .va-planning-manage-dialog .va-actions > button { flex: 1 1 140px; }
+  .va-planning-item { grid-template-columns: minmax(0, 1fr) auto; }
+}
