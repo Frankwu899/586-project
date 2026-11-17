@@ -613,7 +613,8 @@ def install_project_workspace(app, legacy_service):
             runtime.planning.require_active_series(project_id, body.series_id)
         runtime.planning.preflight_generation(project_id, instruction=body.instruction, visual_only=body.visual_only)
         return runtime.submit(project_id, body.expected_version, "topics",
-            lambda: runtime.planning.suggest_topics(project_id, body.instruction, visual_only=body.visual_only, series_id=body.series_id))
+            lambda: runtime.planning.suggest_topics(project_id, body.instruction, visual_only=body.visual_only, series_id=body.series_id),
+            diagnostics={"series_id": body.series_id or ""})
 
     @router.post("/{project_id}/topics/{suggestion_id}/add", response_model=Project)
     def topic_add(project_id: str, suggestion_id: str, body: Mutation):

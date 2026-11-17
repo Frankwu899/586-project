@@ -14,9 +14,10 @@ import wave
 import pytest
 
 from backend.app.media_preparation import AudioChunk
+from backend.app.models import FrameTiming
 from backend.app.project_workspace.analysis import AnalysisService
 from backend.app.project_workspace.models import EvidenceEvent, EvidenceRevision, Resource
-from backend.app.project_workspace.speech_retry import merge_retry
+from backend.app.project_workspace.speech_retry import SPEECH_INTERVALS, merge_retry
 from backend.app.project_workspace.store import ProjectStore
 from backend.app.providers.base import ProviderError
 from backend.app.providers.config import ProviderSettings
@@ -27,7 +28,7 @@ from backend.app.providers.recognition import (
 from backend.app.providers.transport import OpenAITransport
 from backend.app.workflow_errors import WorkflowError
 from test_project_speech_retry import setup_retry
-from test_providers import recognition_input
+from test_providers import AlternateVision, recognition_input
 
 
 def _write_wav(path, seconds, *, rate=16000, channels=1):
@@ -431,3 +432,252 @@ def test_video_chunk_text_correction_preserves_non_frame_aligned_bounds_and_prec
     assert all(event.start_frame is None and event.end_frame is None for event in chunks)
     assert chunks[1] == second
     assert corrected.resources[0].evidence[0] == previous
+
+
+def test_segment_profile_switch_replaces_whole_chunk_machine_text_across_silence(tmp_path, monkeypatch):
+    store, project, resource, service = _audio_project(tmp_path, seconds=1)
+    calls = []
+
+    def transcribe(_self, model, _path, *, metadata):
+        calls.append(model)
+        if model == "gpt-transcribe":
+            return {"text": "Old whole-chunk reading."}
+        return {"text": "First sentence. Second sentence.", "segments": [
+            {"text": "First sentence.", "start": 0, "end": .4},
+            {"text": "Second sentence.", "start": .6, "end": 1},
+        ]}
+
+    monkeypatch.setattr(OpenAITransport, "transcribe", transcribe)
+    monkeypatch.setattr(OpenAITransport, "_request", _forbid_structured_provider)
+    first = service.retry_reference(project.id, resource.id, transcription_model="gpt-transcribe")
+    history = [revision.model_dump() for revision in first.resources[0].evidence]
+    switched = service.retry_reference(project.id, resource.id, transcription_model="whisper-1")
+    evidence = switched.resources[0].evidence[-1]
+
+    assert calls == ["gpt-transcribe", "whisper-1"]
+    assert [revision.model_dump() for revision in switched.resources[0].evidence[:-1]] == history
+    assert [(event.text, event.start_seconds, event.end_seconds) for event in evidence.events] == [
+        ("First sentence.", 0, .4), ("Second sentence.", .6, 1),
+    ]
+    assert evidence.coverage["speech"] == "observations"
+    assert evidence.diagnostics["speech_model"] == "whisper-1"
+    assert ProjectStore(store.root).get(project.id).resources[0].evidence == switched.resources[0].evidence
+
+
+@pytest.mark.parametrize("fail_second", [False, True], ids=["all-empty", "retain-failed-chunk"])
+def test_empty_successful_chunk_removes_machine_text_but_failed_chunk_retains_it(tmp_path, monkeypatch, fail_second):
+    _, project, resource, service = _audio_project(tmp_path, seconds=2)
+
+    def transcribe(_self, model, _path, *, metadata):
+        index = metadata["chunk_index"]
+        if model == "gpt-transcribe":
+            return {"text": f"Old machine chunk {index}."}
+        if index == 0 or not fail_second:
+            return {"text": "", "segments": []}
+        raise ProviderError("provider_timeout", "Authored offline timeout")
+
+    monkeypatch.setattr(OpenAITransport, "transcribe", transcribe)
+    monkeypatch.setattr(OpenAITransport, "_request", _forbid_structured_provider)
+    first = service.retry_reference(project.id, resource.id, transcription_model="gpt-transcribe")
+    history = [revision.model_dump() for revision in first.resources[0].evidence]
+    switched = service.retry_reference(project.id, resource.id, transcription_model="whisper-1")
+    evidence = switched.resources[0].evidence[-1]
+
+    assert [revision.model_dump() for revision in switched.resources[0].evidence[:-1]] == history
+    expected = [("Old machine chunk 1.", 1, 2)] if fail_second else []
+    assert [(event.text, event.start_seconds, event.end_seconds) for event in evidence.events] == expected
+    assert evidence.coverage["speech"] == ("failed" if fail_second else "none_found")
+    if fail_second:
+        assert evidence.diagnostics["speech"] == "provider_timeout"
+    else:
+        assert "speech" not in evidence.diagnostics
+
+
+def test_completed_chunk_scope_keeps_human_conflict_and_other_saved_wording():
+    human = EvidenceEvent(id="human", kind="speech", text="Exact human wording",
+                          start_seconds=0, end_seconds=.2, precision="estimated")
+    machine = EvidenceEvent(id="machine", kind="speech", text="Other saved wording",
+                            start_seconds=.7, end_seconds=.9, precision="estimated")
+    previous = EvidenceRevision(revision=2, events=[human, machine], coverage={"speech": "partial"},
+        correction_note="User corrected one event", diagnostics={"human_corrected_event_ids": '["human"]'})
+    incoming = EvidenceRevision(revision=1, coverage={"speech": "observations"},
+        events=[EvidenceEvent(id="new", kind="speech", text="A full replacement chunk",
+                              start_seconds=0, end_seconds=1, precision="interval")],
+        support_details=[{"stage": "transcription_chunk", "validation_outcome": "accepted",
+                          "chunk_start_seconds": "0", "chunk_end_seconds": "1"}])
+
+    merged = merge_retry(previous, incoming, speech_only=True)
+    assert merged.events == [human, machine]
+    assert merged.coverage["speech"] == "partial"
+    assert merged.diagnostics["speech"] == "speech_merge_conflict"
+    assert any("A full replacement chunk" in note for note in merged.limitations)
+
+
+def test_chunk_replacement_keeps_wording_when_frame_rounding_reaches_a_neighboring_correction():
+    machine = EvidenceEvent(id="machine", kind="speech", text="Other saved wording",
+                            start_seconds=0, end_seconds=.8, precision="estimated")
+    human = EvidenceEvent(id="human", kind="speech", text="Neighboring human wording",
+                          start_seconds=1.05, end_seconds=1.2, precision="estimated")
+    previous = EvidenceRevision(revision=2, events=[machine, human], coverage={"speech": "partial"},
+        correction_note="User corrected one event", diagnostics={"human_corrected_event_ids": '["human"]'})
+    incoming = EvidenceRevision(revision=1, coverage={"speech": "observations"},
+        events=[EvidenceEvent(id="new", kind="speech", text="Candidate expanded to source frame bounds",
+                              start_seconds=0, end_seconds=1.1, precision="estimated")],
+        support_details=[{"stage": "transcription_chunk", "validation_outcome": "accepted",
+                          "chunk_start_seconds": "0", "chunk_end_seconds": "1"}])
+
+    merged = merge_retry(previous, incoming, speech_only=True)
+    assert merged.events == [machine, human]
+    assert merged.diagnostics["speech"] == "speech_merge_conflict"
+
+
+@pytest.mark.parametrize("speech_only_seed", [False, True], ids=["full-result-cache", "speech-cache"])
+def test_complete_video_speech_cache_records_measured_replacement_scope(tmp_path, monkeypatch, speech_only_seed):
+    request, prepared = recognition_input.__wrapped__(tmp_path)
+    calls = []
+
+    def transcribe(_self, _model, _path, *, metadata):
+        calls.append(metadata["chunk_index"])
+        return {"text": "", "segments": []}
+
+    monkeypatch.setattr(OpenAITransport, "transcribe", transcribe)
+    monkeypatch.setattr(OpenAITransport, "_request", _forbid_structured_provider)
+    settings = ProviderSettings(api_key="offline-fixture-only", experiment_budget_enabled=False,
+                                cache_dir=tmp_path / "provider-cache")
+
+    def adapter():
+        return ProviderRecognitionAdapter(settings, vision_provider=AlternateVision(),
+            transcription_provider=OpenAITranscriptionProvider(settings), prepare=lambda *_: prepared)
+
+    assert adapter().analyze(request, speech_only=speech_only_seed).status == "succeeded"
+    cached = adapter()
+    assert cached.analyze(request, speech_only=True).status == "succeeded"
+    assert calls == [0]
+    completed = [record for record in cached.records
+                 if record.get("stage") == "transcription_chunk" and record.get("validation_outcome") == "accepted"]
+    assert [(record["chunk_start_seconds"], record["chunk_end_seconds"], record["attempts"])
+            for record in completed] == [(0, 1, 0)]
+    previous = EvidenceRevision(revision=1, coverage={"speech": "partial"}, events=[EvidenceEvent(
+        id="old", kind="speech", text="Old machine wording", start_seconds=0, end_seconds=1)])
+    incoming = EvidenceRevision(revision=1, coverage={"speech": "none_found"},
+        support_details=[{key: str(value) for key, value in record.items()} for record in completed])
+    assert merge_retry(previous, incoming, speech_only=True).events == []
+
+
+@pytest.mark.parametrize("replacement", ["Replacement zero", ""], ids=["spoken", "empty"])
+@pytest.mark.parametrize("short_neighbor", [False, True], ids=["whole-failed-chunk", "failed-subframe"])
+def test_video_profile_retry_replaces_raw_chunk_without_erasing_failed_frame_neighbor(
+        tmp_path, monkeypatch, replacement, short_neighbor):
+    store, project, _, resource, _, _, _ = setup_retry(tmp_path)
+    boundaries = [0, .1, .3, .6, .98, 1.01, 1.2, 2] if short_neighbor else [0, .1, .3, .6, .8, 1.02, 1.2, 2]
+    timing = FrameTiming(fps_numerator=5, fps_denominator=1, frame_count=7,
+        media_start_seconds=2.5, frame_boundaries_seconds=boundaries, rate_mode="variable")
+
+    def clear_evidence(value):
+        source = value.resources[0]
+        source.evidence = []
+        source.duration_seconds = 2
+        source.media_metadata["frame_timing"] = timing.model_dump()
+
+    store.update(project.id, project.version, clear_evidence)
+    _, prepared = recognition_input.__wrapped__(tmp_path)
+    prepared = replace(prepared, source_sha256=resource.sha256, audio_chunks=tuple(
+        AudioChunk(_write_wav(tmp_path / f"chunk-{index}.wav", 1), index, index + 1) for index in range(2)))
+    settings = ProviderSettings(api_key="offline-fixture-only", experiment_budget_enabled=False,
+        audio_chunk_seconds=1, max_audio_chunks=3)
+    service = AnalysisService(store, lambda: settings, recognition_factory=lambda current: ProviderRecognitionAdapter(
+        current, vision_provider=AlternateVision(), transcription_provider=OpenAITranscriptionProvider(current),
+        prepare=lambda *_: prepared))
+
+    def transcribe(_self, model, _path, *, metadata):
+        index = metadata["chunk_index"]
+        if model == "whisper-1":
+            return {"text": f"Old machine {index}", "segments": [{"text": f"Old machine {index}",
+                "start": 0, "end": .001 if short_neighbor and index == 1 else 1}]}
+        if index == 0:
+            return {"text": replacement}
+        raise ProviderError("provider_timeout", "Authored offline timeout")
+
+    monkeypatch.setattr(OpenAITransport, "transcribe", transcribe)
+    monkeypatch.setattr(OpenAITransport, "_request", _forbid_structured_provider)
+    first = service.retry_reference(project.id, resource.id, transcription_model="whisper-1")
+    original = first.resources[0].evidence[-1]
+    old_first = next(event for event in original.events if event.text == "Old machine 0")
+    old_neighbor = next(event for event in original.events if event.text == "Old machine 1")
+    assert old_first.end_seconds > 1
+    assert old_neighbor.start_seconds < 1 if short_neighbor else old_neighbor.start_seconds > 1
+    history = [revision.model_dump() for revision in first.resources[0].evidence]
+
+    switched = service.retry_reference(project.id, resource.id, transcription_model="gpt-transcribe")
+    current = switched.resources[0].evidence[-1]
+    assert [revision.model_dump() for revision in switched.resources[0].evidence[:-1]] == history
+    speech = [event for event in current.events if event.kind == "speech"]
+    assert old_neighbor in speech
+    assert old_first not in speech
+    assert [event.text for event in speech] == ([replacement, "Old machine 1"] if replacement else ["Old machine 1"])
+    assert current.coverage["speech"] in {"partial", "failed"}
+    provenance = json.loads(current.diagnostics[SPEECH_INTERVALS])
+    assert set(provenance) == {event.id for event in speech}
+    assert provenance[old_neighbor.id] == [1, 1.001 if short_neighbor else 2]
+    assert old_first.id not in provenance
+    if replacement:
+        new_event = next(event for event in speech if event.text == replacement)
+        assert new_event.id != old_first.id
+        assert provenance[new_event.id] == [0, 1]
+
+    # Repeat both switches through complete and per-chunk caches. Native spans
+    # must continue following the durable IDs assigned by each retry merge.
+    service.retry_reference(project.id, resource.id, transcription_model="whisper-1")
+    repeated = service.retry_reference(project.id, resource.id, transcription_model="gpt-transcribe")
+    evidence = repeated.resources[0].evidence[-1]
+    speech = [event for event in evidence.events if event.kind == "speech"]
+    assert [event.text for event in speech] == ([replacement, "Old machine 1"] if replacement else ["Old machine 1"])
+    provenance = json.loads(evidence.diagnostics[SPEECH_INTERVALS])
+    assert set(provenance) == {event.id for event in speech}
+    assert provenance[next(event.id for event in speech if event.text == "Old machine 1")] == [
+        1, 1.001 if short_neighbor else 2]
+
+
+@pytest.mark.parametrize("empty", [False, True], ids=["overlap", "empty"])
+def test_legacy_frame_speech_without_native_provenance_is_retained_with_partial_coverage(empty):
+    old = EvidenceEvent(id="old", kind="speech", text="Older machine wording", start_seconds=0,
+        end_seconds=1.02, start_frame=0, end_frame=5, precision="estimated")
+    previous = EvidenceRevision(revision=1, events=[old], coverage={"speech": "partial"})
+    incoming = EvidenceRevision(revision=1, coverage={"speech": "none_found" if empty else "observations"},
+        events=[] if empty else [EvidenceEvent(id="new", kind="speech", text="New chunk wording",
+                                               start_seconds=0, end_seconds=1, precision="interval")],
+        support_details=[{"stage": "transcription_chunk", "validation_outcome": "accepted",
+                          "chunk_start_seconds": "0", "chunk_end_seconds": "1"}])
+
+    merged = merge_retry(previous, incoming, speech_only=True)
+    assert old in merged.events
+    assert merged.coverage["speech"] == "partial"
+    assert merged.diagnostics["speech"] == "speech_merge_provenance_missing"
+    assert any("no native audio interval provenance" in note for note in merged.limitations)
+
+
+def test_visual_only_correction_keeps_native_machine_speech_before_host_frame_snapping(tmp_path):
+    store, project, service, resource, _, speech, _ = setup_retry(tmp_path)
+
+    def source_only_machine(value):
+        evidence = value.resources[0].evidence[-1]
+        evidence.correction_note = None
+        next(event for event in evidence.events if event.kind == "speech").end_seconds = .29
+
+    machine = store.update(project.id, project.version, source_only_machine)
+    previous = machine.resources[0].evidence[-1]
+    submitted = [event.model_copy(deep=True) for event in previous.events]
+    visual = next(event for event in submitted if event.kind == "visual")
+    visual.text = "Only the visible product wording was corrected"
+    corrected = service.correct_evidence(project.id, machine.version, resource.id, submitted)
+    evidence = corrected.resources[0].evidence[-1]
+    saved_speech = next(event for event in evidence.events if event.kind == "speech")
+
+    assert saved_speech.end_seconds == .3
+    assert json.loads(evidence.diagnostics["human_corrected_event_ids"]) == [visual.id]
+    assert json.loads(evidence.diagnostics[SPEECH_INTERVALS])[saved_speech.id] == [0, .29]
+    retried = service.retry_reference(project.id, resource.id)
+    assert speech.calls == 1
+    assert retried.resources[0].evidence[-1].coverage["speech"] == "observations"
+    assert all(event.text != saved_speech.text for event in retried.resources[0].evidence[-1].events
+               if event.kind == "speech")

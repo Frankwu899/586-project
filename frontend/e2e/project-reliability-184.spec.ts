@@ -168,6 +168,35 @@ test('complete saved evidence still exposes a newer failed model attempt and its
   await expect(page.locator('.va-source-speech-status pre')).toContainText('evidence_pending_changes');
 });
 
+test('generic source retry reuses its saved profile while explicit transcription uses the selected model', async ({ page, request }) => {
+  const project = seed();
+  const retries: Record<string, unknown>[] = [];
+  await page.route(`**/api/projects/${project.id}/resources/resource_alpha/recognize`, async route => {
+    retries.push(route.request().postDataJSON());
+    await route.fulfill({ status: 202, json: await load(request, project.id) });
+  });
+  await open(page, project);
+  await source(page);
+  await page.getByLabel('Speech model', { exact: true }).selectOption('gpt-transcribe');
+  await expect.poll(async () => (await load(request, project.id)).editor_drafts['recognition-settings']?.transcription_model).toBe('gpt-transcribe');
+
+  await page.getByLabel('Evidence revision', { exact: true }).selectOption('1');
+  await expect(page.getByLabel('Speech model', { exact: true })).toHaveCount(0);
+  await page.getByText('Coverage, original file and recovery', { exact: true }).click();
+  await page.getByRole('button', { name: 'Retry recognition', exact: true }).click();
+  await expect.poll(() => retries.length).toBe(1);
+  expect(retries[0]).not.toHaveProperty('transcription_model');
+
+  await page.getByLabel('Evidence revision', { exact: true }).selectOption('current');
+  await page.getByRole('button', { name: 'Retry recognition', exact: true }).click();
+  await expect.poll(() => retries.length).toBe(2);
+  expect(retries[1]).not.toHaveProperty('transcription_model');
+
+  await page.getByRole('button', { name: 'Transcribe with selected model', exact: true }).click();
+  await expect.poll(() => retries.length).toBe(3);
+  expect(retries[2].transcription_model).toBe('gpt-transcribe');
+});
+
 test('Media Pool advertises 500 MiB and reports per-file success, local failure and configured-size preflight', async ({ page, request }) => {
   const project = seed('empty');
   const capabilities = await (await request.get('/api/projects/capabilities')).json();

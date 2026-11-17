@@ -595,6 +595,12 @@ class PlanningService:
             series = _series(project, series_id, include_trashed=True)
             if series.trashed_at:
                 return False
+            # Topic jobs have no member content yet. An explicit empty scope
+            # means standalone; older jobs without a scope could target this
+            # series, so retain it until those jobs finish as well.
+            if any(job.kind == "topics" and job.status in {"queued", "running"}
+                   and job.diagnostics.get("series_id", series_id) == series_id for job in project.jobs):
+                raise WorkflowError("series_busy", "Wait for this series' current topic generation before moving it to Trash.", 409)
             members = [item for item in project.contents if item.series_id == series_id and not item.trashed_at]
             self._require_idle_contents(project, {item.id for item in members})
             series.detached_contents = {}

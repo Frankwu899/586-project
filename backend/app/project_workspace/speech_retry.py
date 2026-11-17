@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import json
+import math
 
 from ..providers.base import ProviderError
 from ..workflow_errors import WorkflowError
@@ -13,6 +14,7 @@ CHANNELS = {"visual_action": "visual", "visual": "visual", "on_screen_text": "on
             "speech": "speech", "music": "sound", "sfx": "sound"}
 _CONFLICT_PREFIX = "Recovery needs review:"
 CORRECTED_IDS = "human_corrected_event_ids"
+SPEECH_INTERVALS = "machine_speech_source_intervals"
 
 _MESSAGES = {
     "provider_quota": "The provider reports insufficient credit or a billing limit. Check billing for the project that owns this key.",
@@ -71,6 +73,63 @@ def corrected_ids(evidence: EvidenceRevision) -> set[str]:
     return {event.id for event in evidence.events} if evidence.correction_note else set()
 
 
+def _completed_speech_intervals(incoming, protected):
+    """Only validated input chunks authorize replacing speech across silence."""
+    suppressed = [event for event in incoming.events if event.kind == "speech" and any(
+        old.start_seconds < event.end_seconds and event.start_seconds < old.end_seconds for old in protected)]
+    intervals = []
+    for detail in incoming.support_details:
+        if (detail.get("stage") != "transcription_chunk"
+                or detail.get("validation_outcome") != "accepted" or detail.get("failure_code")):
+            continue
+        try:
+            start, end = float(detail["chunk_start_seconds"]), float(detail["chunk_end_seconds"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not math.isfinite(start) or not math.isfinite(end) or not 0 <= start < end:
+            continue
+        # A candidate spanning a correction may be suppressed in full below,
+        # including source-frame rounding beyond its measured input chunk.
+        # Keep the other saved wording in that chunk until the conflict clears.
+        if any(old.start_seconds < end and start < old.end_seconds for old in [*protected, *suppressed]):
+            continue
+        intervals.append((start, end))
+    completed = []
+    for start, end in sorted(intervals):
+        if completed and start <= completed[-1][1]:
+            completed[-1] = (completed[-1][0], max(completed[-1][1], end))
+        else:
+            completed.append((start, end))
+    return completed
+
+
+def source_speech_intervals(evidence):
+    """Native machine spans are separate from frame-quantized display timing."""
+    try:
+        values = json.loads(evidence.diagnostics.get(SPEECH_INTERVALS, "{}"))
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(values, dict):
+        return {}
+    return {event.id: tuple(values[event.id]) for event in evidence.events if event.kind == "speech"
+            and isinstance(values.get(event.id), list) and len(values[event.id]) == 2
+            and all(type(value) in (int, float) and math.isfinite(value) for value in values[event.id])
+            and 0 <= values[event.id][0] < values[event.id][1]}
+
+
+def _replacement_interval(event, native):
+    if event.id in native:
+        return native[event.id]
+    if event.start_frame is not None or event.end_frame is not None:
+        return None  # Older frame spans cannot establish which audio chunk supplied their words.
+    return event.start_seconds, event.end_seconds
+
+
+def _within_speech_scope(event, scopes, native):
+    bounds = _replacement_interval(event, native)
+    return bounds is not None and any(start <= bounds[0] and bounds[1] <= end for start, end in scopes)
+
+
 def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speech_only=False):
     """Replace recoverable machine output, preserving exact human corrections/history."""
     result = incoming.model_copy(deep=True)
@@ -78,12 +137,18 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
         key for key, value in previous.coverage.items() if value in FAILED and key not in {"music", "sfx"}}
     kinds = {CHANNELS[key] for key in retried if key in CHANNELS}
     protected = corrected_ids(previous)
-    # A successful retry may contain only the previously missing chunk. Its
-    # channel status cannot authorize deleting speech retained elsewhere.
-    # Replace machine events only when a concrete new span covers them below.
-    kept = [event.model_copy(deep=True) for event in previous.events]
-    used_ids = {event.id for event in kept}
+    previous_intervals, incoming_intervals = source_speech_intervals(previous), source_speech_intervals(incoming)
+    native_intervals = previous_intervals.copy()
+    # Channel status alone cannot authorize deleting speech retained elsewhere.
+    # Successful measured chunks do, including silent gaps and empty transcripts.
+    completed = _completed_speech_intervals(incoming, [event for event in previous.events
+        if event.id in protected and event.kind == "speech"]) if "speech" in kinds else []
+    kept = [event.model_copy(deep=True) for event in previous.events
+            if event.id in protected or event.kind != "speech"
+            or not _within_speech_scope(event, completed, previous_intervals)]
+    used_ids = {event.id for event in previous.events}
     conflicts = {}
+    admitted = []
     for event in incoming.events:
         if event.kind not in kinds:
             continue
@@ -100,8 +165,10 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
             if covered_until < event.end_seconds - 1e-6:
                 conflicts.setdefault(event.kind, []).append(event)
             continue
+        candidate_bounds = incoming_intervals.get(event.id, (event.start_seconds, event.end_seconds))
         kept = [old for old in kept if old.id in protected or old.kind != event.kind
-                or not (event.start_seconds <= old.start_seconds and old.end_seconds <= event.end_seconds)]
+                or not (_within_speech_scope(old, [candidate_bounds], native_intervals) if old.kind == "speech"
+                        else event.start_seconds <= old.start_seconds and old.end_seconds <= event.end_seconds)]
         if any(old.kind == event.kind and old.start_seconds == event.start_seconds
                and old.end_seconds == event.end_seconds and old.text == event.text for old in kept):
             continue
@@ -110,11 +177,17 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
             recovered.id = f"{recovered.id}_retry{previous.revision + 1}"
         used_ids.add(recovered.id)
         kept.append(recovered)
+        admitted.append(recovered)
+        if event.id in incoming_intervals:
+            native_intervals[recovered.id] = incoming_intervals[event.id]
     result.events = sorted(kept, key=lambda event: (event.start_seconds, event.id))
     result.coverage = dict(previous.coverage)
     result.diagnostics = dict(previous.diagnostics)
     result.diagnostics.update({key: value for key, value in incoming.diagnostics.items()
-                               if key not in CHANNELS and key != CORRECTED_IDS})
+                               if key not in CHANNELS and key not in {CORRECTED_IDS, SPEECH_INTERVALS}})
+    native_intervals = {event.id: native_intervals[event.id] for event in result.events if event.id in native_intervals}
+    if native_intervals or SPEECH_INTERVALS in result.diagnostics:
+        result.diagnostics[SPEECH_INTERVALS] = json.dumps(native_intervals, sort_keys=True)
     if protected or CORRECTED_IDS in previous.diagnostics:
         result.diagnostics[CORRECTED_IDS] = json.dumps(sorted(protected))
     for channel in retried:
@@ -126,6 +199,16 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
         if CHANNELS.get(channel) in conflicts:
             result.coverage[channel] = "partial"
             result.diagnostics[channel] = "speech_merge_conflict" if channel == "speech" else "evidence_merge_conflict"
+    ambiguous = any(old.kind == "speech" and old.id not in protected
+        and _replacement_interval(old, previous_intervals) is None and old in kept and (
+            any(event.kind == "speech" and old.start_seconds < event.end_seconds
+                and event.start_seconds < old.end_seconds for event in admitted)
+            or (incoming.coverage.get("speech") == "none_found"
+                and any(old.start_seconds < end and start < old.end_seconds for start, end in completed)))
+        for old in previous.events)
+    if ambiguous:
+        result.coverage["speech"] = "partial"
+        result.diagnostics["speech"] = "speech_merge_provenance_missing"
     # Resolve old operational errors while retaining truthful source limitations.
     unresolved = [note for note in previous.limitations if not note.startswith(_CONFLICT_PREFIX) and
                   (not speech_only or not any(word in note.lower() for word in
@@ -138,6 +221,9 @@ def merge_retry(previous: EvidenceRevision, incoming: EvidenceRevision, *, speec
         for events in conflicts.values():
             for event in events:
                 conflict_notes.append(f"{_CONFLICT_PREFIX} Candidate at {event.start_seconds:g}–{event.end_seconds:g}s: {event.text}")
+    if ambiguous:
+        conflict_notes.append(f"{_CONFLICT_PREFIX} Older frame-aligned speech has no native audio interval provenance. "
+                              "Its wording was retained alongside the new attempt; compare and correct the overlapping transcript before treating coverage as complete.")
     result.limitations = list(dict.fromkeys([*unresolved, *incoming.limitations,
         "Previously saved observations and corrections were retained; new results fill uncovered intervals.", *conflict_notes]))
     result.reviewed = False

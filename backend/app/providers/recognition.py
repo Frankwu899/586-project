@@ -308,6 +308,16 @@ class ProviderRecognitionAdapter:
                 records.append(detail)
         return speech, errors, attempts, hits
 
+    @staticmethod
+    def _cached_speech_scope(prepared, metadata, model):
+        """Full speech caches validate every prepared chunk, including silence."""
+        return [{**metadata, "stage": "transcription_chunk", "chunk_index": index,
+                 "chunk_start_seconds": chunk.start_seconds, "chunk_end_seconds": chunk.end_seconds,
+                 "started_at": datetime.now(timezone.utc).isoformat(), "cache_status": "hit", "attempts": 0,
+                 "validation_outcome": "accepted", "speech_model": model,
+                 "speech_timing": "chunk" if model == "gpt-transcribe" else "segment"}
+                for index, chunk in enumerate(prepared.audio_chunks)]
+
     def _analyze(self, request, *, speech_only=False):
         video = request.video
         self.speech_intervals = {}
@@ -444,6 +454,7 @@ class ProviderRecognitionAdapter:
                             if cached_speech is not None:
                                 reused_speech_origin = speech_cache_provider
                                 metadata.update(cached_provider=speech_cache_provider[0], cached_model=speech_cache_provider[1])
+                                records.extend(self._cached_speech_scope(prepared, metadata, speech_cache_provider[1]))
                         else:
                             if self.settings.transcription_provider != provider.provider and isinstance(provider, OpenAITranscriptionProvider):
                                 raise ProviderError("unsupported_provider", "Configure a supported transcription provider or inject an alternate adapter.")
@@ -454,16 +465,20 @@ class ProviderRecognitionAdapter:
                             if cached:
                                 speech = self._validate_cached_speech(cached["speech"], video.duration_seconds,
                                     model=provider.model, chunks=prepared.audio_chunks)
+                                records.extend(self._cached_speech_scope(prepared, metadata, provider.model))
                             elif cached_speech is not None:
                                 speech = cached_speech
                                 cache_status = "hit"
+                                records.extend(self._cached_speech_scope(prepared, metadata, provider.model))
                             else:
                                 speech, chunk_errors, local_attempts, hits = self._speech_chunks(
                                     prepared, speech_key, metadata, records, video.duration_seconds)
                                 if chunk_errors:
                                     failure = chunk_errors[0]
                                     errors["speech"] = failure
-                                    speech = speech or None
+                                    if not speech and not any(record.get("stage") == "transcription_chunk"
+                                            and record.get("validation_outcome") == "accepted" for record in records):
+                                        speech = None
                                 if hits:
                                     cache_status = "partial_hit" if local_attempts else "hit"
                         if cached and cache_status == "miss":
@@ -655,8 +670,7 @@ class ProviderRecognitionAdapter:
             for index, span in enumerate(speech):
                 first, stop = seconds_to_frame_range(span["start"], span["end"], video.frame_timing)
                 chunk_timing = speech_model == "gpt-transcribe"
-                if chunk_timing:
-                    self.speech_intervals[f"speech_{index}"] = dict(span)
+                self.speech_intervals[f"speech_{index}"] = dict(span)
                 events.append({"start_frame": first, "end_frame": stop, "event_id": f"speech_{index}",
                     "video_id": video.video_id, "lane": "audio", "kind": "speech", "text": span["text"],
                     "source": f"{speech_provider}/{speech_model}" if reused_speech_origin else speech_provider,

@@ -1,5 +1,6 @@
 """Recoverable Video/Series management preserves saved creative work and lineage."""
 import json
+from dataclasses import replace
 
 from fastapi.testclient import TestClient
 import pytest
@@ -9,7 +10,7 @@ from backend.app.project_workspace.exports import export_pack
 from backend.app.project_workspace.models import ContentItem, Job, Project, Series
 from backend.app.project_workspace.store import ProjectStore
 from backend.app.workflow_errors import WorkflowError
-from test_project_workspace_planning import approve, idea_response, make_pack, pack_response
+from test_project_workspace_planning import approve, idea_response, make_pack, pack_response, setup
 
 
 def test_video_rename_preserves_approval_manifest_and_pack_until_real_context_edit(tmp_path):
@@ -154,6 +155,70 @@ def test_trash_busy_video_or_series_is_rejected_without_losing_work(tmp_path):
     with pytest.raises(WorkflowError) as restore_error:
         service.restore_series(project.id, project.version, group_id)
     assert restore_error.value.code == "content_busy" and store.get(project.id) == project
+
+
+@pytest.mark.parametrize("status", ["queued", "running"])
+@pytest.mark.parametrize("legacy_scope", [False, True])
+def test_trash_series_waits_for_its_topic_generation_even_without_member_videos(tmp_path, status, legacy_scope):
+    store, service, _, project = setup(tmp_path)
+    project = service.create_series(project.id, project.version, "A series awaiting topics")
+    group_id = project.series[-1].id
+    diagnostics = {} if legacy_scope else {"series_id": group_id}
+    project = store.update(project.id, project.version, lambda state: state.jobs.append(
+        Job(kind="topics", status=status, diagnostics=diagnostics)))
+    with pytest.raises(WorkflowError) as error:
+        service.trash_series(project.id, project.version, group_id)
+    assert error.value.code == "series_busy"
+    assert store.get(project.id) == project
+
+
+@pytest.mark.parametrize("scope,status", [("other", "running"), ("standalone", "running"), ("target", "succeeded")])
+def test_unrelated_or_finished_topic_generation_does_not_block_series_trash(tmp_path, scope, status):
+    store, service, _, project = setup(tmp_path)
+    project = service.create_series(project.id, project.version, "Series to organize")
+    group_id = project.series[-1].id
+    project = service.create_series(project.id, project.version, "Another series")
+    topic_scope = {"target": group_id, "other": project.series[-1].id, "standalone": ""}[scope]
+    project = store.update(project.id, project.version, lambda state: state.jobs.append(
+        Job(kind="topics", status=status, diagnostics={"series_id": topic_scope})))
+    result = service.trash_series(project.id, project.version, group_id)
+    assert result.series[0].trashed_at and not result.series[1].trashed_at
+    assert result.jobs == project.jobs
+
+
+def test_http_topic_generation_keeps_target_series_available_until_its_result_is_saved(tmp_path):
+    store, service, transport, project = setup(tmp_path, {
+        "standalone": [{"title": "A new episode", "description": "An observational morning routine"}]})
+    project = service.create_series(project.id, project.version, "A series awaiting topics", "A daily routine")
+    group_id = project.series[-1].id
+    app = create_app(store.root)
+    runtime = app.state.project_workspace
+    runtime.legacy_service.provider_settings = replace(runtime.legacy_service.provider_settings, api_key="test-only-key")
+    runtime.planning.transport_factory = lambda _settings: transport
+    trash_outcomes = []
+    def during_generation():
+        current = store.get(project.id)
+        try:
+            service.trash_series(project.id, current.version, group_id)
+        except WorkflowError as error:
+            trash_outcomes.append(error.code)
+        else:
+            trash_outcomes.append("trashed")
+    transport.callback = during_generation
+    with TestClient(app) as client:
+        response = client.post(f"/api/projects/{project.id}/topics/suggest", json={
+            "expected_version": project.version, "series_id": group_id, "instruction": "Another episode"})
+        assert response.status_code == 202, response.text
+        runtime.executor.shutdown(wait=True)
+        saved = store.get(project.id)
+    assert trash_outcomes == ["series_busy"]
+    assert len(transport.calls) == 1
+    assert not saved.series[-1].trashed_at
+    assert saved.jobs[-1].diagnostics["series_id"] == group_id
+    assert saved.jobs[-1].status == "succeeded"
+    assert len(saved.topic_suggestions) == 1 and saved.topic_suggestions[0].series_id == group_id
+    # Once the admitted generation is finished, the same lifecycle action succeeds.
+    assert service.trash_series(project.id, saved.version, group_id).series[-1].trashed_at
 
 
 def test_legacy_plan_records_receive_non_destructive_management_defaults():
