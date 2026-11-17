@@ -13,10 +13,9 @@ let media: string;
 type Fixture = { id: string; title: string; resources: { id: string; name: string }[]; contents: { id: string }[]; packs: { id: string; revision: number }[] };
 const fixture = (mode = 'seed', id?: string): Fixture => JSON.parse(execFileSync(join(root, '.venv/bin/python'), [join(root, 'frontend/e2e/project-regression-fixtures.py'), process.env.VIDEO_ANATOMY_E2E_DATA_DIR!, mode, id ?? media], { cwd: root, encoding: 'utf8' }));
 async function open(page: Page, project: Fixture) {
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
-  if (await page.getByRole('button', { name: 'All projects', exact: true }).count()) await page.getByRole('button', { name: 'All projects', exact: true }).click();
-  await page.getByRole('button', { name: `Open ${project.title}`, exact: true }).click();
+  // A reload can restore the last project after the dashboard briefly renders.
+  // Pin this fixture explicitly instead of racing that asynchronous restoration.
+  await page.goto(`/?project=${project.id}`);
   await page.getByRole('button', { name: 'Analysis', exact: true }).click();
   await page.getByLabel('Analysis scope', { exact: true }).selectOption('');
 }
