@@ -3,6 +3,7 @@ import type { Fact, Job, Project } from './contracts';
 import { FailureNotice, SupportDetails, Badge, DraftConflict, Icon, Sources, type SourceAction } from './Common';
 import { useDraft, type Mutate } from './client';
 import { isClaimKey } from './status';
+import { resourceIsTrashed } from './resourceLibrary';
 import './overview.css';
 
 const label = (key: string) => key.replaceAll('_', ' ');
@@ -46,6 +47,19 @@ export default function Overview({ project, mutate, onSource }: { project: Proje
   const [uploading, setUploading] = useState(false);
   const composerRef = useRef(composer);
   composerRef.current = composer;
+  useEffect(() => {
+    const attach = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectId: string; resourceId: string }>).detail;
+      if (detail?.projectId !== project.id) return;
+      const resource = project.resources.find(item => item.id === detail.resourceId);
+      if (!resource || resourceIsTrashed(project, resource)) return;
+      const draft = composerRef.current;
+      setComposer({ ...draft, resource_ids: [...new Set([...draft.resource_ids, resource.id])] });
+      requestAnimationFrame(() => document.getElementById(`message-${project.id}`)?.focus());
+    };
+    window.addEventListener('va-attach-resource', attach);
+    return () => window.removeEventListener('va-attach-resource', attach);
+  }, [project, setComposer]);
   const attachment = useRef<HTMLInputElement>(null);
   const messages = useRef<HTMLDivElement>(null);
   const following = useRef(true);
@@ -119,11 +133,17 @@ export default function Overview({ project, mutate, onSource }: { project: Proje
     try {
       if (!await flushComposer()) return;
       if (stopRequested.current) return; // No message/attempt was admitted; retain this draft and its attachments.
-      const saved = await mutate('/messages', { text: composer.text, resource_ids: composer.resource_ids });
+      const submitted = { text: composer.text, resource_ids: composer.resource_ids };
+      const saved = await mutate('/messages', submitted);
       if (saved) {
-        setComposer({ text: '', resource_ids: [] });
+        const latest = composerRef.current;
+        const retained = {
+          text: latest.text === submitted.text ? '' : latest.text,
+          resource_ids: latest.resource_ids.filter(id => !submitted.resource_ids.includes(id)),
+        };
+        setComposer(retained);
         if (stopRequested.current) await stopAttempt(activeReply(saved));
-        void mutate('', { conversation_draft: '' }, 'PATCH');
+        void mutate('', { conversation_draft: retained.text }, 'PATCH');
       }
     } finally { setSending(false); setStopping(false); stopRequested.current = false; }
   };

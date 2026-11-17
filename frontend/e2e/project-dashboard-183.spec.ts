@@ -39,3 +39,30 @@ test('Discover stays reserved and provides the local import destination', async 
   expect(saved.resources).toEqual([]);
   expect(saved.jobs).toEqual([]);
 });
+
+test('a saved library document attaches to Overview without uploading again or replacing the composer', async ({ page, request }) => {
+  let project = await (await request.post('/api/projects', { data: { title: `Existing document ${Date.now()}` } })).json();
+  const upload = await request.post(`/api/projects/${project.id}/resources`, { multipart: {
+    expected_version: String(project.version),
+    file: { name: 'existing-brief.txt', mimeType: 'text/plain', buffer: Buffer.from('A 20-second commuter video.') },
+  } });
+  expect(upload.ok()).toBeTruthy();
+  project = await upload.json();
+  const resourceId = project.resources[0].id;
+  await expect.poll(async () => (await (await request.get(`/api/projects/${project.id}`)).json()).jobs[0].status).toBe('succeeded');
+  await page.goto(`/?project=${project.id}`);
+  const composer = page.getByLabel('Describe your assignment');
+  await composer.fill('Keep my current thought and attach the saved brief.');
+  await page.getByRole('button', { name: 'Resources', exact: true }).click();
+  await page.getByRole('button', { name: 'Focus existing-brief.txt', exact: true }).click();
+  await page.getByRole('button', { name: 'Attach in Overview', exact: true }).click();
+  await expect(composer).toHaveValue('Keep my current thought and attach the saved brief.');
+  await expect(composer).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Detach existing-brief.txt', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await expect(page.locator('.va-message.user')).toHaveCount(1);
+  const saved = await (await request.get(`/api/projects/${project.id}`)).json();
+  expect(saved.resources).toHaveLength(1);
+  expect(saved.messages[0].resource_ids).toEqual([resourceId]);
+  expect(saved.briefs).toEqual([]);
+});

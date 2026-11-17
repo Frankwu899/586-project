@@ -67,6 +67,7 @@ function Application() {
   const [area, setArea] = useState('overview');
   const [source, setSource] = useState<SourceRef | null>(null);
   const [sourceReturn, setSourceReturn] = useState('resources');
+  const sourceOrigin = useRef<HTMLElement | null>(null);
   const [settings, setSettings] = useState(false);
   const [activity, setActivity] = useState(false);
   const [build, setBuild] = useState<{ version: string; source_commit: string | null }>({ version: '1.8.2', source_commit: null });
@@ -74,9 +75,21 @@ function Application() {
   useEffect(() => { void call<{ version: string; source_commit: string | null; migration_errors: string[]; library_errors?: string[] }>('/capabilities').then(value => { setBuild(value); setMigrationErrors([...(value.migration_errors ?? []), ...(value.library_errors ?? [])]); }).catch(() => { /* Main project request reports connection errors. */ }); }, []);
   useEffect(() => { if (project) setArea(destinations.some(([id]) => id === project.workspace) ? project.workspace : 'overview'); }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const navigate = (next: string) => { setArea(next); void mutate('', { workspace: next }, 'PATCH'); };
-  const onSource: SourceAction = value => { setSourceReturn(area); setSource(value); navigate(value.resource_id ? 'resources' : 'overview'); };
-  const closeSource = () => { setSource(null); navigate(sourceReturn); };
-  const sourceReturnLabel = destinations.find(([id]) => id === sourceReturn)?.[1] ?? 'Resources';
+  const onSource: SourceAction = value => { sourceOrigin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setSourceReturn(area); setSource(value); navigate(value.resource_id ? 'resources' : 'overview'); };
+  const closeSource = () => {
+    const invoker = sourceOrigin.current;
+    setSource(null); navigate(sourceReturn); sourceOrigin.current = null;
+    requestAnimationFrame(() => {
+      if (invoker?.isConnected && invoker.getClientRects().length) invoker.focus();
+      else document.getElementById('va-workspace-main')?.focus();
+    });
+  };
+  const attachResource = (resourceId: string) => {
+    if (!project) return;
+    window.dispatchEvent(new CustomEvent('va-attach-resource', { detail: { projectId: project.id, resourceId } }));
+    navigate('overview');
+  };
+  const sourceReturnLabel = `Back to ${destinations.find(([id]) => id === sourceReturn)?.[1] ?? 'Resources'}`;
   const activeJobs = project?.jobs.filter(job => ['queued', 'running'].includes(job.status)) ?? [];
   return <div className="va-app"><a className="va-skip-link" href={project ? "#va-workspace-main" : "#va-library-main"}>Skip to workspace</a><header className="va-topbar"><Brand />{project && <div className="va-project-heading"><strong>{project.title}</strong><span className="va-save-state" role="status">{error ? 'Save needs attention' : saving ? 'Saving…' : <><Icon name="check" size={15} />Saved locally</>}</span></div>}<div className="va-topbar-actions">{project && <button className="va-activity-toggle" onClick={() => setActivity(value => !value)}>{activeJobs.length ? <span className="va-spinner" /> : <Icon name="analysis" size={17} />}Activity{activeJobs.length > 0 && <Badge>{activeJobs.length}</Badge>}</button>}<button className="va-icon-button" aria-label="Settings" onClick={() => setSettings(value => !value)}><Icon name="settings" /></button><span className="va-avatar">VA</span></div></header>
     {error && <div className="va-global-error" role="alert"><span>{failureMessage(error)}</span><ConnectionHelp message={error} /><button className="va-icon-button" aria-label="Dismiss error" onClick={() => controller.setError('')}><Icon name="close" size={17} /></button></div>}
@@ -84,7 +97,7 @@ function Application() {
     {settings && <section className="va-settings va-glass"><h2>Settings</h2><p>Version {build.version}<br />Source commit: <code>{build.source_commit ?? 'Unavailable in this installation'}</code></p><ApiConnectionButton /><p>Language and vision: <strong>gpt-6.1-sol</strong><br />Speech transcription: <strong>whisper-1</strong></p><p>Your key is stored locally. Selected context and media are sent to the configured provider for requested processing. Model access is checked when requested.</p>{project && <button onClick={() => { if (window.confirm('Clear rebuildable thumbnails, previews, and prepared media? Originals, transcripts, corrections, and saved work will remain.')) void mutate('/cache/clear'); }}>Clear derived cache</button>}<a href="?legacy=1">Open preserved legacy workspace</a><button onClick={() => setSettings(false)}>Close settings</button></section>}
     {!project ? <Dashboard projects={controller.projects} loading={controller.loading} onOpen={controller.open} onRefresh={controller.refreshList} onError={controller.setError} /> : <div className="va-workspace" key={project.id}><aside className="va-rail"><button className="va-all-projects" onClick={() => void controller.close()}><Icon name="back" />All projects</button><h2 className="va-rail-title">{project.title}</h2><details className="va-project-navigation" open><summary>Project navigation</summary><nav aria-label="Project destinations">{destinations.map(([id, label]) => <button key={id} className={area === id ? 'active' : ''} aria-current={area === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon name={id} />{label}</button>)}</nav></details><div className="va-rail-bottom"><ApiConnectionButton /><span>{project.resources.length} local resources</span></div></aside><main id="va-workspace-main" className="va-workspace-main" tabIndex={-1}>
       <div hidden={area !== 'overview'}><Overview project={project} mutate={mutate} onSource={onSource} /></div>
-      <div hidden={area !== 'resources'}><Resources project={project} mutate={mutate} source={source} onAnalyze={() => navigate('analysis')} onCloseSource={closeSource} sourceReturnLabel={sourceReturnLabel} /></div>
+      <div hidden={area !== 'resources'}><Resources project={project} mutate={mutate} source={source} onAnalyze={() => navigate('analysis')} onCloseSource={closeSource} sourceReturnLabel={sourceReturnLabel} onAttachResource={attachResource} /></div>
       <div hidden={area !== 'discover'} className="va-discovery"><h1>Discover</h1><p className="va-muted">Reserved — awaiting Frank’s specification.</p><section className="va-glass va-discovery-placeholder"><Icon name="discover" size={36} /><h2>Bring your own references</h2><p>Discovery is not available yet. Upload local files in Resources to start exploring their evidence.</p><button className="va-primary" onClick={() => navigate('resources')}><Icon name="upload" />Open Resources</button></section></div>
       <div hidden={area !== 'analysis'}><AnalysisView project={project} mutate={mutate} onSource={onSource} onResources={() => navigate('resources')} onContent={() => navigate('content')} /></div>
       <div hidden={area !== 'content'}><ContentPlan project={project} mutate={mutate} onOverview={() => navigate('overview')} onSource={onSource} onProduction={() => navigate('production')} /></div>

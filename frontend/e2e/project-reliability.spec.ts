@@ -115,12 +115,14 @@ test('partial assistance preserves useful discussion and unresolved brief review
 test('partial speech exposes coverage, reuse and sanitized chunk diagnostics', async ({ page }) => {
   const project = fixture('speech');
   await open(page, project);
+  await page.getByRole('button', { name: 'Focus Synthetic silent audio.wav', exact: true }).click();
+  await page.getByRole('button', { name: 'Open in timeline', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic silent audio.wav' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Retry transcription', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retry missing speech', exact: true })).toBeVisible();
   await expect(page.getByLabel('Recognition summary')).toContainText('Partial transcript available');
   await expect(page.getByLabel('Recognition summary')).toContainText('Saved transcription reused');
   await expect(page.locator('.va-transcript')).toContainText('User-corrected original-language wording 中文.');
-  await page.getByText('Coverage and limitations', { exact: true }).click();
+  await page.getByText('Coverage, original file and recovery', { exact: true }).click();
   await page.getByText('Support diagnostics', { exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export support details', exact: true }).click();
@@ -139,14 +141,14 @@ test('partial speech exposes coverage, reuse and sanitized chunk diagnostics', a
     await held;
     await route.fulfill({ response });
   });
-  await page.getByRole('button', { name: 'Retry transcription', exact: true }).click();
+  await page.getByRole('button', { name: 'Retry missing speech', exact: true }).click();
   try {
     await expect(page.getByRole('button', { name: 'Recognizing…', exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Rebuild media preview', exact: true })).toBeDisabled();
     await expect(page.getByRole('status').filter({ hasText: 'Processing missing evidence' })).toBeVisible();
     expect(requests).toBe(1);
   } finally { release(); }
-  await expect(page.getByRole('button', { name: 'Retry transcription', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Retry missing speech', exact: true })).toBeEnabled();
   await expect(page.locator('.va-transcript')).toContainText('User-corrected original-language wording 中文.');
   await page.reload();
   await expect(page.locator('.va-transcript')).toContainText('User-corrected original-language wording 中文.');

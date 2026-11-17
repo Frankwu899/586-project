@@ -6,7 +6,7 @@ import { layoutStructure, readableFit } from './structureLayout';
 const kinds: Record<StructureNode['kind'], string> = { observation: 'Video observation', source_claim: 'Attributed claim', inference: 'Inference', user_context: 'Your context' };
 const time = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
 
-export default function LogicGraph({ graph, selected, onSelect, chosen }: { graph: StructureGraph; selected: string | null; onSelect: (id: string) => void; chosen: string[] }) {
+export default function LogicGraph({ graph, selected, onSelect, chosen, initialFit = false }: { graph: StructureGraph; selected: string | null; onSelect: (id: string) => void; chosen: string[]; initialFit?: boolean }) {
   const { t } = useI18n();
   const markerId = useId().replaceAll(':', '');
   const viewport = useRef<HTMLDivElement>(null);
@@ -55,9 +55,12 @@ export default function LogicGraph({ graph, selected, onSelect, chosen }: { grap
   useEffect(() => {
     if (initialized.current || !size.width || !size.height || !viewport.current) return;
     initialized.current = true;
+    const fitted = initialFit ? readableFit(size.width, size.height, layout.width, layout.height) : 1;
+    if (initialFit) changeZoom(fitted);
     const first = layout.nodes.get(selected ?? graph.nodes[0]?.id);
-    if (first) viewport.current.scrollTo({ left: Math.max(0, first.x + first.width / 2 - size.width / 2), top: Math.max(0, first.y + first.height / 2 - size.height / 2) });
-  }, [size, layout, selected, graph.nodes]);
+    if (first && initialFit) requestAnimationFrame(() => viewport.current?.scrollTo({ left: Math.max(0, (first.x + first.width / 2) * fitted - size.width / 2), top: Math.max(0, (first.y + first.height / 2) * fitted - size.height / 2) }));
+    else if (first) viewport.current.scrollTo({ left: Math.max(0, first.x + first.width / 2 - size.width / 2), top: Math.max(0, first.y + first.height / 2 - size.height / 2) });
+  }, [size, layout, selected, graph.nodes, initialFit, changeZoom]);
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;

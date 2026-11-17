@@ -1,0 +1,58 @@
+.va-media-pool { container: media-pool / inline-size; padding: 24px; min-inline-size: 0; }
+.va-media-pool .va-page-heading h1 { font-size: 30px; }
+.va-pool-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 20px; }
+.va-folder-sidebar { border-inline-end: 1px solid #d9ddeb; padding-inline-end: 12px; }
+.va-folder-sidebar summary { color: #555c78; font-size: 12px; padding: 10px; cursor: pointer; }
+.va-folder-sidebar nav { display: grid; gap: 5px; }
+.va-app .va-folder-sidebar nav button { display: flex; align-items: center; gap: 9px; inline-size: 100%; text-align: start; white-space: normal; padding: 11px 12px; background: transparent; border: 0; box-shadow: none; }
+.va-app .va-folder-sidebar nav button.active { background: #e7e1ff; color: #4426b9; font-weight: 650; }
+.va-folder-sidebar button span { min-inline-size: 0; overflow-wrap: anywhere; }
+.va-pool-content { min-inline-size: 0; }
+.va-pool-breadcrumb,.va-pool-tools,.va-pool-file-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-block-end: 16px; }
+.va-pool-breadcrumb { justify-content: space-between; color: #363951; }
+.va-pool-breadcrumb > details { font-size: 12px; }
+.va-pool-tools .va-search { flex: 1 1 200px; }
+.va-pool-tools > div { display: flex; gap: 5px; }
+.va-pool-tools [aria-pressed=true] { background: #e9e3ff; border-color: #b2a1ec; color: #4426b9; }
+.va-pool-file-actions { padding: 10px; background: #f6f6fd; border: 1px solid #d9ddeb; border-radius: 10px; }
+.va-app .va-pool-file-actions button { min-block-size: 36px; font-size: 12px; }
+.va-pool-table-scroll { overflow: auto; max-inline-size: 100%; border: 1px solid #d7dcec; border-radius: 10px; scrollbar-gutter: stable; }
+.va-pool-table { inline-size: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; background: #fcfcff; }
+.va-pool-table th,.va-pool-table td { padding: 11px 9px; border-block-end: 1px solid #e2e5ef; text-align: start; vertical-align: middle; overflow-wrap: anywhere; }
+.va-pool-table thead th { background: #f0f1f9; color: #505874; font-size: 11px; position: sticky; inset-block-start: 0; z-index: 1; }
+.va-pool-table tbody tr.focused { outline: 2px solid #6a4cce; outline-offset: -2px; }
+.va-pool-table tbody tr.checked { background: #eee9fc; }
+.va-app .va-pool-table .va-file-name,.va-app .va-pool-grid .va-file-name { display: flex; align-items: center; gap: 10px; text-align: start; background: transparent; border: 0; box-shadow: none; font-weight: 600; color: #252942; padding: 3px; min-inline-size: 0; inline-size: 100%; }
+.va-file-name svg { flex: 0 0 auto; }
+.va-file-name span,.va-file-name strong { min-inline-size: 0; overflow-wrap: anywhere; }
+.va-pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr)); gap: 14px; }
+.va-pool-grid > article { background: #fafaff; border: 1px solid #d8ddeb; border-radius: 12px; padding: 14px; }
+.va-pool-grid > article.focused { outline: 2px solid #6950c8; }
+.va-pool-grid > article > label { display: flex; flex-direction: row; gap: 7px; margin-block-end: 14px; }
+.va-pool-grid p,.va-pool-grid small { color: #555e77; font-size: 12px; }
+.va-pool-subfolders { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 15px; }
+.va-pool-focus { color: #515b75; font-size: 12px; margin-block: 15px; }
+.va-pool-selection { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-block: 17px; margin-block-start: 18px; border-block-start: 1px solid #d7dcec; }
+.va-pool-selection > div:first-child { display: grid; gap: 5px; }
+.va-pool-selection span { font-size: 12px; color: #525b76; }
+.va-pool-dialog { color: #25293f; border: 1px solid #ced4e7; border-radius: 16px; padding: 24px; background: #fafaff; inline-size: min(540px, calc(100% - 28px)); max-inline-size: calc(100% - 28px); max-block-size: calc(100dvh - 28px); overflow-y: auto; }
+.va-pool-dialog:modal { overscroll-behavior: contain; }
+.va-pool-dialog::backdrop { background: #25233d60; overflow: hidden; overscroll-behavior: contain; }
+.va-pool-dialog h2 { font-size: 23px; margin-block: 0 17px; }
+.va-pool-dialog p,.va-pool-dialog li { font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.va-pool-dialog label { margin-block: 15px 7px; }
+.va-pool-dialog .va-actions { margin-block-start: 20px; flex-wrap: wrap; }
+.va-library-review { min-inline-size: 0; }
+.va-back-to-pool { margin-block-end: 16px; }
+@container media-pool (max-width: 740px) {
+  .va-pool-layout { grid-template-columns: minmax(0, 1fr); }
+  .va-folder-sidebar { border-inline-end: 0; border-block-end: 1px solid #d9ddeb; padding-block-end: 12px; }
+  .va-folder-sidebar nav { grid-template-columns: repeat(auto-fit, minmax(min(165px, 100%), 1fr)); }
+  .va-pool-table thead { display: none; }
+  .va-pool-table,.va-pool-table tbody,.va-pool-table tr,.va-pool-table th,.va-pool-table td { display: block; inline-size: auto; }
+  .va-pool-table tr { position: relative; padding: 12px 12px 12px 42px; border-block-end: 1px solid #d9deec; }
+  .va-pool-table td,.va-pool-table th { border: 0; padding: 4px; }
+  .va-pool-table td:first-child { position: absolute; inset-inline-start: 10px; inset-block-start: 13px; }
+  .va-pool-table td[data-label]::before { content: attr(data-label) ': '; font-weight: 600; color: #525b76; }
+}
+@media(max-width:540px) { .va-app .va-media-pool { padding: 16px 12px; } .va-pool-tools { align-items: stretch; } }
