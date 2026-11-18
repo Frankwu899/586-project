@@ -53,4 +53,9 @@ Preserve the full application-data directory when moving/upgrading; do not trans
 
 ## Delivery provenance
 
+- **Review PR:** <https://github.com/Frankwu899/586-project/pull/24> (draft, stacked on PR23).
+- **Validated application code:** `57af948013918a6a64cd62d333b3e3ca51a6d8af`.
+- **Published branch:** `feat/integration/1-8-5-candidate`.
+- The following delivery commit updates only this handoff; application code is unchanged from the validated commit. The package manifest and companion integrity receipt identify that exact full documentation-inclusive source SHA.
+
 The PR and package manifest record the published source commit. The companion archive-check receipt records SHA256, complete wrapper/payload hashes, archive structure and the extracted Linux smoke test. The archive contains only `README.txt` and `Video Anatomy.app` at the top level; its embedded English release packet preserves the issue, migration and verification notes. No native Mac or live model acceptance follows from package integrity.
