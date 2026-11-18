@@ -4,6 +4,11 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+test.afterEach(async ({ context }) => {
+  // Keep failures visible while allowing in-flight fixture responses to finish.
+  for (const page of context.pages()) await page.unrouteAll({ behavior: 'wait' });
+});
+
 test('a local project keeps conversation drafts, resources, standalone production and reserved Discovery', async ({ page, request }) => {
   const title = `1.8 creative workspace ${Date.now()}`;
   await page.goto('/');

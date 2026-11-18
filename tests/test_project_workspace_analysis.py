@@ -24,25 +24,36 @@ from test_providers import AlternateSpeech, AlternateVision
 class Synthesis:
     def __init__(self):
         self.calls = 0
+        self.single_calls = 0
+        self.synthesis_calls = 0
         self.bad_citation = False
         self.context = None
 
     def json_response(self, _model, prompt, _schema, _name, **_kwargs):
         self.calls += 1
+        if _name == "project_single_video_analysis":
+            self.single_calls += 1
+        else:
+            self.synthesis_calls += 1
         self.context = json.loads(prompt.split("INPUT_JSON:\n", 1)[1])
         resource = next(r for r in self.context["references"] if r["evidence"] and r["evidence"]["events"])
-        return {"conclusion": "The references introduce a problem before showing the product.",
+        result = {"conclusion": "The references introduce a problem before showing the product.",
                 "findings": ["Observed: a product appears. Interpretation: it introduces the solution."],
                 "differences": [], "opportunities": ["Adapt the problem-solution progression."],
                 "limitations": ["Sparse frames cannot establish complete pacing."],
                 "structures": [{"resource_id": item["resource_id"], "summary": "A spoken promise introduces the reference.",
+                    "method": "Spoken promise", "flow": "One observed promise; subsequent progression is unknown.",
+                    "borrowable": "Use a concise promise only when the assignment supports it.",
                     "nodes": [{"id": "moment_one", "label": "Spoken promise", "detail": "The source introduces a promise in speech.",
                                "kind": "interpretation", "citations": [{"resource_id": item["resource_id"],
                                    "event_id": item["evidence"]["events"][0]["id"], "reason": "Source moment"}]}],
                     "edges": []} for item in self.context["references"] if item["evidence"] and item["evidence"]["events"]],
                 "citations": [{"resource_id": resource["resource_id"],
-                               "event_id": "invented" if self.bad_citation else resource["evidence"]["events"][0]["id"],
+                               "event_id": "invented" if self.bad_citation and _name == "project_reference_analysis" else resource["evidence"]["events"][0]["id"],
                                "reason": "Observed product introduction"}]}
+        if _name == "project_reference_analysis":
+            result.pop("structures")
+        return result
 
 
 class Recognizer:
@@ -162,7 +173,7 @@ def test_new_insight_links_resolve_exact_saved_revision_and_never_borrow_report_
     original = synthesis.json_response
     def linked(*args, **kwargs):
         result = original(*args, **kwargs)
-        result["key_insights"] = [{"observation": "A spoken promise introduces this reference.",
+        result["key_insights"] = [{"title": "Promise first", "observation": "A spoken promise introduces this reference.",
             "application": "Adapt the promise only where the new assignment supports it.",
             "citations": result["citations"]}]
         return result
@@ -211,11 +222,16 @@ def test_invalid_graph_never_replaces_saved_analysis(workspace, invalid):
     ids = [resource.id for resource in project.resources]
     saved = service.analyze(project.id, ids)
     response = synthesis.json_response
+    settings = service.settings_provider()
+    service.settings_provider = lambda: replace(settings, analysis_language="Chinese")
     def corrupt(*args, **kwargs):
         data = response(*args, **kwargs)
+        if args[3] != "project_single_video_analysis":
+            return data
         graph = data["structures"][0]
         if invalid == "foreign_source":
-            graph["nodes"][0]["citations"] = data["structures"][1]["nodes"][0]["citations"]
+            foreign = next(rid for rid in ids if rid != graph["resource_id"])
+            graph["nodes"][0]["citations"] = [{"resource_id": foreign, "event_id": f"event_{foreign}_0", "reason": "Foreign source"}]
         elif invalid == "broken_edge":
             graph["edges"] = [{"source": "moment_one", "target": "invented", "label": "Supports", "explanation": "An unsupported connection",
                                "citations": graph["nodes"][0]["citations"]}]
@@ -226,7 +242,7 @@ def test_invalid_graph_never_replaces_saved_analysis(workspace, invalid):
         return data
     synthesis.json_response = corrupt
     with pytest.raises((WorkflowError, ValueError)):
-        service.analyze(project.id, ids)
+        service.analyze(project.id, ids, synthesis_only=True)
     assert store.get(project.id).analyses == saved.analyses
 
 

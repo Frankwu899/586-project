@@ -34,8 +34,10 @@ test('source-linked insights lead the report and a citation opens its exact hist
   await expect(insights).toContainText('Open with a visible demonstration.');
   await expect(page.getByText('Historical report context retained once.', { exact: true })).toBeHidden();
   const insightBounds = await insights.boundingBox();
-  const graphBounds = await page.getByRole('heading', { name: 'Structure flow', exact: true }).boundingBox();
+  const graphBounds = await page.getByRole('heading', { name: 'Structure summary', exact: true }).boundingBox();
   expect(insightBounds!.y).toBeLessThan(graphBounds!.y);
+  await expect(page.getByRole('heading', { name: 'Comparison', exact: true })).toBeHidden();
+  await page.getByText('Detailed structures and comparison', { exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Comparison', exact: true })).toBeVisible();
   const sources = project.analyses[0].key_insights[0].sources;
   await insights.getByRole('button', { name: /commute-demo.mp4 · Recorded sample/ }).click();
@@ -93,6 +95,7 @@ test('old unlinked findings stay readable without fabricated per-insight citatio
   await expect(insights.getByRole('button', { name: 'Use insight in Content plan', exact: true })).toHaveCount(0);
   await page.getByText('Saved report context', { exact: true }).click();
   await expect(page.getByText('Historical report context retained once.', { exact: true })).toBeVisible();
+  await page.getByText('Detailed structures and comparison', { exact: true }).click();
   await page.getByRole('button', { name: 'View as list', exact: true }).click();
   const list = page.getByRole('list', { name: 'Structure as list', exact: true });
   await expect(list).toContainText('Make the test visible');
@@ -113,6 +116,7 @@ test('graph kinds remain readable through hover, selection and keyboard focus wi
     await route.fulfill({ response, json: state });
   });
   await open(page, project);
+  await page.getByText('Detailed structures and comparison', { exact: true }).click();
   const graph = page.getByRole('region', { name: /Video logic graph/ });
   await graph.scrollIntoViewIfNeeded(); await graph.focus(); await page.keyboard.press('ArrowRight');
   const contrast = async (id: string) => page.locator(`[data-node-id="${id}"]`).evaluate(node => {
@@ -139,6 +143,7 @@ test('graph kinds remain readable through hover, selection and keyboard focus wi
 for (const [width, height] of [[1440, 900], [1280, 800], [390, 844], [720, 450]]) test(`insights and graph stay within their container at ${width}x${height}`, async ({ page }) => {
   const project = fixture(); await page.setViewportSize({ width, height }); await open(page, project);
   await expect(page.getByRole('region', { name: 'Key insights', exact: true })).toBeVisible();
+  await page.getByText('Detailed structures and comparison', { exact: true }).click();
   const graph = page.getByRole('region', { name: /Video logic graph/ });
   await graph.scrollIntoViewIfNeeded(); await graph.focus(); await page.keyboard.press('ArrowRight');
   await page.getByRole('button', { name: 'View as list', exact: true }).click();

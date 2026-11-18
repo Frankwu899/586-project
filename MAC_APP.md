@@ -1,4 +1,4 @@
-Video Anatomy for your Mac — team testing candidate
+Video Anatomy 1.8.5 for your Mac — team testing candidate
 
 START HERE
 
@@ -22,7 +22,7 @@ Keychain, or installation behavior on a real Mac. If macOS blocks this downloade
 app, use its per-app Open option in Finder or Privacy & Security. Do not disable
 system security checks. Optional document OCR needs Tesseract/Poppler.
 
-UPGRADE FROM 1.8.2 / 1.8.3 AND KEEP YOUR WORK
+UPGRADE FROM 1.8.2 / 1.8.3 / 1.8.4 AND KEEP YOUR WORK
 
 Let running requests finish. A closed browser tab does not stop the local server.
 Before backing up, stop the previous Terminal launcher with Control+C. For the

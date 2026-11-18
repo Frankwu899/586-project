@@ -184,6 +184,9 @@ class InputManifest(Model):
     context_digest: str | None = None
     claim_ids: list[str] = Field(default_factory=list)
     model: str | None = None
+    single_analysis_ids: dict[str, str] = Field(default_factory=dict)
+    analysis_language: str | None = None
+    analysis_config_digest: str | None = None
 
 
 class TopicSuggestion(Model):
@@ -213,6 +216,9 @@ class StructureEdge(Model):
 
 class ReferenceStructure(Model):
     resource_id: str
+    method: str = ""
+    flow: str = ""
+    borrowable: str = ""
     summary: str
     nodes: list[StructureNode]
     edges: list[StructureEdge] = Field(default_factory=list)
@@ -232,13 +238,39 @@ class ReferenceStructure(Model):
 
 
 class AnalysisInsight(Model):
+    title: str = ""
+    scope: Literal["observation", "difference", "commonality"] = "observation"
+    support_resource_ids: list[str] = Field(default_factory=list)
     id: str = Field(default_factory=lambda: uid("insight"))
     observation: str
     application: str
     sources: list[SourceRef] = Field(default_factory=list)
 
 
+class SingleVideoAnalysis(Model):
+    """Durable core analysis: source-only inputs, never inferred for legacy reports."""
+    id: str = Field(default_factory=lambda: uid("single_analysis"))
+    resource_id: str
+    input_key: str
+    evidence_revision: int = Field(ge=1)
+    source_sha256: str
+    model: str
+    instruction_digest: str
+    language: str
+    config_digest: str
+    visual_only: bool = False
+    status: Literal["running", "succeeded", "failed", "stopped"] = "running"
+    structure: ReferenceStructure | None = None
+    key_insights: list[AnalysisInsight] = Field(default_factory=list)
+    sources: list[SourceRef] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    diagnostics: dict[str, str] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=now)
+
+
 class Analysis(Model):
+    report_version: str | None = None
+    single_analysis_ids: dict[str, str] = Field(default_factory=dict)
     id: str = Field(default_factory=lambda: uid("analysis"))
     content_id: str | None = None
     inputs: InputManifest
@@ -333,6 +365,7 @@ class ProductionPack(Model):
 
 
 class Job(Model):
+    inputs: InputManifest | None = None
     error_code: str | None = None
     id: str = Field(default_factory=lambda: uid("job"))
     kind: str
@@ -373,6 +406,7 @@ class Project(Model):
     resource_folders: list[ResourceFolder] = Field(default_factory=starter_folders)
     selection: Selection = Field(default_factory=Selection)
     analyses: list[Analysis] = Field(default_factory=list)
+    single_video_analyses: list[SingleVideoAnalysis] = Field(default_factory=list)
     series: list[Series] = Field(default_factory=list)
     contents: list[ContentItem] = Field(default_factory=list)
     packs: list[ProductionPack] = Field(default_factory=list)
@@ -408,6 +442,7 @@ class Project(Model):
                 raise ValueError(f"Duplicate {label} identity")
         for label in ("resources", "messages", "series", "contents", "jobs", "resource_folders", "topic_suggestions"):
             unique([item.id for item in getattr(self, label)], label)
+        unique([item.id for item in self.single_video_analyses], "single-video analysis")
         unique([item.revision for item in self.briefs], "brief revision")
         unique([(item.id, item.revision) for item in self.packs], "pack revision")
         resources = {item.id for item in self.resources}

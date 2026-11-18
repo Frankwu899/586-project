@@ -77,6 +77,7 @@ class ProjectStore:
                 and latest_user.id not in project.editor_drafts.get("conversation_turns", {})
                 and not project.editor_drafts.get("conversation_requests"))
             if (any(job.status in {"queued", "running"} for job in project.jobs)
+                    or any(run.status == "running" for run in project.single_video_analyses)
                     or any(resource.status == "processing" for resource in project.resources)
                     or project.editor_drafts.get("conversation_requests") or legacy_failed):
                 def recover(state):
@@ -100,6 +101,10 @@ class ProjectStore:
                         if resource.status == "processing":
                             resource.status = "partial" if resource.evidence or resource.blocks else "failed"
                             resource.error = "Processing was interrupted. Completed evidence is retained; retry explicitly."
+                    for run in state.single_video_analyses:
+                        if run.status == "running":
+                            run.status = "stopped"
+                            run.diagnostics.update(failure_code="operation_interrupted", stage="application_restart")
                     requests = state.editor_drafts.pop("conversation_requests", {})
                     for message_id, request in requests.items():
                         turns = state.editor_drafts.setdefault("conversation_turns", {})

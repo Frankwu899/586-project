@@ -104,6 +104,7 @@ export type TrashedAt2 = string | null;
 export type ResourceFolders = ResourceFolder[];
 export type Revision2 = number;
 export type ResourceIds1 = string[];
+export type ReportVersion = string | null;
 export type Id7 = string;
 export type ContentId = string | null;
 export type Exploratory = boolean;
@@ -119,6 +120,8 @@ export type InstructionDigest = string | null;
 export type ContextDigest = string | null;
 export type ClaimIds = string[];
 export type Model = string | null;
+export type AnalysisLanguage = string | null;
+export type AnalysisConfigDigest = string | null;
 export type Conclusion = string;
 export type Findings = string[];
 export type Differences = string[];
@@ -126,6 +129,9 @@ export type Opportunities = string[];
 export type Sources1 = SourceRef[];
 export type Limitations2 = string[];
 export type ResourceId1 = string;
+export type Method = string;
+export type Flow = string;
+export type Borrowable = string;
 export type Summary = string;
 export type Id8 = string;
 export type Label = string;
@@ -142,6 +148,9 @@ export type Edges = StructureEdge[];
 export type Structures = ReferenceStructure[];
 export type CreatedAt5 = string;
 export type NeedsReview = boolean;
+export type Title1 = string;
+export type Scope = "observation" | "difference" | "commonality";
+export type SupportResourceIds = string[];
 export type Id9 = string;
 export type Observation = string;
 export type Application = string;
@@ -149,29 +158,45 @@ export type Sources4 = SourceRef[];
 export type KeyInsights = AnalysisInsight[];
 export type Analyses = Analysis[];
 export type Id10 = string;
-export type Title1 = string;
+export type ResourceId2 = string;
+export type InputKey = string;
+export type EvidenceRevision2 = number;
+export type SourceSha256 = string;
+export type Model1 = string;
+export type InstructionDigest1 = string;
+export type Language = string;
+export type ConfigDigest = string;
+export type VisualOnly1 = boolean;
+export type Status3 = "running" | "succeeded" | "failed" | "stopped";
+export type KeyInsights1 = AnalysisInsight[];
+export type Sources5 = SourceRef[];
+export type Limitations3 = string[];
+export type CreatedAt6 = string;
+export type SingleVideoAnalyses = SingleVideoAnalysis[];
+export type Id11 = string;
+export type Title2 = string;
 export type Concept = string;
 export type NeedsReview1 = boolean;
 export type TrashedAt3 = string | null;
 export type ContextTitle = string | null;
 export type Series = Series1[];
-export type Id11 = string;
+export type Id12 = string;
 export type SeriesId = string | null;
-export type Title2 = string;
+export type Title3 = string;
 export type Description = string;
 export type NeedsReview2 = boolean;
-export type Id12 = string;
+export type Id13 = string;
 export type Revision3 = number;
-export type Title3 = string;
+export type Title4 = string;
 export type Concept1 = string;
 export type Hook = string;
 export type Narrative = string;
 export type Cta = string;
-export type Sources5 = SourceRef[];
+export type Sources6 = SourceRef[];
 export type Approved = boolean;
 export type ApprovedAt = string | null;
 export type NeedsReview3 = boolean;
-export type CreatedAt6 = string;
+export type CreatedAt7 = string;
 export type Directions = Direction[];
 export type ApprovedDirectionId = string | null;
 export type ApprovedDirectionRevision = number | null;
@@ -179,14 +204,14 @@ export type TrashedAt4 = string | null;
 export type SeriesAssignmentVersion = number;
 export type ContextTitle1 = string | null;
 export type Contents = ContentItem[];
-export type Id13 = string;
+export type Id14 = string;
 export type Revision4 = number;
 export type ContentId1 = string;
 export type ProductionBrief = string;
 export type Script = string;
 export type Storyboard = string;
 export type ShotList = string;
-export type Id14 = string;
+export type Id15 = string;
 export type StartSeconds2 = number;
 export type EndSeconds2 = number;
 export type Visual = string;
@@ -195,17 +220,17 @@ export type OnScreenText = string;
 export type Sound = string;
 export type Notes = string;
 export type FramingCamera = string;
-export type Sources6 = SourceRef[];
-export type Shots = ProductionShot[];
 export type Sources7 = SourceRef[];
+export type Shots = ProductionShot[];
+export type Sources8 = SourceRef[];
 export type NeedsReview4 = boolean;
-export type CreatedAt7 = string;
+export type CreatedAt8 = string;
 export type SheetFormat = "legacy_documents" | "storyboard_sheet";
 export type Packs = ProductionPack[];
 export type ErrorCode = string | null;
-export type Id15 = string;
+export type Id16 = string;
 export type Kind3 = string;
-export type ResourceId2 = string | null;
+export type ResourceId3 = string | null;
 export type ContentId2 = string | null;
 export type MessageId1 = string | null;
 export type AttemptId1 = string | null;
@@ -214,14 +239,14 @@ export type ResourceIds3 = string[];
 export type SupportDetails1 = {
   [k: string]: string;
 }[];
-export type Status3 = "queued" | "running" | "succeeded" | "partial" | "failed" | "stopped";
+export type Status4 = "queued" | "running" | "succeeded" | "partial" | "failed" | "stopped";
 export type Progress = string;
 export type Error1 = string | null;
-export type CreatedAt8 = string;
+export type CreatedAt9 = string;
 export type UpdatedAt1 = string;
 export type Jobs = Job[];
-export type Id16 = string;
-export type Title4 = string;
+export type Id17 = string;
+export type Title5 = string;
 export type Description1 = string;
 export type SeriesId1 = string | null;
 export type AddedContentId = string | null;
@@ -249,6 +274,7 @@ export interface Project {
   resource_folders: ResourceFolders;
   selection: Selection;
   analyses: Analyses;
+  single_video_analyses: SingleVideoAnalyses;
   series: Series;
   contents: Contents;
   packs: Packs;
@@ -375,6 +401,8 @@ export interface Selection {
   resource_ids: ResourceIds1;
 }
 export interface Analysis {
+  report_version: ReportVersion;
+  single_analysis_ids: SingleAnalysisIds;
   id: Id7;
   content_id: ContentId;
   inputs: InputManifest;
@@ -388,6 +416,9 @@ export interface Analysis {
   created_at: CreatedAt5;
   needs_review: NeedsReview;
   key_insights: KeyInsights;
+}
+export interface SingleAnalysisIds {
+  [k: string]: string;
 }
 export interface InputManifest {
   exploratory: Exploratory;
@@ -404,12 +435,21 @@ export interface InputManifest {
   context_digest: ContextDigest;
   claim_ids: ClaimIds;
   model: Model;
+  single_analysis_ids: SingleAnalysisIds1;
+  analysis_language: AnalysisLanguage;
+  analysis_config_digest: AnalysisConfigDigest;
 }
 export interface EvidenceRevisions {
   [k: string]: number;
 }
+export interface SingleAnalysisIds1 {
+  [k: string]: string;
+}
 export interface ReferenceStructure {
   resource_id: ResourceId1;
+  method: Method;
+  flow: Flow;
+  borrowable: Borrowable;
   summary: Summary;
   nodes: Nodes;
   edges: Edges;
@@ -429,14 +469,42 @@ export interface StructureEdge {
   sources: Sources3;
 }
 export interface AnalysisInsight {
+  title: Title1;
+  scope: Scope;
+  support_resource_ids: SupportResourceIds;
   id: Id9;
   observation: Observation;
   application: Application;
   sources: Sources4;
 }
-export interface Series1 {
+/**
+ * Durable core analysis: source-only inputs, never inferred for legacy reports.
+ */
+export interface SingleVideoAnalysis {
   id: Id10;
-  title: Title1;
+  resource_id: ResourceId2;
+  input_key: InputKey;
+  evidence_revision: EvidenceRevision2;
+  source_sha256: SourceSha256;
+  model: Model1;
+  instruction_digest: InstructionDigest1;
+  language: Language;
+  config_digest: ConfigDigest;
+  visual_only: VisualOnly1;
+  status: Status3;
+  structure: ReferenceStructure | null;
+  key_insights: KeyInsights1;
+  sources: Sources5;
+  limitations: Limitations3;
+  diagnostics: Diagnostics2;
+  created_at: CreatedAt6;
+}
+export interface Diagnostics2 {
+  [k: string]: string;
+}
+export interface Series1 {
+  id: Id11;
+  title: Title2;
   concept: Concept;
   inputs: InputManifest | null;
   needs_review: NeedsReview1;
@@ -448,9 +516,9 @@ export interface DetachedContents {
   [k: string]: number;
 }
 export interface ContentItem {
-  id: Id11;
+  id: Id12;
   series_id: SeriesId;
-  title: Title2;
+  title: Title3;
   description: Description;
   inputs: InputManifest | null;
   needs_review: NeedsReview2;
@@ -463,22 +531,22 @@ export interface ContentItem {
   context_title: ContextTitle1;
 }
 export interface Direction {
-  id: Id12;
+  id: Id13;
   revision: Revision3;
-  title: Title3;
+  title: Title4;
   concept: Concept1;
   hook: Hook;
   narrative: Narrative;
   cta: Cta;
   inputs: InputManifest;
-  sources: Sources5;
+  sources: Sources6;
   approved: Approved;
   approved_at: ApprovedAt;
   needs_review: NeedsReview3;
-  created_at: CreatedAt6;
+  created_at: CreatedAt7;
 }
 export interface ProductionPack {
-  id: Id13;
+  id: Id14;
   revision: Revision4;
   content_id: ContentId1;
   inputs: InputManifest;
@@ -487,13 +555,13 @@ export interface ProductionPack {
   storyboard: Storyboard;
   shot_list: ShotList;
   shots: Shots;
-  sources: Sources7;
+  sources: Sources8;
   needs_review: NeedsReview4;
-  created_at: CreatedAt7;
+  created_at: CreatedAt8;
   sheet_format: SheetFormat;
 }
 export interface ProductionShot {
-  id: Id14;
+  id: Id15;
   start_seconds: StartSeconds2;
   end_seconds: EndSeconds2;
   visual: Visual;
@@ -502,27 +570,28 @@ export interface ProductionShot {
   sound: Sound;
   notes: Notes;
   framing_camera: FramingCamera;
-  sources: Sources6;
+  sources: Sources7;
 }
 export interface Job {
+  inputs: InputManifest | null;
   error_code: ErrorCode;
-  id: Id15;
+  id: Id16;
   kind: Kind3;
-  resource_id: ResourceId2;
+  resource_id: ResourceId3;
   content_id: ContentId2;
   message_id: MessageId1;
   attempt_id: AttemptId1;
   parent_job_id: ParentJobId;
   resource_ids: ResourceIds3;
-  diagnostics: Diagnostics2;
+  diagnostics: Diagnostics3;
   support_details: SupportDetails1;
-  status: Status3;
+  status: Status4;
   progress: Progress;
   error: Error1;
-  created_at: CreatedAt8;
+  created_at: CreatedAt9;
   updated_at: UpdatedAt1;
 }
-export interface Diagnostics2 {
+export interface Diagnostics3 {
   [k: string]: string;
 }
 export interface EditorDrafts {
@@ -534,8 +603,8 @@ export interface EditorDraftVersions {
   [k: string]: number;
 }
 export interface TopicSuggestion {
-  id: Id16;
-  title: Title4;
+  id: Id17;
+  title: Title5;
   description: Description1;
   series_id: SeriesId1;
   inputs: InputManifest;

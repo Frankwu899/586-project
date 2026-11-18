@@ -45,6 +45,8 @@ class AuthoredSynthesis:
             "citations": [citation],
             "structures": [{
                 "resource_id": reference["resource_id"], "summary": "One observed product moment",
+                "method": "Visible product", "flow": "A single observed product moment; progression unknown.",
+                "borrowable": "Show the product when an actual demonstration is available.",
                 "nodes": [{"id": "moment", "label": "Product appears", "detail": "Authored observation",
                            "kind": "observation", "citations": [citation]}],
                 "edges": [],

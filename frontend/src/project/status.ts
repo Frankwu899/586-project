@@ -74,6 +74,9 @@ const supportKeys = new Set([
   'application_version', 'source_commit', 'operation', 'stage', 'timestamp', 'started_at', 'ended_at',
   'project_id', 'resource_id', 'job_id', 'parent_job_id', 'analysis_id', 'message_id', 'conversation_turn_id', 'reply_to_message_id',
   'requested_model', 'requested_speech_model', 'model', 'speech_model', 'speech_timing', 'transcription_model', 'source_index', 'source_total', 'failure_stage', 'attempts', 'attempt_count', 'cache_status', 'elapsed_ms', 'elapsed_seconds',
+  'phase_queued_ms', 'phase_running_ms', 'phase_extracting_ms', 'phase_single_video_analysis_ms', 'phase_synthesizing_ms', 'phase_validating_ms', 'phase_saving_ms',
+  'network_timeout_seconds', 'max_network_attempts', 'timeout_seconds', 'max_retries', 'validation_elapsed_ms', 'save_elapsed_ms', 'input_tokens', 'output_tokens', 'total_tokens',
+  'single_cache_hits', 'single_cache_misses',
   'http_status', 'provider_code', 'provider_type', 'provider_request_id', 'validation_outcome',
   'validation_rule', 'validation_field', 'failure_category', 'failure_code', 'error_code', 'status', 'speech',
   'chunk_start_seconds', 'chunk_end_seconds', 'chunk_start', 'chunk_end', 'chunk_index', 'total_chunks', 'retry_after_seconds', 'coverage', 'coverage_status',
@@ -81,6 +84,7 @@ const supportKeys = new Set([
   'accepted_proposals', 'rejected_proposals', 'rejected_proposal_count', 'reply_validation',
   'proposal_validation', 'outcome', 'validation_issues', 'attempt', 'retry', 'operation_mode', 'result_origin', 'evidence_revision',
   'media_error_code', 'media_error_name', 'media_network_state', 'media_ready_state', 'video_codec', 'audio_codec',
+  'media_representation', 'format_name', 'pixel_format', 'video_profile', 'playback_video_codec', 'playback_pixel_format', 'playback_audio_codec', 'playback_format_name',
 ]);
 export function supportText(records: Record<string, unknown> | Record<string, unknown>[] = {}) {
   return (Array.isArray(records) ? records : [records]).map(record => Object.entries(record)

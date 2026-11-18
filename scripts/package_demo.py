@@ -23,6 +23,8 @@ LOCAL_DIRS = {"backend", "scripts", "contracts", "data", "desktop"}
 RUNTIME_SKILL = ("skills", "video-anatomy-professional-generation")
 RELEASE_DOCS = {"docs/project-workspace-1.8.md", "docs/handoff/project-workspace-1.8.md",
                 f"docs/releases/{VERSION}.md", f"docs/handoff/project-workspace-{VERSION}.md",
+                f"docs/handoff/{VERSION}/architecture.md", f"docs/handoff/{VERSION}/issue-matrix.md",
+                f"docs/handoff/{VERSION}/verification.md", f"docs/handoff/{VERSION}/offline-measurements.json",
                 "docs/decisions/provider-reliability-1.8.2.md"}
 EXCLUDED_PARTS = {".git", ".agents", ".local-data", ".venv", "node_modules", "__pycache__",
                   "runtime", "release", "build", "test-results", "playwright-report"}

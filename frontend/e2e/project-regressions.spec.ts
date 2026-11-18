@@ -93,6 +93,7 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
       await page.getByRole('button', { name: 'Analysis', exact: true }).click();
       await page.getByLabel('Analysis scope', { exact: true }).selectOption('');
       await expect(page.locator('.va-analysis-report')).toHaveCount(1);
+      await page.getByText('Detailed structures and comparison', { exact: true }).click();
       const graph = page.getByRole('region', { name: /Video logic graph/ });
       await reachable(graph);
       await graph.focus();
@@ -147,6 +148,7 @@ test('current analysis survives tabs, replacement and failure while source graph
   await reopened.getByLabel('Analysis scope', { exact: true }).selectOption(project.contents[0].id);
   await showSavedContext(reopened);
   await expect(reopened.getByText('Independent content result.', { exact: true })).toBeVisible();
+  await reopened.getByText('Detailed structures and comparison', { exact: true }).click();
   await reopened.getByLabel('Reference structure', { exact: true }).selectOption(project.resources[1].id);
   await reopened.getByRole('button', { name: /Blue frame held/ }).click();
   await reopened.getByRole('button', { name: /Synthetic second reference.mp4.*00:06/ }).click();

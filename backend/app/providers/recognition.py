@@ -139,6 +139,7 @@ class ProviderRecognitionAdapter:
         self.prepare = prepare
         self.records: list[dict] = []
         self.speech_intervals: dict[str, dict] = {}
+        self.visual_sample_scopes: dict[str, list[float]] = {}
         self.speech_model = self.transcription_provider.model
         self._lock = threading.Lock()
 
@@ -268,7 +269,8 @@ class ProviderRecognitionAdapter:
                     detail["attempts"] = 1
                     raw = provider.transcribe(chunk, metadata=detail)
                     spans, issues, rounded = self._normalize_speech_result(raw, chunk, duration, model=provider.model)
-                    detail.update(valid_segments=len(spans), rejected_segments=len(issues), rounded_boundaries=rounded,
+                    detail.update(valid_segments=len(spans), rejected_segments=sum(issue != "segment_order" for issue in issues),
+                                  validation_issue_count=len(issues), rounded_boundaries=rounded,
                                   validation_outcome="partial" if issues and spans else "rejected" if issues else "accepted")
                     if issues:
                         failure = ProviderError("audio_timestamps_invalid",
@@ -321,6 +323,7 @@ class ProviderRecognitionAdapter:
     def _analyze(self, request, *, speech_only=False):
         video = request.video
         self.speech_intervals = {}
+        self.visual_sample_scopes = {}
         analysis_id = f"analysis_{uuid4().hex}"
         records = []
         if (video.task_id != request.task_id or video.intake_status != "ready" or video.frame_timing is None
@@ -594,12 +597,13 @@ class ProviderRecognitionAdapter:
             bounded_start, bounded_end = max(0.0, start), min(length, end)
             if bounded_start < previous:
                 issues.append("segment_order")
-                continue
             previous = bounded_start
             rounded += int(start != bounded_start) + int(end != bounded_end)
             spans.append({"start": bounded_start + chunk.start_seconds,
                           "end": min(duration, bounded_end + chunk.start_seconds), "text": text.strip()})
-        return spans, issues, rounded
+        # Ordering is a provider contract failure, not permission to discard an
+        # independently valid native interval. Keep truthful partial coverage.
+        return sorted(spans, key=lambda span: (span["start"], span["end"])), issues, rounded
 
     @staticmethod
     def _normalize_speech(raw, chunk, duration):
@@ -645,6 +649,9 @@ class ProviderRecognitionAdapter:
         nested_failure = False
         if visual:
             for index, frame in enumerate(visual.frames):
+                self.visual_sample_scopes[str(frame.frame_index)] = [
+                    video.frame_timing.frame_boundaries_seconds[frame.frame_index],
+                    video.frame_timing.frame_boundaries_seconds[frame.frame_index + 1]]
                 ids = []
                 interval = {"start_frame": frame.frame_index, "end_frame": frame.frame_index + 1}
                 if frame.description is not None:

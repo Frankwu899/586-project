@@ -44,6 +44,14 @@ Ask when a consequential choice cannot be safely inferred, researched or deferre
 Deliver useful unaffected work while waiting. Preserve approved wording and
 source-language quotations. A new hook cannot introduce an unapproved product promise.
 
+Reference evidence and new creative audio have different roles. A visual-only
+reference leaves its speech/music/SFX unknown; it does not require a silent new
+film. Propose narration or music as new creative choices when useful, label
+them accordingly, and obey explicit silence, no-narration or voice-over requests.
+Use faithful audience language for ordinary confirmed facts. Retain fixed
+approved statements and their necessary qualifications. Do not put internal
+approval/process phrases such as "Our confirmed product scope is" in copy.
+
 ## Experiments and approval
 An unusual concept with uncertain product linkage may remain experimental.
 Carry an explicit label, goal hypothesis and proposed validation method; do not

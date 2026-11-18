@@ -22,7 +22,7 @@ from ..workflow_errors import WorkflowError
 from .models import BriefRevision, Fact, Message, Model, Project, SourceRef, invalidate, now, uid
 
 
-INSTRUCTION_VERSION = "conversation-bounded-intake-1"
+INSTRUCTION_VERSION = "conversation-bounded-intake-2"
 REQUESTS_KEY = "conversation_requests"
 TURNS_KEY = "conversation_turns"
 CLAIM_KEYS = {"claim", "claims", "product_claim", "selling_point", "selling_points", "approved_message", "approved_messages", "benefit", "benefits", "product_benefit", "product_benefits", "efficacy", "health_claim", "product_claims", "卖点", "产品卖点", "功效", "产品功效", "产品声明", "产品优势", "优势"}
@@ -277,6 +277,119 @@ _DECISION = {"objective", "goal", "primary_objective", "campaign_objective", "co
 _UNCERTAIN = re.compile(r"\?|？|\b(?:or|undecided|unsure|not sure|haven.t decided|whether)\b|还是|或者|不确定|尚未决定", re.I)
 
 
+def _propose_duration(project, message):
+    """Normalize only one explicit assignment duration; adoption stays a user action."""
+    text = message.text
+    if not re.search(r"\b(?:video|film|duration|spot|make|create)\b|视频|时长|制作", text, re.I):
+        return
+    pattern = r"(?<![\d.])(\d+(?:\.\d+)?)\s*[-–]?\s*(seconds?|secs?|s|minutes?|mins?|分钟|秒)(?![A-Za-z])"
+    matches = list(re.finditer(pattern, text, re.I))
+    if not matches:
+        return
+    local = next((unit for unit in _sentences(text) if matches[0][0] in unit), "")
+    if not re.search(r"\b(?:want|make|create|duration|need)\b|制作|时长|需要|想要", local, re.I):
+        return
+    ambiguous = (len(matches) != 1 or bool(re.search(
+        r"\d\s*(?:[-–—~至到]|to)\s*\d|\b(?:about|around|roughly|approximately|maybe|reference|source|"
+        r"not|never|no|\w+n['’]t|at least|at most|under|over|shorter than|longer than|less than|more than|minimum|maximum|up to|between)\b|"
+        r"大约|左右|参考|不要|不得|至少|最多|不超过|少于|多于", local, re.I)))
+    seconds = float(matches[0][1]) * (60 if matches[0][2].lower().startswith(("min", "分钟")) else 1)
+    if ambiguous or not 0 < seconds <= 7200:
+        note = "Confirm one exact target duration for the new video; a range, reference length or conflicting durations cannot be adopted automatically."
+        if note not in project.unresolved:
+            project.unresolved.append(note)
+        return
+    value = f"{seconds:g} seconds"
+    known = [*(project.briefs[-1].facts if project.briefs else []), *project.brief_draft]
+    durations = [fact for fact in known if fact.key.casefold() in {"duration", "target_duration", "duration_seconds", "target_duration_seconds"}]
+    if any(fact.value == value and fact.status != "rejected" for fact in durations):
+        return
+    # Reuse one working identity so confirming a correction cannot adopt two
+    # contradictory duration rows. Never change an already adopted revision.
+    old = next((fact for fact in project.brief_draft if fact.key.casefold() == "duration"), None)
+    candidate = Fact(**({"id": old.id} if old else {}), key="duration", value=value,
+                     origin="conversation", sources=[SourceRef(message_id=message.id,
+                         locator="Explicit target duration; normalized to seconds", excerpt=matches[0][0])])
+    if old:
+        project.brief_draft[project.brief_draft.index(old)] = candidate
+    else:
+        project.brief_draft.append(candidate)
+    if durations:
+        project.unresolved.append("Review the proposed target duration change before applying it; the confirmed duration remains unchanged.")
+
+
+def _negative_scope(unit):
+    match = re.fullmatch(r"(?:No (.+) (?:have|has) been established|We have no established (.+))\.", unit, re.I)
+    return next((part for part in match.groups() if part), None) if match else None
+
+
+def _safe_rephrase(sentence, context, names, full_reply):
+    """A small entailment allowlist, never a general product-claim paraphraser.
+
+    Exact qualified evidence remains the default. These transformations preserve
+    launch location/status and the full epistemic scope of a negative statement.
+    Sources must name the same subject; another product cannot lend its ability.
+    """
+    reply_units = _sentences(full_reply)
+    for source in context["sources"]:
+        owner = None
+        units = _sentences(source["text"])
+        for index, unit in enumerate(units):
+            mentioned = [name for name in names if re.search(rf"\b{re.escape(name)}\b", unit, re.I)]
+            if len(mentioned) > 1:
+                owner = None
+                continue
+            if mentioned:
+                owner = mentioned[0]
+            if not owner:
+                continue
+            subject = re.escape(owner)
+            qualifications = []
+            cursor = index + 1
+            while cursor < len(units) and (
+                _QUALIFIER.search(units[cursor]) or _PRECONDITION.search(units[cursor])
+                or _negative_scope(units[cursor])
+            ):
+                qualifications.append(units[cursor])
+                cursor += 1
+            if index and _PRECONDITION.search(units[index - 1]):
+                qualifications.append(units[index - 1])
+            if any(not (qualification in reply_units or (
+                _negative_scope(qualification) and any(re.fullmatch(
+                    rf"{subject} has no established {re.escape(_negative_scope(qualification))}\.", part, re.I
+                ) for part in reply_units))) for qualification in qualifications):
+                continue
+            identity = re.fullmatch(rf"I lead marketing for {subject}, (.+)\.", unit, re.I)
+            if identity and re.fullmatch(rf"{subject} is {re.escape(identity[1])}\.", sentence, re.I):
+                return True
+            launch = re.fullmatch(rf"{subject} is (.*?)preparing to launch in (?:the )?([A-Za-z ]+)\.", unit, re.I)
+            if launch:
+                descriptor = launch[1].strip()
+                plain_descriptor = (not descriptor or bool(re.fullmatch(
+                    r"(?:a|an) (?:[A-Za-z-]+ )*(?:platform|product|app|service|company|brand|device)", descriptor, re.I)))
+                qualified = re.search(r"\b(?:not|never|no|only|if|unless|may|might|could|would|should|considering|"
+                                      r"possibly|potentially|allegedly|reportedly|tentatively|conditional|hypothetical|fictional)\b", descriptor, re.I)
+                if plain_descriptor and not qualified and re.fullmatch(
+                    rf"{subject} is preparing for (?:a |an )?{re.escape(launch[2])} launch\.", sentence, re.I):
+                    return True
+            scope_statement = re.fullmatch(r"Our confirmed product scope is (.+)\.", unit, re.I)
+            if scope_statement:
+                scope = re.sub(r"^helping users\b", "helps users", scope_statement[1], flags=re.I)
+                if re.fullmatch(rf"{subject} {re.escape(scope)}\.", sentence, re.I):
+                    return True
+            scope = _negative_scope(unit)
+            if not scope:
+                continue
+            if re.fullmatch(rf"{subject} has no established {re.escape(scope)}\.", sentence, re.I):
+                return True
+            # Advice may change the conjunction while retaining every topic and
+            # the explicit lack-of-evidence qualification, never asserting absence.
+            advice_scope = re.escape(scope.replace(" or ", " and ").replace(" capabilities", " claims"))
+            if re.fullmatch(rf"Avoid {advice_scope}, because neither is established for {subject}\.", sentence, re.I):
+                return True
+    return False
+
+
 def _sentences(text: str) -> list[str]:
     # Source wrapping is presentation, not an evidence boundary. Normalize it
     # only for comparison; saved excerpts and values retain their original text.
@@ -403,6 +516,8 @@ def _validate_text(value, context: dict, field: str) -> str:
         if ((restriction.search(sentence) or review_question.search(sentence))
                 and not re.search(r"[:：;；]|\b(?:but|while|because|although|and (?:it|the product))\b|但是|但它|因为", sentence, re.I)):
             continue
+        if _safe_rephrase(sentence, context, names, value):
+            continue
         if not any(_claim_evidence(sentence, source["text"]) for source in context["sources"]):
             raise ReplyValidationError("grounded_product_assertion", field)
     return value.strip()
@@ -419,6 +534,37 @@ def _validate_reply(raw, context: dict) -> ValidatedReply:
     except ReplyValidationError as error:
         text, reply_valid = _RECOVERY, False
         issues.append((error.rule, error.field))
+        if error.rule == "grounded_product_assertion" and isinstance(raw.get("reply"), str):
+            # Validate qualified units together. A source scope may be usable
+            # only with its adjacent negative restriction; testing each alone
+            # would discard supported content or detach a material qualifier.
+            retained, sentence_issues = [], []
+            units = _sentences(raw["reply"])
+            index = 0
+            while index < len(units):
+                end = index + 1
+                while end < len(units) and (
+                    _QUALIFIER.search(units[end]) or _PRECONDITION.search(units[end]) or _negative_scope(units[end])
+                    or re.fullmatch(r"[^.]+ has no established [^.]+\.", units[end], re.I)
+                ):
+                    # An entire independently supported source unit has no
+                    # antecedent in that source. Do not attach it to a rejected
+                    # predecessor merely because it begins with a condition.
+                    if any(_sentences(source["text"])[:1] == [units[end]]
+                           and _claim_evidence(units[end], source["text"])
+                           for source in context["sources"]):
+                        break
+                    end += 1
+                sentence = " ".join(units[index:end])
+                try:
+                    _validate_text(sentence, context, "reply")
+                    retained.append(sentence)
+                except ReplyValidationError as failure:
+                    sentence_issues.append((failure.rule, f"reply[{index}]"))
+                index = end
+            if retained:
+                text, reply_valid = " ".join(retained), True
+                issues = sentence_issues
     proposals = raw.get("proposals", [])
     if not isinstance(proposals, list) or len(proposals) > 30:
         issues.append(("proposal_list_schema", "proposals"))
@@ -499,7 +645,12 @@ def _bound_clarification(validated, context, language):
     if validated.reply_valid and (has_questions or policy.get("proceed_requested")
                                   or policy.get("clarification_turns", 0) >= 2 or parsed.context_sufficient):
         parsed.reply = re.sub(r"[^.!?。！？\n]*[?？]", "", parsed.reply).strip()
-        if not validated.facts and not context.get("working_facts"):
+        working_context = [fact for fact in context.get("working_facts", []) if not (
+            fact.get("key") == "duration" and fact.get("status") == "suggested"
+            and fact.get("origin") == "conversation"
+            and any(source.get("locator") == "Explicit target duration; normalized to seconds"
+                    for source in fact.get("sources", [])))]
+        if not validated.facts and not working_context:
             # A limited draft can retain the supplied assignment verbatim; no
             # invented audience, objective, claims or timing fills the gaps.
             source = next((source for source in context["sources"] if source["origin"] == "conversation"), None)
@@ -539,6 +690,7 @@ class ConversationService:
             if any(resource_id not in {resource.id for resource in project.resources} for resource_id in resource_ids):
                 raise WorkflowError("resource_not_found", "An attached resource does not belong to this project.", 404)
             project.messages.append(message)
+            _propose_duration(project, message)
             if project.conversation_draft.strip() == text:
                 project.conversation_draft = ""
             context = _context(project)

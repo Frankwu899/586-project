@@ -56,6 +56,9 @@ export default function SourceReview({ project, resource, source, mutate, speech
   // Preparation is asynchronous and keeps the file URL stable. Replace the
   // failed media element only after a new preview has actually finished.
   const playbackKey = `${resource.id}:${resource.playback_path}:${preparedJob?.id ?? ''}:${relinkRevision}`;
+  // Chromium can retain a previously decoded corrupt response by URL even
+  // across new media elements. A successful local recovery gets fresh bytes.
+  const playbackUrl = `${fileUrl(project.id, resource.id, 'playback')}&generation=${encodeURIComponent(`${preparedJob?.id ?? 'initial'}:${relinkRevision}`)}`;
   const busy = Boolean(pending) || project.jobs.some(item => item.resource_id === resource.id && ['queued', 'running'].includes(item.status));
   const recognizing = pending === 'recognize' || project.jobs.some(item => item.resource_id === resource.id && ['recognize', 'reference_extraction'].includes(item.kind) && ['queued', 'running'].includes(item.status));
   const needsSpeech = ['failed', 'partial', 'error'].includes(evidence?.coverage.speech ?? '') || evidence?.diagnostics.speech === 'speech_merge_conflict';
@@ -100,6 +103,13 @@ export default function SourceReview({ project, resource, source, mutate, speech
       media_error_code: code, media_error_name: names[code] ?? 'MEDIA_ERR_UNKNOWN',
       media_network_state: media.networkState, media_ready_state: media.readyState,
       video_codec: resource.media_metadata.video_codec, audio_codec: resource.media_metadata.audio_codec,
+      media_representation: resource.playback_path && resource.playback_path !== resource.original_path ? 'preview' : 'original',
+      format_name: resource.media_metadata.format_name, pixel_format: resource.media_metadata.pixel_format,
+      video_profile: resource.media_metadata.video_profile,
+      playback_video_codec: resource.media_metadata.playback_video_codec,
+      playback_pixel_format: resource.media_metadata.playback_pixel_format,
+      playback_audio_codec: resource.media_metadata.playback_audio_codec,
+      playback_format_name: resource.media_metadata.playback_format_name,
     });
     setPlaybackError('Playback is unavailable. Open the original to check the file, or rebuild its media preview. Saved evidence is retained.');
   };
@@ -121,7 +131,7 @@ export default function SourceReview({ project, resource, source, mutate, speech
     {sourceOnly && !citationUnavailable && <div className="va-notice" role="status">This link identifies only a source time range. Its saved evidence revision is unavailable; current evidence was not substituted.<button type="button" onClick={viewCurrent}>View current evidence</button></div>}
     {citationUnavailable && <div className="va-notice" role="alert">{missingRevision ? `Requested evidence revision ${choice} is unavailable.` : missingEvent ? 'The cited event is unavailable in its saved evidence revision.' : unversionedEvent ? 'This citation does not identify its evidence revision.' : sourceTimeIssue} No current or approximate event was substituted.<button type="button" onClick={viewCurrent}>View current evidence</button></div>}
     {historical && !citationUnavailable && <p className="va-notice">Showing exact historical evidence revision {evidence.revision}. Corrections to current evidence do not replace this version.<button type="button" onClick={viewCurrent}>View current evidence</button></p>}
-    <div className="va-source-top"><div className="va-source-player va-resource-inspector"><div className="va-source-stage">{!trashed && (resource.kind === 'video' ? <video key={playbackKey} ref={player as React.RefObject<HTMLVideoElement>} width={typeof resource.media_metadata.width === 'number' ? resource.media_metadata.width : 1280} height={typeof resource.media_metadata.height === 'number' ? resource.media_metadata.height : 720} controls playsInline preload="metadata" src={fileUrl(project.id, resource.id, 'playback')} aria-label="Reference video player" onLoadedMetadata={loadedMetadata} onTimeUpdate={event => { const seconds = sourceSeconds(resource, event.currentTarget.currentTime); if (seconds != null) setPlayhead(seconds); }} onError={event => failedPlayback(event.currentTarget)} /> : <audio key={playbackKey} ref={player as React.RefObject<HTMLAudioElement>} controls preload="metadata" src={fileUrl(project.id, resource.id, 'playback')} aria-label="Reference audio player" onLoadedMetadata={loadedMetadata} onTimeUpdate={event => { const seconds = sourceSeconds(resource, event.currentTarget.currentTime); if (seconds != null) setPlayhead(seconds); }} onError={event => failedPlayback(event.currentTarget)} />)}</div>
+    <div className="va-source-top"><div className="va-source-player va-resource-inspector"><div className="va-source-stage">{!trashed && (resource.kind === 'video' ? <video key={playbackKey} ref={player as React.RefObject<HTMLVideoElement>} width={typeof resource.media_metadata.width === 'number' ? resource.media_metadata.width : 1280} height={typeof resource.media_metadata.height === 'number' ? resource.media_metadata.height : 720} controls playsInline preload="metadata" src={playbackUrl} aria-label="Reference video player" onLoadedMetadata={loadedMetadata} onTimeUpdate={event => { const seconds = sourceSeconds(resource, event.currentTarget.currentTime); if (seconds != null) setPlayhead(seconds); }} onError={event => failedPlayback(event.currentTarget)} /> : <audio key={playbackKey} ref={player as React.RefObject<HTMLAudioElement>} controls preload="metadata" src={playbackUrl} aria-label="Reference audio player" onLoadedMetadata={loadedMetadata} onTimeUpdate={event => { const seconds = sourceSeconds(resource, event.currentTarget.currentTime); if (seconds != null) setPlayhead(seconds); }} onError={event => failedPlayback(event.currentTarget)} />)}</div>
       <p className="va-source-clock"><output aria-live="off">{stamp(playhead)} / {duration != null ? stamp(duration) : 'Duration unavailable'}</output><span>{mapping === 'frames' ? 'Verified frame timing' : mapping === 'seconds' ? 'Source time · frame precision unavailable' : 'Source / proxy mapping unavailable'}</span></p>
       {message && <FailureNotice message={message} code={!playbackError && !trashed ? latestJob?.error_code : undefined} diagnostics={playbackError ? playbackDiagnostics : support} />}
       {mapping === 'unavailable' && <p className="va-notice">Playback and source timing cannot be safely linked for this saved proxy. Evidence remains readable; rebuild the preview to verify the mapping.</p>}

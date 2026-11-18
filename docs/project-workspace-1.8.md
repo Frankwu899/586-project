@@ -1,5 +1,19 @@
 # Video Anatomy 1.8 project workspace
 
+## Current 1.8.5 testing candidate
+
+Read the [1.8.5 release notes](releases/1.8.5.md),
+[candidate handoff](handoff/project-workspace-1.8.5.md) and
+[layered analysis/migration notes](handoff/1.8.5/architecture.md).
+`EvidenceRevision` now feeds persisted `SingleVideoAnalysis` before compact
+multi-reference synthesis. Source cores do not depend on the project brief;
+synthesis binds exact cores, evidence, selection, brief and configuration.
+The default report shows short insights, one structure-summary row per source
+and visible coverage limits; graphs and complete detail expand on request.
+Additive model fields default honestly for old projects; no legacy source-core
+provenance is fabricated. These changes supersede the older analysis behavior
+below while retaining its saved reports and original evidence.
+
 ## Current 1.8.4 testing candidate
 
 Read the [1.8.4 release notes](releases/1.8.4.md) and

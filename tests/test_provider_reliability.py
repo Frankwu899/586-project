@@ -117,7 +117,7 @@ def test_final_output_validation_is_persisted_after_successful_http(tmp_path, bo
     assert record["failure_code"] == code and record["validation_outcome"] == "rejected"
     assert record["http_status"] == 200 and record["provider_request_id"] == "req_output"
     assert record["project_id"] == "project_fixture" and record["conversation_turn_id"] == "message_fixture"
-    assert record["application_version"] == "1.8.4" and len(record["source_commit"]) == 40
+    assert record["application_version"] == "1.8.5" and len(record["source_commit"]) == 40
     assert exc.value.diagnostics == record
     assert "Private" not in (tmp_path / "validation.jsonl").read_text()
     assert "Private" not in (tmp_path / "usage.jsonl").read_text()
