@@ -4,12 +4,24 @@ import type { StructureGraph } from '../structureApi';
 import type { Analysis, AnalysisInsight, Project, ReferenceStructure, SourceRef } from './contracts';
 import { Badge, Empty, FailureNotice, Sources, date, type SourceAction } from './Common';
 import type { Mutate } from './client';
-import { failureMessage } from './status';
 import { ReportRetry } from './ActivityPanel';
 import './analysis.css';
 
 const kindLabel = { observation: 'Video observation', interpretation: 'Interpretation', source_claim: 'Attributed claim', user_context: 'Your context' };
 const unique = (items: string[]) => [...new Set(items.map(item => item.trim()).filter(Boolean))];
+
+function insightSupport(insight: AnalysisInsight, analysis: Analysis, project: Project) {
+  return [...new Set(insight.sources.flatMap(source => {
+    if (!source.resource_id || source.evidence_revision == null || !source.event_id
+      || source.start_seconds == null || source.end_seconds == null || !analysis.inputs.resource_ids.includes(source.resource_id)) return [];
+    const resource = project.resources.find(item => item.id === source.resource_id);
+    const event = resource?.evidence.find(item => item.revision === source.evidence_revision)?.events.find(item => item.id === source.event_id);
+    const inputRevision = analysis.inputs.evidence_revisions[source.resource_id];
+    if (!event || (inputRevision != null && inputRevision !== source.evidence_revision)
+      || source.start_seconds !== event.start_seconds || source.end_seconds !== event.end_seconds) return [];
+    return [source.resource_id];
+  }))];
+}
 
 function sourceMoment(project: Project, source: SourceRef) {
   if (source.start_seconds == null) return [];
@@ -44,17 +56,38 @@ function Report({ analysis, project, mutate, onSource, onContent }: { analysis: 
   const [resourceId, setResourceId] = useState(structures[0]?.resource_id ?? '');
   const [savingInsight, setSavingInsight] = useState<string | null>(null);
   const structure = structures.find(item => item.resource_id === resourceId) ?? structures[0];
-  const insightKeys = new Set<string>();
-  const insights = (analysis.key_insights ?? []).filter(item => {
-    const key = `${item.observation.trim().toLocaleLowerCase()}\n${item.application.trim().toLocaleLowerCase()}`;
-    if (insightKeys.has(key)) return false;
-    insightKeys.add(key); return true;
-  }).slice(0, 5);
-  const legacyNotes = !insights.length ? unique([...analysis.findings, ...analysis.opportunities]).slice(0, 5) : [];
+  const groupedInsights = new Map<string, AnalysisInsight>();
+  for (const item of analysis.key_insights ?? []) {
+    const key = JSON.stringify([item.scope ?? 'observation', item.observation.trim(), item.application.trim()]);
+    const existing = groupedInsights.get(key);
+    if (!existing) {
+      groupedInsights.set(key, { ...item, sources: [...item.sources], support_resource_ids: [...(item.support_resource_ids ?? [])] });
+      continue;
+    }
+    const seen = new Set(existing.sources.map(source => JSON.stringify(source)));
+    for (const source of item.sources) {
+      const identity = JSON.stringify(source);
+      if (!seen.has(identity)) { seen.add(identity); existing.sources.push(source); }
+    }
+    existing.support_resource_ids = [...new Set([...existing.support_resource_ids, ...(item.support_resource_ids ?? [])])];
+  }
+  const insights = [...groupedInsights.values()];
+  const legacyNotes = !insights.length ? unique([...analysis.findings, ...analysis.opportunities]) : [];
   const insightText = new Set([...insights.flatMap(item => [item.observation.trim(), item.application.trim()]), ...legacyNotes]);
   const patterns = unique(analysis.findings).filter(item => !insightText.has(item));
   const opportunities = unique(analysis.opportunities).filter(item => !insightText.has(item));
   const multiple = analysis.inputs.resource_ids.length > 1;
+  const limitations = unique([...(analysis.limitations ?? []), ...(analysis.inputs.limitations ?? [])]);
+  const summaryIds = [...new Set([...analysis.inputs.resource_ids, ...structures.map(item => item.resource_id)])];
+  const supportLabel = (insight: AnalysisInsight) => {
+    const linked = insightSupport(insight, analysis, project);
+    const videos = linked.filter(id => project.resources.find(resource => resource.id === id)?.kind === 'video');
+    const allVideos = analysis.inputs.resource_ids.every(id => project.resources.find(resource => resource.id === id)?.kind === 'video');
+    const unit = allVideos ? 'videos' : 'references';
+    if (!analysis.report_version) return `Linked support · ${linked.length} of ${analysis.inputs.resource_ids.length} ${unit}`;
+    const scope = insight.scope === 'commonality' && videos.length >= 2 ? 'Commonality' : insight.scope === 'difference' && linked.length >= 2 ? 'Difference' : linked.length === 1 ? 'Single-video observation' : 'Observation';
+    return `${scope} · ${linked.length} of ${analysis.inputs.resource_ids.length} ${unit}`;
+  };
   const sendInspiration = async (insight: AnalysisInsight) => {
     if (savingInsight !== null || !onContent) return;
     setSavingInsight(insight.id);
@@ -68,13 +101,16 @@ function Report({ analysis, project, mutate, onSource, onContent }: { analysis: 
     <div className="va-analysis-receipt"><p>{analysis.inputs.resource_ids.length} {analysis.inputs.resource_ids.length === 1 ? 'reference' : 'references'} · Saved locally · {date(analysis.created_at)}</p><Badge tone={analysis.needs_review ? 'warning' : 'success'}>{analysis.needs_review ? 'Inputs changed · review' : 'Saved analysis'}</Badge></div>
     {analysis.inputs.visual_only && <p className="va-notice">Visual evidence only · speech was unavailable for this analysis.</p>}
     <section className="va-key-insights" aria-labelledby={`insights-${analysis.id}`}><h2 id={`insights-${analysis.id}`}>Key insights</h2>
-      {insights.length > 0 ? <ol>{insights.map(insight => <li key={insight.id}><section aria-label={`Insight: ${insight.observation}`}><div className="va-insight-copy"><h3>{insight.observation}</h3><p>{insight.application}</p></div><div className="va-insight-actions"><Sources sources={insight.sources} project={project} onSource={onSource} />{!insight.sources.length && <p className="va-muted">This saved insight has no individually linked source.</p>}{onContent && <button type="button" disabled={savingInsight !== null} onClick={() => void sendInspiration(insight)}>{savingInsight === insight.id ? 'Saving inspiration…' : 'Use insight in Content plan'}</button>}</div></section></li>)}</ol> : <><p className="va-legacy-insight-note">This saved report has no individually linked insights. Its notes remain available below; source links are preserved in the graph and evidence details.</p>{legacyNotes.length > 0 ? <ul className="va-legacy-insights">{legacyNotes.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p className="va-muted">No separate insight notes were recorded. The original report remains available in Saved report context.</p>}</>}
+      {insights.length > 0 ? <ol>{insights.map(insight => <li key={insight.id}><section aria-label={`Insight: ${insight.title || insight.observation}`}><div className="va-insight-copy"><p className="va-insight-support">{supportLabel(insight)}</p><h3>{insight.title || insight.observation}</h3><p>{insight.application}</p>{insight.title && <details className="va-insight-observation"><summary>Observation and support</summary><p>{insight.observation}</p>{insight.scope === 'commonality' && insightSupport(insight, analysis, project).filter(id => project.resources.find(resource => resource.id === id)?.kind === 'video').length < 2 && <p className="va-notice">This recorded commonality lacks linked support from two different videos. Review its scope before using it.</p>}</details>}</div><div className="va-insight-actions"><Sources sources={insight.sources} project={project} onSource={onSource} />{!insight.sources.length && <p className="va-muted">This saved insight has no individually linked source.</p>}{onContent && <button type="button" disabled={savingInsight !== null} onClick={() => void sendInspiration(insight)}>{savingInsight === insight.id ? 'Saving inspiration…' : 'Use insight in Content plan'}</button>}</div></section></li>)}</ol> : <><p className="va-legacy-insight-note">This saved report has no individually linked insights. Its notes remain available below; source links are preserved in the graph and evidence details.</p>{legacyNotes.length > 0 ? <ul className="va-legacy-insights">{legacyNotes.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p className="va-muted">No separate insight notes were recorded. The original report remains available in Saved report context.</p>}</>}
     </section>
-    {multiple && <section className="va-analysis-comparison" aria-labelledby={`comparison-${analysis.id}`}><h2 id={`comparison-${analysis.id}`}>Comparison</h2><p className="va-muted">Saved observations across the selected references; no effectiveness or statistical trend is implied.</p><div className="va-analysis-columns"><section><h3>Shared mechanisms</h3>{patterns.length ? <ul>{patterns.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p>No additional shared mechanisms were recorded.</p>}</section><section><h3>Differences</h3>{analysis.differences.length ? <ul>{analysis.differences.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p>No supported differences were recorded.</p>}</section></div>{opportunities.length > 0 && <details><summary>Applications and conditions</summary><ul>{opportunities.map((item, index) => <li key={index}>{item}</li>)}</ul></details>}</section>}
-    <section className="va-analysis-structure" aria-labelledby={`structure-${analysis.id}`}><div className="va-section-heading"><h2 id={`structure-${analysis.id}`}>Structure flow</h2>{structures.length > 1 && <label>Source<select aria-label="Reference structure" value={structure?.resource_id ?? ''} onChange={event => setResourceId(event.target.value)}>{structures.map(item => <option key={item.resource_id} value={item.resource_id}>{project.resources.find(resource => resource.id === item.resource_id)?.name ?? 'Unavailable reference'}</option>)}</select></label>}</div>{structure ? <ReferenceGraph key={structure.resource_id} structure={structure} project={project} onSource={onSource} /> : <p className="va-notice">This saved report has no structure graph. Its evidence remains available. No structure was invented from the old summary.</p>}</section>
+    <section className="va-analysis-summary" aria-labelledby={`summary-${analysis.id}`}><h2 id={`summary-${analysis.id}`}>Structure summary</h2><div className="va-structure-summary-scroll"><table aria-label="Structure summary"><thead><tr><th scope="col">Video / reference</th><th scope="col">Core method</th><th scope="col">Flow</th><th scope="col">What to borrow</th></tr></thead><tbody>{summaryIds.map(id => { const item = structures.find(saved => saved.resource_id === id); return <tr key={id}><th scope="row">{project.resources.find(resource => resource.id === id)?.name ?? 'Unavailable reference'}</th><td>{item?.method || item?.summary || 'Not recorded'}</td><td>{item?.flow || 'Not recorded'}</td><td>{item?.borrowable || 'Not recorded'}</td></tr>; })}</tbody></table></div>{!structures.length && <p className="va-notice">This saved report has no structure graph. Its evidence remains available. No structure was invented from the old summary.</p>}{!analysis.report_version && <p className="va-muted">Some method, flow or borrowing notes were not recorded in this historical report.</p>}</section>
+    {limitations.length > 0 && <section className="va-analysis-limits" aria-labelledby={`limits-${analysis.id}`}><h2 id={`limits-${analysis.id}`}>Coverage limits</h2><ul>{limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></section>}
+    <details className="va-analysis-details"><summary>Detailed structures and comparison</summary>
+      <section className="va-analysis-structure" aria-labelledby={`structure-${analysis.id}`}><div className="va-section-heading"><h2 id={`structure-${analysis.id}`}>Structure flow</h2>{structures.length > 1 && <label>Source<select aria-label="Reference structure" value={structure?.resource_id ?? ''} onChange={event => setResourceId(event.target.value)}>{structures.map(item => <option key={item.resource_id} value={item.resource_id}>{project.resources.find(resource => resource.id === item.resource_id)?.name ?? 'Unavailable reference'}</option>)}</select></label>}</div>{structure && <ReferenceGraph key={structure.resource_id} structure={structure} project={project} onSource={onSource} />}</section>
+      {multiple && <section className="va-analysis-comparison" aria-labelledby={`comparison-${analysis.id}`}><h2 id={`comparison-${analysis.id}`}>Comparison</h2><p className="va-muted">Saved notes retain their original wording. Only insights with linked support from two different videos are labeled commonalities; no effectiveness or statistical trend is implied.</p><div className="va-analysis-columns"><section><h3>Additional saved findings</h3>{patterns.length ? <ul>{patterns.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p>No additional findings were recorded.</p>}</section><section><h3>Saved differences</h3>{analysis.differences.length ? <ul>{analysis.differences.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p>No differences were recorded.</p>}</section></div>{opportunities.length > 0 && <details><summary>Applications and conditions</summary><ul>{opportunities.map((item, index) => <li key={index}>{item}</li>)}</ul></details>}</section>}
+    </details>
     <details className="va-analysis-context"><summary>Saved report context</summary><p>{analysis.conclusion}</p>{!multiple && <><h3>Saved patterns and applications</h3><ul>{unique([...analysis.findings, ...analysis.differences, ...analysis.opportunities]).filter(item => !legacyNotes.includes(item)).map((item, index) => <li key={index}>{item}</li>)}</ul></>}</details>
     <details className="va-analysis-evidence"><summary>Evidence and source moments</summary><Sources sources={analysis.sources} project={project} onSource={onSource} />{analysis.sources.map((source, index) => source.excerpt && <blockquote key={index}>{source.excerpt}</blockquote>)}</details>
-    {analysis.limitations.length > 0 && <details className="va-analysis-limits"><summary>Coverage and interpretation limits</summary><ul>{analysis.limitations.map((item, index) => <li key={index}>{failureMessage(item)}</li>)}</ul></details>}
   </article>;
 }
 

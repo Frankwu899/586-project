@@ -39,6 +39,13 @@ Make the table readable and executable. Concision must not erase essential
 actions, screen text, dialogue or continuity. Write the intended audio wording,
 not "explain the benefit" when the actual words are required.
 
+Do not equate visual-only reference analysis with a silent deliverable. Treat
+unobserved reference audio as unknown and distinguish it from newly proposed
+voice-over, dialogue, music or SFX. Respect the user's explicit audio choice.
+Preserve fixed approved claims and qualifications while allowing faithful
+audience-facing expression of ordinary facts; avoid internal confirmation or
+workflow language in the intended spoken or on-screen copy.
+
 ## Supporting notes
 Link notes to stable shot IDs: beat/purpose, meaningful photographic intent,
 transitions, assets/resources, continuity, evidence, timing risks and unresolved

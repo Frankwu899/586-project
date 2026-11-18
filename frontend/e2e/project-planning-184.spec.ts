@@ -36,6 +36,7 @@ test('standalone and in-series creation are discoverable and searchable without 
   await expect(create.getByLabel('Series', { exact: true })).toHaveValue('');
   await create.getByLabel('Title', { exact: true }).fill('A new standalone idea');
   await create.getByRole('button', { name: 'Create video', exact: true }).click();
+  await expect(create).not.toBeVisible();
   let saved = await load(request, project.id);
   const standalone = saved.contents.find(item => item.title === 'A new standalone idea')!;
   expect(standalone.series_id).toBeNull(); expect(saved.active_content_id).toBe(standalone.id);
@@ -43,6 +44,7 @@ test('standalone and in-series creation are discoverable and searchable without 
   const group = page.getByRole('dialog', { name: 'Create series', exact: true });
   await group.getByLabel('Title', { exact: true }).fill('A new optional Series');
   await group.getByRole('button', { name: 'Create series', exact: true }).click();
+  await expect(group).not.toBeVisible();
   saved = await load(request, project.id);
   const createdSeries = saved.series.find(item => item.title === 'A new optional Series')!;
   expect(saved.active_content_id).toBe(standalone.id);
@@ -50,6 +52,7 @@ test('standalone and in-series creation are discoverable and searchable without 
   await expect(create.getByLabel('Series', { exact: true })).toHaveValue(createdSeries.id);
   await create.getByLabel('Title', { exact: true }).fill('An episode inside the Series');
   await create.getByRole('button', { name: 'Create video', exact: true }).click();
+  await expect(create).not.toBeVisible();
   saved = await load(request, project.id);
   const episode = saved.contents.find(item => item.title === 'An episode inside the Series')!;
   expect(episode.series_id).toBe(createdSeries.id);
@@ -150,7 +153,10 @@ test('Series Trash previews kept videos and restores only unchanged standalone m
   await expect(restore).toContainText('1 video below will rejoin');
   await expect(restore.getByText('A second series Video', { exact: true })).toBeVisible();
   await expect(restore.getByText('The planned Video', { exact: true })).toHaveCount(0);
+  const restoredResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && response.url().endsWith(`/api/projects/${project.id}/series/series_managed/restore`));
   await restore.getByRole('button', { name: 'Restore', exact: true }).click();
+  expect((await restoredResponse).ok()).toBeTruthy();
   saved = await load(request, project.id);
   expect(saved.contents.find(item => item.id === 'content_active_video')?.series_id).toBe('series_other');
   expect(saved.contents.find(item => item.id === 'content_series_second')?.series_id).toBe('series_managed');

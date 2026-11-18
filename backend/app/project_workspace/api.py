@@ -4,6 +4,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 import mimetypes
 import threading
@@ -184,6 +185,23 @@ class ProjectRuntime:
                        creative_model="gpt-6.1-sol", m2_model="gpt-6.1-sol",
                        structure_model="gpt-6.1-sol", research_model="gpt-6.1-sol")
 
+    @staticmethod
+    def _phase(job, stage):
+        """Persist elapsed phase time without conflating it with network timeouts."""
+        timestamp = now()
+        previous = job.diagnostics.get("stage", "queued")
+        if previous != stage:
+            try:
+                start = datetime.fromisoformat(job.diagnostics.get("stage_started_at", job.created_at))
+                elapsed = max(0, round((datetime.fromisoformat(timestamp) - start).total_seconds() * 1000))
+                key = f"phase_{previous}_ms"
+                job.diagnostics[key] = str(int(job.diagnostics.get(key, "0")) + elapsed)
+            except (ValueError, TypeError):
+                pass  # Unknown historical clocks remain unknown.
+            job.diagnostics["stage_started_at"] = timestamp
+        job.updated_at = timestamp
+        job.diagnostics.update(stage=stage, timestamp=timestamp)
+
     def submit(self, project_id, expected_version, kind, callback, *, resource_id=None, content_id=None, message_id=None, attempt_id=None, resource_ids=None, pass_job_id=False, diagnostics=None):
         from ..release import release_info
         job = Job(kind=kind, resource_id=resource_id, content_id=content_id, message_id=message_id, attempt_id=attempt_id,
@@ -191,7 +209,10 @@ class ProjectRuntime:
         job.diagnostics = {"application_version": release_info()["version"],
                            "source_commit": release_info()["source_commit"] or "unknown",
                            "operation": kind, "stage": "queued", "timestamp": job.created_at,
-                           "project_id": project_id, "job_id": job.id}
+                           "project_id": project_id, "job_id": job.id,
+                           "stage_started_at": job.created_at,
+                           "network_timeout_seconds": str(self.settings().timeout_seconds),
+                           "max_network_attempts": str(self.settings().max_retries + 1)}
         job.diagnostics.update(diagnostics or {})
         for key, value in (("resource_id", resource_id), ("message_id", message_id)):
             if value:
@@ -222,15 +243,15 @@ class ProjectRuntime:
             return admitted
 
     def progress(self, project_id, job_id, stage, **details):
-        labels = {"extracting": "Preparing reference evidence", "synthesizing": "Comparing saved source evidence",
+        labels = {"extracting": "Preparing reference evidence", "single_video_analysis": "Analyzing each saved reference",
+                  "synthesizing": "Combining saved video analyses",
                   "validating": "Checking source citations", "saving": "Saving the validated report"}
         def update(project):
             job = next(item for item in project.jobs if item.id == job_id)
             if job.status not in {"queued", "running"}:
                 return False
             job.progress = labels.get(stage, "Processing source evidence")
-            job.updated_at = now()
-            job.diagnostics.update(stage=stage, timestamp=job.updated_at)
+            self._phase(job, stage)
             for key in ("resource_id", "source_index", "source_total"):
                 if key in details:
                     job.diagnostics[key] = str(details[key])[:100]
@@ -242,14 +263,15 @@ class ProjectRuntime:
             job = next(item for item in project.jobs if item.id == job_id)
             if job.status == "stopped":
                 return False
-            job.status, job.progress, job.updated_at = "running", "Processing", now()
-            job.diagnostics.update(stage="running", timestamp=job.updated_at)
+            job.status, job.progress = "running", "Processing"
+            self._phase(job, "running")
         try:
             admitted = self.store.update(project_id, None, running)
             if next(job for job in admitted.jobs if job.id == job_id).status == "stopped":
                 return
             callback()
         except Exception as exc:
+            from .analysis import _support_records
             from .speech_retry import public_failure
             code, safe = public_failure(exc)
             error_diagnostics = dict(getattr(exc, "diagnostics", {}) or {})
@@ -260,8 +282,11 @@ class ProjectRuntime:
                 job.status, job.progress, job.error, job.updated_at = "failed", "Failed", safe, now()
                 job.error_code = code
                 job.diagnostics.update(failure_stage=job.diagnostics.get("stage", "processing"),
-                                       stage="completed", outcome="failed", error_code=code,
+                                       outcome="failed", error_code=code,
                                        timestamp=job.updated_at, elapsed_seconds=f"{time.monotonic() - started:.3f}")
+                self._phase(job, "completed")
+                if error_diagnostics:
+                    job.support_details.extend(_support_records([error_diagnostics], project_id, job.resource_id or ""))
                 for key, value in error_diagnostics.items():
                     if key in {"validation_outcome", "validation_rule", "validation_field", "http_status", "provider_request_id", "failure_code"} and type(value) in (str, int, float, bool):
                         job.diagnostics[key] = str(value)[:200]
@@ -270,7 +295,9 @@ class ProjectRuntime:
                                   if message.reply_to_message_id == job.message_id and message.attempt_id == job.attempt_id), None)
                     if reply:
                         reply.diagnostics["job_id"] = job.id
-                        job.diagnostics.update(reply.diagnostics)
+                        job.diagnostics.update({key: value for key, value in reply.diagnostics.items()
+                                                if key not in {"stage", "timestamp", "stage_started_at"}})
+                        job.diagnostics["failure_stage"] = reply.diagnostics.get("stage", "conversation")
                         job.error = reply.text
             self.store.update(project_id, None, failed)
         else:
@@ -289,12 +316,16 @@ class ProjectRuntime:
                                   if message.reply_to_message_id == job.message_id and message.attempt_id == job.attempt_id), None)
                     job.error_code = turn.get("error_code")
                     if reply:
-                        job.diagnostics.update(reply.diagnostics)
+                        job.diagnostics.update({key: value for key, value in reply.diagnostics.items()
+                                                if key not in {"stage", "timestamp", "stage_started_at"}})
+                        if job.status == "failed":
+                            job.diagnostics["failure_stage"] = reply.diagnostics.get("stage", "conversation")
                         reply.diagnostics["job_id"] = job.id
                         job.error = reply.text if job.status == "failed" else None
                     job.updated_at = now()
                     job.diagnostics.update(outcome=job.status, timestamp=job.updated_at,
                                            elapsed_seconds=f"{time.monotonic() - started:.3f}")
+                    self._phase(job, "completed")
                     return
                 resource = next((r for r in project.resources if r.id == job.resource_id), None)
                 failed_children = [child for child in project.jobs if child.parent_job_id == job.id
@@ -319,7 +350,8 @@ class ProjectRuntime:
                 else:
                     job.status, job.progress = "succeeded", "Complete"
                 job.updated_at = now()
-                job.diagnostics.update(stage="completed", outcome=job.status, timestamp=job.updated_at,
+                self._phase(job, "completed")
+                job.diagnostics.update(outcome=job.status, timestamp=job.updated_at,
                                        elapsed_seconds=f"{time.monotonic() - started:.3f}")
             self.store.update(project_id, None, completed)
 
@@ -518,7 +550,7 @@ def install_project_workspace(app, legacy_service):
 
     @router.post("/{project_id}/resources/{resource_id}/extract", response_model=Project, status_code=202)
     def extract(project_id: str, resource_id: str, body: Mutation):
-        return runtime.submit(project_id, body.expected_version, "extract", lambda: runtime.resources.extract(project_id, resource_id), resource_id=resource_id)
+        return runtime.submit(project_id, body.expected_version, "extract", lambda: runtime.resources.extract(project_id, resource_id, rebuild_preview=True), resource_id=resource_id)
 
     @router.post("/{project_id}/resources/{resource_id}/recognize", response_model=Project, status_code=202)
     def recognize(project_id: str, resource_id: str, body: RecognitionBody):

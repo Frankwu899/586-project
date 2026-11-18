@@ -136,10 +136,29 @@ export function useProjectController() {
               }
             }
             if (baseline && !(body instanceof FormData)) {
-              if (path === '' && method === 'PATCH' && !body.expected_editor_versions) safe = Object.keys(body).every(key => key === 'editor_drafts'
-                ? Object.keys(body.editor_drafts as Record<string, unknown>).every(scope => same(baseline!.editor_drafts[scope], fresh.editor_drafts[scope]))
-                : same(baseline![key as keyof Project], fresh[key as keyof Project]));
+              if (path === '' && method === 'PATCH' && failure.code === 'project_version_conflict') {
+                const expected = body.expected_editor_versions as Record<string, number> | undefined;
+                safe = Object.keys(body).every(key => {
+                  if (key === 'expected_editor_versions') return true;
+                  if (key === 'editor_drafts') return Object.keys(body.editor_drafts as Record<string, unknown>).every(scope =>
+                    same(baseline!.editor_drafts[scope], fresh.editor_drafts[scope])
+                    && (expected?.[scope] === undefined || expected[scope] === (fresh.editor_draft_versions[scope] ?? 0)));
+                  return same(baseline![key as keyof Project], fresh[key as keyof Project]);
+                });
+                // Preserve the original editor preconditions on the retry.
+                // Aggregate-only background changes do not own this draft.
+                if (expected) safe = safe && Object.entries(expected).every(([scope, version]) => version === (fresh.editor_draft_versions[scope] ?? 0));
+              }
               if (path === '/brief/draft' && !/draft.*conflict/.test(failure.code ?? '')) safe = same(baseline.brief_draft, fresh.brief_draft);
+              if (path === '/selection' && failure.code === 'project_version_conflict') {
+                const scope = typeof body.content_id === 'string' ? body.content_id : null;
+                const previousTarget = scope ? baseline.contents.find(item => item.id === scope) : baseline;
+                const freshTarget = scope ? fresh.contents.find(item => item.id === scope && !item.trashed_at) : fresh;
+                safe = Boolean(previousTarget && freshTarget && same(previousTarget.selection, freshTarget.selection)
+                  && Array.isArray(body.resource_ids) && body.resource_ids.every(id => fresh.resources.some(resource =>
+                    resource.id === id && ['video', 'audio'].includes(resource.kind) && !resource.trashed_at
+                    && !folderIsTrashed(fresh, resource.folder_id))));
+              }
               // Job admission can advance the aggregate between click and save.
               // Only retry Stop for its exact saved attempt, never a newer retry.
               const stop = path.match(/^\/messages\/([^/]+)\/stop$/);

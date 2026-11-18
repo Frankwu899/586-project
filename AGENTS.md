@@ -2,6 +2,13 @@
 
 ## Current 1.8 baseline
 
+For the 1.8.5 candidate, read `docs/releases/1.8.5.md` and
+`docs/handoff/project-workspace-1.8.5.md`. Source evidence feeds durable,
+brief-independent single-video analysis; synthesis consumes compact saved cores.
+Keep exact input keys, citations, coverage limits and historical provenance.
+PR22 and PR23 are unmerged dependencies, not an authorization to merge or deploy.
+Use the candidate handoff's actual verification and remaining evidence limits.
+
 For the 1.8.1 shared testing candidate, also read `docs/releases/1.8.1.md` and
 `docs/handoff/project-workspace-1.8.1.md`. Exploratory ideas may use references
 without a confirmed profile; tailored final production retains confirmation and

@@ -5,6 +5,8 @@ import { call } from './client';
 interface DirectionReadiness {
   project_version: number;
   direction_current: boolean;
+  production_ready?: boolean;
+  production_requirements?: string[];
   code: string | null;
   message: string | null;
   direction_id: string | null;

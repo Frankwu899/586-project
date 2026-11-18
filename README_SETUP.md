@@ -1,8 +1,8 @@
-# Video Anatomy — 1.8.4 local project workspace
+# Video Anatomy — 1.8.5 local project workspace
 
 The default application is the 1.8 project workspace. Start with the
 [implemented architecture and operating limits](docs/project-workspace-1.8.md)
-and [current handoff](docs/handoff/project-workspace-1.8.4.md). The local setup,
+and [current handoff](docs/handoff/project-workspace-1.8.5.md). The local setup,
 user-provided API key, and Python/FFmpeg requirements below remain applicable.
 
 Projects open into a card dashboard and contain Overview, Resources, Discover,

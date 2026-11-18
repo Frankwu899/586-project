@@ -167,8 +167,11 @@ def test_sufficient_input_zero_questions_and_reviewable_draft_without_auto_apply
     saved = service.send(project.id, project.version, "Create a 20-second Instagram introduction for commuters.")
     assert "?" not in saved.messages[-1].text and "ready for review" in saved.messages[-1].text
     assert saved.messages[-1].diagnostics["response_kind"] == "draft"
-    assert saved.brief_draft[0].key == "assignment" and saved.brief_draft[0].status == "suggested"
-    assert saved.brief_draft[0].sources[0].message_id == saved.messages[0].id
+    assignment = next(fact for fact in saved.brief_draft if fact.key == "assignment")
+    assert assignment.status == "suggested"
+    assert assignment.sources[0].message_id == saved.messages[0].id
+    duration = next(fact for fact in saved.brief_draft if fact.key == "duration")
+    assert duration.value == "20 seconds" and duration.status == "suggested"
     assert saved.briefs == []
 
 

@@ -1,0 +1,31 @@
+{
+  "environment": "Codex Cloud Linux",
+  "fixture": "Synthetic authored outputs and tiny local placeholder originals; no real inference or decoding performance is measured.",
+  "limitations": "These elapsed measurements include local Python/SQLite overhead only. No speed, cost, accuracy, local Mac, or provider latency claim follows.",
+  "measurements": [
+    {
+      "run": "first_offline_run",
+      "elapsed_ms": 83.788,
+      "recognition_calls": 2,
+      "single_analysis_calls": 2,
+      "synthesis_calls": 1,
+      "persisted_single_results": 2,
+      "source_count": 2,
+      "network_calls": 0,
+      "reported_token_usage": null,
+      "billed_cost": null
+    },
+    {
+      "run": "cached_upstream_offline_run",
+      "elapsed_ms": 18.013,
+      "recognition_calls": 0,
+      "single_analysis_calls": 0,
+      "synthesis_calls": 1,
+      "persisted_single_results": 2,
+      "source_count": 2,
+      "network_calls": 0,
+      "reported_token_usage": null,
+      "billed_cost": null
+    }
+  ]
+}

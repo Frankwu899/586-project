@@ -13,6 +13,10 @@
 .va-insight-copy { min-inline-size: 0; }
 .va-insight-copy h3 { margin: 0 0 6px; font-size: 17px; line-height: 1.45; color: #252a43; }
 .va-insight-copy p { margin: 0; font-size: 14px; line-height: 1.65; color: #47536d; overflow-wrap: anywhere; }
+.va-insight-copy .va-insight-support { margin-block-end: 5px; font-size: 11px; color: #626078; }
+.va-insight-observation { margin-block-start: 10px; font-size: 12px; }
+.va-insight-observation > summary { cursor: pointer; color: #443578; }
+.va-insight-observation > p { margin-block-start: 8px; font-size: 13px; }
 .va-insight-actions { border-inline-start: 1px solid #dee3ef; padding-inline-start: 18px; min-inline-size: 0; }
 .va-insight-actions .va-sources { margin-block: 0 10px; }
 .va-app .va-insight-actions .va-sources button,.va-app .va-insight-actions .va-sources a { color: #422ba2; background: #f4f0ff; border-color: #d4c9ee; font-size: 12px; min-block-size: 32px; }
@@ -27,6 +31,19 @@
 .va-analysis-comparison p,.va-analysis-comparison li { font-size: 13px; line-height: 1.7; color: #4b5770; }
 .va-analysis-comparison ul { padding-inline-start: 20px; }
 .va-analysis-structure { border-block-start: 1px solid #dde2ee; padding-block-start: 23px; min-inline-size: 0; }
+.va-analysis-summary { border-block-start: 1px solid #dde2ee; padding-block: 22px; }
+.va-structure-summary-scroll { max-inline-size: 100%; overflow-x: auto; }
+.va-analysis-summary table { border-collapse: collapse; inline-size: 100%; table-layout: fixed; font-size: 13px; line-height: 1.65; }
+.va-analysis-summary th,.va-analysis-summary td { padding: 12px; border: 1px solid #d5dcec; text-align: start; vertical-align: top; overflow-wrap: anywhere; white-space: pre-wrap; }
+.va-analysis-summary thead th { background: #f0eff9; font-size: 12px; color: #414961; }
+.va-analysis-summary tbody th { background: #f8f8fd; color: #30374f; font-weight: 600; }
+.va-analysis-summary > .va-muted { font-size: 11px; line-height: 1.6; margin-block-end: 0; }
+.va-analysis-details { border-block-start: 1px solid #dce2ee; padding-block: 16px; }
+.va-analysis-details > summary { cursor: pointer; color: #3d4962; font-size: 14px; font-weight: 600; }
+.va-analysis-details[open] > summary { margin-block-end: 18px; }
+.va-analysis-details .va-analysis-structure { border-block-start: 0; padding-block-start: 0; }
+.va-analysis-limits h2 { font-size: 16px; margin-block-end: 8px; }
+.va-analysis-limits ul { margin-block: 8px 0; padding-inline-start: 22px; }
 .va-analysis-structure > .va-section-heading { align-items: start; }
 .va-analysis-structure label { font-size: 11px; min-inline-size: min(260px,100%); }
 .va-app .va-analysis .va-structure { margin-block: 0 22px; }
@@ -68,5 +85,6 @@
   .va-key-insights > ol > li > section { grid-template-columns: minmax(0,1fr); padding: 15px; }
   .va-insight-actions { border-inline-start: 0; border-block-start: 1px solid #dee3ef; padding-inline-start: 0; padding-block-start: 12px; }
   .va-analysis-comparison .va-analysis-columns { grid-template-columns: minmax(0,1fr); }
+  .va-analysis-summary th,.va-analysis-summary td { padding: 9px; }
 }
 @media(max-width:540px) { .va-app .va-analysis-report { padding: 17px 12px; } }

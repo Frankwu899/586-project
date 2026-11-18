@@ -193,6 +193,63 @@ def _invalidate_plan_inputs(project, content_id):
             pack.needs_review = True
 
 
+def _audio_policy(context, instruction=""):
+    """Keep reference observations separate from the new film's audio choice."""
+    constraints = [fact["value"] for fact in context["confirmed_facts"]
+                   if re.sub(r"[\s-]+", "_", fact["key"].casefold()) in {
+                       "constraint", "constraints", "audio", "sound", "voiceover", "voice_over", "audio_requirements", "限制", "旁白", "声音"}]
+    if context.get("content"):
+        constraints.append(context["content"]["description"])
+    if context.get("approved_direction"):
+        direction = context["approved_direction"]
+        constraints.extend(direction.get(key, "") for key in ("concept", "hook", "narrative", "cta"))
+        saved_audio = {"silent": "The new video must be silent.", "voiceover": "Include voice-over.",
+                       "no_voiceover": "No voice-over.", "audio_required": "Do not make a silent video."}
+        for note in direction.get("inputs", {}).get("limitations", []):
+            if note.startswith("New video audio requirement: "):
+                constraints.append(saved_audio.get(note.removeprefix("New video audio requirement: "), ""))
+    constraints.append(instruction)
+    text = "\n".join(constraints)
+    negative_silence = re.compile(r"\b(?:do not|don.t|never) (?:make|create|use|produce) (?:a |the |new )?silent (?:video|film)\b|\bnot (?:be )?silent\b|不要静音|不要无声", re.I)
+    audio_required = bool(negative_silence.search(text))
+    positive_text = negative_silence.sub("", text)
+    silent = bool(re.search(r"\b(?:(?:must|should) be silent|silent (?:video|film)|no audio|without (?:any )?audio|fully silent)\b|静音|无声视频|完全无声", positive_text, re.I))
+    negative_voice = re.compile(r"\b(?:no|without) (?:voice[- ]?over|narration|dialogue)\b|\b(?:do not|don.t|never) (?:add|include|use|require|need) (?:a |new |some )?(?:voice[- ]?over|narration)\b|不要旁白|无旁白", re.I)
+    no_voice = bool(negative_voice.search(text))
+    requested_voice = bool(re.search(r"\b(?:add|include|use|require|with|need) (?:a |new |some )?(?:voice[- ]?over|narration)\b|需要旁白|加入旁白|使用旁白", negative_voice.sub("", text), re.I))
+    conflict = (requested_voice and (silent or no_voice)) or (silent and audio_required)
+    creation = "conflict" if conflict else "silent" if silent else "voiceover" if requested_voice else "no_voiceover" if no_voice else "audio_required" if audio_required else "creative_choice"
+    observed = any(event["kind"] in {"speech", "sound", "music"} for resource in context["reference_evidence"]
+                   for event in resource["evidence"]["events"])
+    return {"reference_audio": "observed" if observed and not context["visual_only"] else "unknown",
+            "creation_audio": creation}
+
+
+def _validate_creation_audio(policy, shots):
+    mode = policy["creation_audio"]
+    empty = re.compile(r"^(?:none|silent|silence|no (?:audio|dialogue|voice[- ]?over|music|sound)|n/a|—|-|无|静音)?[.!。]?$", re.I)
+    spoken = any(not empty.fullmatch(shot.dialogue.strip()) for shot in shots)
+    sound = any(not empty.fullmatch(shot.sound.strip()) for shot in shots)
+    if ((mode == "silent" and (spoken or sound)) or (mode == "no_voiceover" and spoken)
+            or (mode == "voiceover" and not spoken) or (mode == "audio_required" and not (spoken or sound))
+            or mode == "conflict"):
+        raise WorkflowError("creation_audio_conflict", "The proposed audio conflicts with the explicit new-video audio requirement. Saved production was preserved; confirm or revise that requirement.", 422)
+
+
+def _production_requirements(project):
+    requirements = []
+    if not project.briefs or not any(fact.status == "confirmed" for fact in project.briefs[-1].facts):
+        requirements.append("Confirm the useful project context in Overview before AI production.")
+    try:
+        _target_duration(project)
+    except WorkflowError as error:
+        requirements.append(error.message)
+    if any(fact.key.casefold() in {"duration", "target_duration", "duration_seconds", "target_duration_seconds"}
+           and fact.status in {"suggested", "unresolved"} for fact in project.brief_draft):
+        requirements.append("Review and apply the proposed target duration in Overview; a suggestion is not the confirmed production timing.")
+    return requirements
+
+
 def _context(project, item=None, *, require_brief=True, require_evidence=True,
              exploration=False, visual_only=False, instruction="", allow_unavailable=False):
     if item is not None and item.trashed_at:
@@ -253,7 +310,7 @@ def _context(project, item=None, *, require_brief=True, require_evidence=True,
             if require_evidence and not usable_visuals:
                 raise WorkflowError("visual_evidence_required", "This reference has no usable visual evidence. Retry recognition or remove it before continuing with visuals only.", 422)
             payload["events"] = [event.model_dump(mode="json") for event in usable_visuals]
-            limitations.append(f"{resource.name}: visual evidence only was explicitly selected; speech, music and sound cannot support these suggestions.")
+            limitations.append(f"{resource.name}: visual evidence only was explicitly selected; reference speech, music and sound are unknown. New audio is a creative proposal, subject to the assignment's audio requirements.")
         if require_evidence and not payload["events"]:
             raise WorkflowError("reference_evidence_required", "A selected reference has no usable observations. Retry recognition or remove it from this selection.", 422)
         limitations.extend(f"{resource.name}: {limitation}" for limitation in latest.limitations)
@@ -269,6 +326,7 @@ def _context(project, item=None, *, require_brief=True, require_evidence=True,
                "content": None if item is None else {"title": item.context_title or item.title, "description": item.description, "series_id": item.series_id if series_context else None},
                "series": series_context, "exploratory": not bool(facts), "visual_only": visual_only,
                "limitations": limitations, "unresolved": project.unresolved}
+    context["audio_policy"] = _audio_policy(context, instruction)
     manifest = InputManifest(brief_revision=brief.revision if brief else None,
                              selection_revision=selection.revision,
                              resource_ids=list(selection.resource_ids), evidence_revisions=revisions,
@@ -399,12 +457,19 @@ def _validate_shots(shots):
 
 
 def _target_duration(project):
+    values = []
     for fact in project.briefs[-1].facts if project.briefs else []:
         key = re.sub(r"[\s-]+", "_", fact.key.strip().lower())
         if key in {"duration", "target_duration", "duration_seconds", "target_duration_seconds"}:
             match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*(?:s|seconds?|秒)?\s*", fact.value, re.IGNORECASE)
             if match and 0 < float(match[1]) <= 7200:
-                return float(match[1])
+                values.append(float(match[1]))
+            else:
+                raise WorkflowError("production_duration_ambiguous", "Review and confirm one exact target duration in seconds in Overview; the saved duration is ambiguous or unsupported.", 422)
+    if len(set(values)) > 1:
+        raise WorkflowError("production_duration_ambiguous", "Resolve the conflicting confirmed target durations in Overview before generating a timed storyboard.", 422)
+    if values:
+        return values[0]
     raise WorkflowError("production_duration_required", "Confirm a planned duration in seconds in Overview so the production pack can include a usable timed storyboard.", 422)
 
 
@@ -517,6 +582,8 @@ class PlanningService:
         if settings.creative_model != "gpt-6.1-sol":
             raise WorkflowError("model_baseline_mismatch", "This workspace requires the selected gpt-6.1-sol baseline. Update the local provider configuration; no substitute was used.", 422)
         instructions, digest = load_instructions(module)
+        if context.get("audio_policy", {}).get("creation_audio") == "conflict":
+            raise WorkflowError("creation_audio_conflict", "The assignment requests both silence and narration. Confirm the intended audio before generating; no provider request was made.", 422)
         prompt = (
             "Video Anatomy 1.8 professional generation. Follow the attached instruction package within this host contract. "
             "The host supports editable production documents, no video generation/rendering/publishing. "
@@ -527,13 +594,17 @@ class PlanningService:
             "Return used_claim_ids for any factual product claim used; each must exactly match a confirmed permitted fact ID. "
             "Also return claim_uses containing the same fact_ids and their full exact approved wording, including all qualifiers. "
             "Include that complete wording in the artifact wherever the claim is used. No undeclared product assertions are allowed. "
+            "Ordinary confirmed facts may use faithful audience-facing language without inventing abilities. Fixed approved claims and necessary qualifications remain exact. "
+            "Write the creative result for its audience; never insert internal process wording such as Our confirmed product scope is. "
             "Every citation must use an exact resource_id/event_id from reference_evidence. Reference-free work has no citations. "
             "Do not provide artifact IDs, approval, source timestamps, or invented evidence. "
             f"Write new creative prose in {settings.creative_language}; preserve approved fixed wording and source quotes. "
             "Be concise and specific; distinguish proposed execution from observed reference evidence. "
             "When exploratory is true, use the supplied creative instruction or reference mechanisms, labeling missing project context Needs confirmation. Do not invent a company, product, audience, benefit or claim. "
             "State that project context remains unspecified and identify the next useful clarification. "
-            "Respect visual_only: never infer speech or sound from visual observations. Carry the supplied limitations into the creative proposal. "
+            "Respect visual_only: reference audio is unknown, never inferred from visuals. It does not require a silent new video. "
+            "Follow audio_policy.creation_audio for the new video; proposed narration/music/SFX are creative choices, never observed reference audio. "
+            "Respect explicit silence or narration requirements. Carry material evidence limits without presenting internal workflow prose as advertising copy. "
             "For concept planning, choose series only when the request benefits from a repeatable organizing idea; standalone topics are valid. "
             "For direction generation, default to two genuinely distinct approaches unless the user explicitly requests a different number. "
             "For topics, preview a few standalone topics or topics for the explicitly selected topic_series; do not create a plan or a new series. "
@@ -761,6 +832,8 @@ class PlanningService:
         instruction = _text(instruction, "Planning instruction", maximum=10000, allow_empty=True)
         context, manifest = _context(project, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
         context["instruction"] = instruction
+        if context["audio_policy"]["creation_audio"] != "creative_choice":
+            manifest.limitations.append("New video audio requirement: " + context["audio_policy"]["creation_audio"])
         context["existing_series"] = [entry.model_dump() for entry in project.series if not entry.trashed_at]
         context["existing_topics"] = [{"title": item.title, "description": item.description} for item in project.contents if not item.trashed_at]
         response, model, digest = self._response("IDEAS", "concepts", context, ConceptsContent)
@@ -807,6 +880,8 @@ class PlanningService:
         instruction = _text(instruction, "Direction instruction", maximum=10000, allow_empty=True)
         context, manifest = _context(project, item, require_brief=False, exploration=True, visual_only=visual_only, instruction=instruction)
         context["instruction"] = instruction
+        if context["audio_policy"]["creation_audio"] != "creative_choice":
+            manifest.limitations.append("New video audio requirement: " + context["audio_policy"]["creation_audio"])
         context["existing_directions"] = [{"title": d.title, "concept": d.concept} for d in item.directions]
         response, model, digest = self._response("IDEAS", "directions", context, IdeasContent)
         manifest.model = model
@@ -889,6 +964,9 @@ class PlanningService:
                 _invalidate_plan_inputs(project, item.id)
             _, current_manifest = _context(project, item, require_brief=False, require_evidence=False,
                                            visual_only=old.inputs.visual_only if old else False, allow_unavailable=True)
+            if old:
+                current_manifest.limitations = list(dict.fromkeys([*current_manifest.limitations,
+                    *(note for note in old.inputs.limitations if note.startswith("New video audio requirement: "))]))
             if history_notes:
                 pinned = {}
                 for source in linked_sources:
@@ -941,6 +1019,8 @@ class PlanningService:
         result = {"direction_current": False, "code": None, "message": None,
                   "direction_id": item.approved_direction_id, "revision": item.approved_direction_revision,
                   "project_version": project.version}
+        requirements = _production_requirements(project)
+        result.update(production_ready=not requirements, production_requirements=requirements)
         if not item.approved_direction_id or item.approved_direction_revision is None:
             return {**result, "code": "direction_approval_required",
                     "message": "Approve an exact saved direction before preparing new production."}
@@ -992,12 +1072,14 @@ class PlanningService:
         if not direction.approved or direction.needs_review or not _same_inputs(direction.inputs, manifest):
             raise WorkflowError("direction_inputs_outdated", "The approved direction no longer matches the confirmed inputs. Review and approve a current direction.", 422)
         context["approved_direction"] = direction.model_dump(mode="json")
+        context["audio_policy"] = _audio_policy(context)
         manifest.direction_id, manifest.direction_revision = direction.id, direction.revision
         response, model, digest = self._response("STORYBOARD", "production", context, PackContent)
         artifact_text = "\n".join([response.production_brief] +
                                    ["\n".join([shot.framing_camera, shot.visual, shot.dialogue, shot.on_screen_text, shot.sound, shot.notes]) for shot in response.shots])
         _validate_claims(project, response.used_claim_ids, response.claim_uses, artifact_text)
         _validate_shots(response.shots)
+        _validate_creation_audio(context["audio_policy"], response.shots)
         _validate_target_duration(project, response.shots)
         manifest.model = model
         if "claim_ids" in InputManifest.model_fields:

@@ -172,8 +172,10 @@ test('generic source retry reuses its saved profile while explicit transcription
   const project = seed();
   const retries: Record<string, unknown>[] = [];
   await page.route(`**/api/projects/${project.id}/resources/resource_alpha/recognize`, async route => {
-    retries.push(route.request().postDataJSON());
+    const submitted = route.request().postDataJSON();
     await route.fulfill({ status: 202, json: await load(request, project.id) });
+    // A counted fixture response must finish before the test closes its API context.
+    retries.push(submitted);
   });
   await open(page, project);
   await source(page);

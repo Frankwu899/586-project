@@ -3,6 +3,25 @@
     "Analysis": {
       "additionalProperties": false,
       "properties": {
+        "report_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Report Version"
+        },
+        "single_analysis_ids": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Single Analysis Ids",
+          "type": "object"
+        },
         "id": {
           "title": "Id",
           "type": "string"
@@ -86,6 +105,8 @@
         }
       },
       "required": [
+        "report_version",
+        "single_analysis_ids",
         "id",
         "content_id",
         "inputs",
@@ -106,6 +127,28 @@
     "AnalysisInsight": {
       "additionalProperties": false,
       "properties": {
+        "title": {
+          "default": "",
+          "title": "Title",
+          "type": "string"
+        },
+        "scope": {
+          "default": "observation",
+          "enum": [
+            "observation",
+            "difference",
+            "commonality"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "support_resource_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Support Resource Ids",
+          "type": "array"
+        },
         "id": {
           "title": "Id",
           "type": "string"
@@ -127,6 +170,9 @@
         }
       },
       "required": [
+        "title",
+        "scope",
+        "support_resource_ids",
         "id",
         "observation",
         "application",
@@ -784,6 +830,37 @@
           ],
           "default": null,
           "title": "Model"
+        },
+        "single_analysis_ids": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Single Analysis Ids",
+          "type": "object"
+        },
+        "analysis_language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Analysis Language"
+        },
+        "analysis_config_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Analysis Config Digest"
         }
       },
       "title": "InputManifest",
@@ -802,12 +879,26 @@
         "instruction_digest",
         "context_digest",
         "claim_ids",
-        "model"
+        "model",
+        "single_analysis_ids",
+        "analysis_language",
+        "analysis_config_digest"
       ]
     },
     "Job": {
       "additionalProperties": false,
       "properties": {
+        "inputs": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InputManifest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "error_code": {
           "anyOf": [
             {
@@ -952,6 +1043,7 @@
         }
       },
       "required": [
+        "inputs",
         "error_code",
         "id",
         "kind",
@@ -1228,6 +1320,21 @@
           "title": "Resource Id",
           "type": "string"
         },
+        "method": {
+          "default": "",
+          "title": "Method",
+          "type": "string"
+        },
+        "flow": {
+          "default": "",
+          "title": "Flow",
+          "type": "string"
+        },
+        "borrowable": {
+          "default": "",
+          "title": "Borrowable",
+          "type": "string"
+        },
         "summary": {
           "title": "Summary",
           "type": "string"
@@ -1249,6 +1356,9 @@
       },
       "required": [
         "resource_id",
+        "method",
+        "flow",
+        "borrowable",
         "summary",
         "nodes",
         "edges"
@@ -1658,6 +1768,129 @@
         "context_title"
       ],
       "title": "Series",
+      "type": "object"
+    },
+    "SingleVideoAnalysis": {
+      "additionalProperties": false,
+      "description": "Durable core analysis: source-only inputs, never inferred for legacy reports.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "resource_id": {
+          "title": "Resource Id",
+          "type": "string"
+        },
+        "input_key": {
+          "title": "Input Key",
+          "type": "string"
+        },
+        "evidence_revision": {
+          "minimum": 1,
+          "title": "Evidence Revision",
+          "type": "integer"
+        },
+        "source_sha256": {
+          "title": "Source Sha256",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "instruction_digest": {
+          "title": "Instruction Digest",
+          "type": "string"
+        },
+        "language": {
+          "title": "Language",
+          "type": "string"
+        },
+        "config_digest": {
+          "title": "Config Digest",
+          "type": "string"
+        },
+        "visual_only": {
+          "default": false,
+          "title": "Visual Only",
+          "type": "boolean"
+        },
+        "status": {
+          "default": "running",
+          "enum": [
+            "running",
+            "succeeded",
+            "failed",
+            "stopped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "structure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReferenceStructure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "key_insights": {
+          "items": {
+            "$ref": "#/$defs/AnalysisInsight"
+          },
+          "title": "Key Insights",
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "diagnostics": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Diagnostics",
+          "type": "object"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "resource_id",
+        "input_key",
+        "evidence_revision",
+        "source_sha256",
+        "model",
+        "instruction_digest",
+        "language",
+        "config_digest",
+        "visual_only",
+        "status",
+        "structure",
+        "key_insights",
+        "sources",
+        "limitations",
+        "diagnostics",
+        "created_at"
+      ],
+      "title": "SingleVideoAnalysis",
       "type": "object"
     },
     "SourceRef": {
@@ -2070,6 +2303,13 @@
       "title": "Analyses",
       "type": "array"
     },
+    "single_video_analyses": {
+      "items": {
+        "$ref": "#/$defs/SingleVideoAnalysis"
+      },
+      "title": "Single Video Analyses",
+      "type": "array"
+    },
     "series": {
       "items": {
         "$ref": "#/$defs/Series"
@@ -2145,6 +2385,7 @@
     "resource_folders",
     "selection",
     "analyses",
+    "single_video_analyses",
     "series",
     "contents",
     "packs",

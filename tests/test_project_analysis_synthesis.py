@@ -31,7 +31,7 @@ def validation_records(workspace, monkeypatch):
     def record(outcome, **details):
         records.append({"validation_outcome": outcome, **details})
     monkeypatch.setattr(synthesis, "validation_result", record, raising=False)
-    monkeypatch.setattr(synthesis, "last_diagnostics", lambda: deepcopy(records[-1]), raising=False)
+    monkeypatch.setattr(synthesis, "last_diagnostics", lambda: deepcopy(records[-1]) if records else {}, raising=False)
     return records
 
 
@@ -44,7 +44,7 @@ def test_valid_nested_citations_build_complete_exact_source_index(workspace, val
         assert "citations" in schema["required"]
         assert "nonempty top-level citations index" in prompt
         result = original(model, prompt, schema, *args, **kwargs)
-        result["key_insights"] = [{"observation": "A saved spoken promise.",
+        result["key_insights"] = [{"title": "Spoken promise", "observation": "A saved spoken promise.",
             "application": "Adapt its function without adopting its claim.",
             "citations": result["citations"]}]
         if omit_index:
@@ -79,27 +79,38 @@ def test_invalid_nested_citation_cannot_be_hidden_by_another_valid_index(workspa
     original = synthesis.json_response
     def invalid(*args, **kwargs):
         result = original(*args, **kwargs)
-        graph = result["structures"][0]
+        stage = args[3]
+        if location != "insight" and stage != "project_single_video_analysis":
+            return result
         bad = {"resource_id": ids[0], "event_id": "invented", "reason": "Unsupported fixture reference"}
         if location == "insight":
-            result["key_insights"] = [{"observation": "A test observation.", "application": "A test application.",
+            result["key_insights"] = [{"title": "Test observation", "observation": "A test observation.", "application": "A test application.",
                                        "citations": [bad]}]
-        elif location == "node":
-            graph["nodes"][0]["citations"] = [bad]
-        elif location == "cross_graph":
-            graph["nodes"][0]["citations"] = deepcopy(result["structures"][1]["nodes"][0]["citations"])
         else:
-            node = deepcopy(graph["nodes"][0])
-            node["id"] = "second_moment"
-            graph["nodes"].append(node)
-            graph["edges"] = [{"source": "moment_one", "target": "second_moment", "label": "A relationship",
-                               "explanation": "An unsupported connection.", "citations": [bad]}]
+            graph = result["structures"][0]
+            if location == "node":
+                graph["nodes"][0]["citations"] = [bad]
+            elif location == "cross_graph":
+                other = next(identity for identity in ids if identity != graph["resource_id"])
+                graph["nodes"][0]["citations"] = [{"resource_id": other,
+                    "event_id": f"event_{other}_0", "reason": "A different reference cannot support this graph"}]
+            else:
+                node = deepcopy(graph["nodes"][0])
+                node["id"] = "second_moment"
+                graph["nodes"].append(node)
+                graph["edges"] = [{"source": "moment_one", "target": "second_moment", "label": "A relationship",
+                                   "explanation": "An unsupported connection.", "citations": [bad]}]
         if empty_index:
             result["citations"] = []
         return result
     synthesis.json_response = invalid
+    if location != "insight":
+        # A changed language legitimately invalidates the reusable core. Graph
+        # validation belongs to that stage; synthesis no longer rebuilds graphs.
+        settings = service.settings_provider()
+        service.settings_provider = lambda: replace(settings, analysis_language="Chinese")
     with pytest.raises(WorkflowError) as failed:
-        service.analyze(project.id, ids)
+        service.analyze(project.id, ids, synthesis_only=location != "insight")
     assert failed.value.code == "invalid_analysis_citation"
     assert store.get(project.id).analyses == saved.analyses
     assert validation_records[-1]["validation_outcome"] == "rejected"
@@ -155,9 +166,8 @@ def test_synthesis_retry_reuses_partial_speech_and_keeps_its_limitations(workspa
     assert len(retried.analyses) == 2
     assert not retried.analyses[-1].inputs.visual_only
     assert "incomplete coverage" in " ".join(retried.analyses[-1].limitations)
-    assert synthesis.context["references"][0]["evidence"]["coverage"]["speech"] == "partial"
-    assert "part of the source" in " ".join(synthesis.context["references"][0]["evidence"]["limitations"])
-    assert [stage for stage, _ in stages] == ["validating", "synthesizing", "validating", "saving"]
+    assert "part of the source" in " ".join(synthesis.context["single_video_analyses"][0]["limitations"])
+    assert [stage for stage, _ in stages] == ["validating", "single_video_analysis", "synthesizing", "validating", "saving"]
     assert validation_records[-1]["validation_outcome"] == "accepted"
 
 
@@ -174,7 +184,7 @@ def test_summary_only_retry_validates_original_and_pending_corrections_before_pr
     with pytest.raises(WorkflowError) as failed:
         service.analyze(project.id, [rid], synthesis_only=True)
     assert failed.value.code == ("source_hash_mismatch" if change == "hash" else "evidence_pending_changes")
-    assert synthesis.calls == 1
+    assert synthesis.calls == 2 and synthesis.single_calls == 1 and synthesis.synthesis_calls == 1
     assert recognizer.calls == [rid]
     assert store.get(project.id).analyses == saved.analyses
 
@@ -187,7 +197,6 @@ def test_late_changed_source_or_draft_rejects_the_whole_validated_summary(worksp
     original = synthesis.json_response
     def late(*args, **kwargs):
         result = original(*args, **kwargs)
-        result["citations"] = []
         def modify(state):
             if change == "hash":
                 state.resources[0].sha256 = "0" * 64
@@ -247,7 +256,7 @@ def test_trashed_video_keeps_reports_but_refuses_new_selection_or_synthesis(work
         assert failed.value.code == "content_trashed" and failed.value.status == 410
     assert store.get(project.id) == deleted
     assert deleted.analyses == saved.analyses
-    assert recognizer.calls == [rid] and synthesis.calls == 1
+    assert recognizer.calls == [rid] and synthesis.calls == 2
 
 
 def test_final_semantic_validation_is_persisted_without_private_response_data(workspace, monkeypatch, tmp_path):
@@ -261,9 +270,11 @@ def test_final_semantic_validation_is_persisted_without_private_response_data(wo
         transport._thread_record.value = {"stage": "responses", "validation_outcome": "decoded",
             "provider_request_id": "offline-request", "prompt": "Private prompt must not enter support records"}
         result = synthesis.json_response(*args, **kwargs)
-        result["citations"] = []
         if invalid:
-            result["structures"][0]["nodes"][0]["citations"][0]["event_id"] = "invented"
+            result["key_insights"] = [{"title": "Unsupported", "observation": "An unsupported observation.", "application": "An unsupported application.",
+                                       "citations": [{"resource_id": project.resources[0].id, "event_id": "invented", "reason": "Unknown event"}]}]
+        elif args[3] == "project_single_video_analysis":
+            result["citations"] = []
         return result
     monkeypatch.setattr(transport, "json_response", response)
     monkeypatch.setattr(service, "transport_factory", lambda _: transport)
@@ -273,7 +284,7 @@ def test_final_semantic_validation_is_persisted_without_private_response_data(wo
     with pytest.raises(WorkflowError) as failed:
         service.analyze(project.id, [rid], synthesis_only=True)
     records = [json.loads(line) for line in (settings.cache_dir / "validation.jsonl").read_text().splitlines()]
-    assert [item["validation_outcome"] for item in records] == ["accepted", "rejected"]
+    assert [item["validation_outcome"] for item in records] == ["accepted", "accepted", "rejected"]
     assert records[-1]["failure_code"] == "invalid_analysis_citation"
     assert records[-1]["validation_rule"] == "exact_source_event"
     assert failed.value.diagnostics == records[-1]

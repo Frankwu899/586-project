@@ -1,73 +1,61 @@
-# Structure — diagnose the creative work
+# Structure — concise source analysis and project synthesis
 
-Explain what the source video communicates, how its elements work together and
-what can transfer. Use the exact analysis revision, source IDs/timing, coverage,
-supplied context and relevant research. Never imply full-video access from samples.
+The host runs two stages. Analyze each source independently first and persist its
+result. Then synthesize the compact saved source analyses for the selected scope
+and project brief. A single-video entry and a multiple-video entry use the same
+source analysis. Never repeat all source graphs in synthesis.
 
-## Professional procedure
-1. Audit observed visuals, speech, on-screen text and sound, including coverage
-   gaps. Distinguish extraction failure from no content. Flag recording UI/noise
-   without claiming this skill repairs recognition.
-2. Establish the likely communication job, central message and audience situation.
-   Use the source execution as evidence; distinguish these interpretations from
-   a documented campaign objective.
-3. Examine the attention device and progression. A hook may be a problem, promise,
-   contrast, sensory treatment or an unfolding scene. Some videos build interest
-   without a discrete hook. Do not invent one or force hook/demo/CTA.
-4. Explain the roles of consequential people, products, objects, settings, words,
-   visual treatments, sounds and omissions. Consider demonstration, identification,
-   association, credibility, contrast, continuity and payoff. Do not assign an
-   intentional persuasive function to every decorative element.
-5. Check product/company/category/cultural context when it could change the reading;
-   apply RESEARCH.md. Show the initial video-based graph/draft and research status
-   before waiting for context. Keep supported alternatives parallel.
-6. Build the relationship graph and extract only useful, supported mechanisms.
-   Review the result for evidence, explanatory value and clarity; repair once if needed.
+## Source analysis
 
-## Main result
-Lead with a concise diagnosis. Cover the following where support exists, combining
-related points rather than creating a six-card checklist:
-- **Goal:** the response the video appears designed to encourage.
-- **Message:** what a viewer is meant to understand, believe or remember.
-- **Audience:** the relevant situation/motivation, with evidence and limits.
-- **Attention:** what earns interest and how the opening pays off.
-- **Creative logic:** how the most consequential elements communicate the message.
-- **Transfer:** the specific mechanism that could inform other creative work.
+Audit actual visual, on-screen text, speech and sound coverage. Extraction failure
+is different from absence. Sparse samples do not establish complete action, cuts,
+pacing or transient text. Unobserved CTA, audio and steps remain unknown.
 
-Use likely/possible where intent is inferred. An unknown audience or unclear goal
-is a legitimate finding. Do not replace uncertainty with demographic stereotypes.
-Preserve a relationship graph as the main analytical artifact; the concise diagnosis
-is its entry point, not permission to replace it with a long essay.
+Explain the source's consequential communication method, actual progression and
+what can transfer. Keep a short method, a short flow and useful borrowing advice
+for its structure summary. No fixed hook/problem/proof/CTA template is required.
+Do not invent a step to complete a familiar marketing framework.
 
-## Evidence and graph
-Explain presentation → plausible viewer understanding → communication role.
-Each important interpretation must have a visible inferential bridge and valid
-source references. Graph edges explain relationships, not just time order.
-Keep observations, attributed speech/claims, researched context and interpretation
-distinct. The server attaches source timing; external context has no video timestamp.
-Shared evidence can support alternatives without proving one from another.
-Show incomplete coverage beside conclusions that depend on it.
+Keep detailed observations, inferences and attributed source claims separate in
+the saved graph. Cite exact video, evidence revision and event identities. Graph
+edges explain supported relationships within this source; chronology alone is
+not evidence of causality. Inference needs a visible bridge from observed evidence.
+Source advertising claims are attributed, not independently verified facts.
 
-## Transferable methods
-For each retained method include original choice, reusable mechanism, actual
-supporting nodes/evidence, conditions, what must not be copied, and a limitation
-or counterexample. Deliver few specific insights; no fixed count.
-Missing critical visuals can support a labeled hypothesis to verify, but not a
-method card whose essential premise requires the missing observation.
-After one unsuccessful targeted repair, remove failing cards and retain supported
-analysis. Zero methods is valid with a brief reason.
+The core is independent of the project brief. Any explicitly supplied project
+context must be versioned by the host before reuse. Preserve transferable methods,
+conditions, what must not be copied and material coverage limits. Zero useful
+methods is valid; do not pad to a fixed count. No research tool is supplied unless
+the host explicitly provides one; never imply that a lookup occurred.
 
-## Questions and continuity
-Investigate public context before asking the user. Ask only for a material choice
-or inaccessible context; do not make an upfront questionnaire or manual graph
-editing the primary workflow. Users may ask about a node, supply context or
-request local reanalysis. Propose previewable, adoptable updates and preserve
-accepted corrections. Do not add whole-graph confirmation.
-At the host's research/run limit, return completed work without automatic extension.
-Selected nodes/methods or the whole analysis can pass to Ideas with source version,
-conditions and uncertainty; this neither generates nor approves an Idea.
+## Synthesis and default report
 
-## Avoid
-Generic "creates engagement" labels; claimed performance from a demonstration;
-expertise inferred from an exhibition badge; a visible ending pose treated as
-observed motion; target demographics inferred solely from an actor's appearance.
+Read compact source analyses and the citation index. Use project context only in
+this adaptation stage. If source detail is insufficient, identify the gap rather
+than inventing it; only the host can authorize bounded retrieval of raw evidence.
+
+Default output has a few distinct Key insights, each with a short title, short
+borrowing advice and source links, followed by one structure-summary row per
+video and necessary coverage limitations. Keep observations and detailed graphs,
+inference, explanation and complete citations as optional detail. Concision must
+preserve qualifications; never shorten by dropping an important condition.
+
+State one-video observations, differences and commonalities separately. A
+commonality needs support from at least two different videos, and its citations
+must identify the supporting scope. A finding supported by one source remains a
+one-source observation even when many videos were selected. Merge semantic
+repetition; do not repeat an insight as a conclusion, finding and opportunity.
+
+A future adaptation may propose original narration or music when reference audio
+is unknown or excluded. Clearly separate observed audio, unknown audio and new
+creative suggestions, respecting an explicit user silence or narration choice.
+Reference techniques never establish product features, medical benefits or
+performance. WellPath and other example brands are test content, not app defaults.
+
+## History and continuity
+
+Reuse valid saved core analyses. Changed evidence, model, instructions, language,
+configuration or visual-only scope requires the matching dependency to refresh.
+Changed selection or brief refreshes synthesis. Preserve completed sources when
+synthesis fails or stops; do not initiate a fresh paid run automatically. Previous
+reports keep their real provenance; missing historical core analysis is unknown.

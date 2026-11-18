@@ -16,6 +16,39 @@ from ..workflow_errors import WorkflowError
 
 _DOCUMENTS = (("production_brief", "Production brief"), ("script", "Script"),
               ("storyboard", "Storyboard"), ("shot_list", "Shot list"))
+_SHEET_HEADERS = ("Shot", "Timecode", "Framing / Camera", "Visual / Action", "Dialogue / VO",
+                  "On-screen Text", "Music / SFX", "Production Notes")
+
+
+def _sheet_rows(pack):
+    """Present the saved structured shots, including their own exact references."""
+    for index, shot in enumerate(pack.shots, 1):
+        notes = "\n".join(value for value in [shot.notes, *(_source_text(source) for source in shot.sources)] if value)
+        yield (f"{index:02d}", f"{shot.start_seconds:g}–{shot.end_seconds:g}s", shot.framing_camera,
+               shot.visual, shot.dialogue, shot.on_screen_text, shot.sound, notes)
+
+
+def _sheet_markdown(pack):
+    def cell(value):
+        # Entities expand after GFM has identified cell boundaries. They retain
+        # existing backslashes and literal copy without introducing emphasis,
+        # links or an escaped-backslash/unescaped-pipe ambiguity.
+        value = value.replace("\r\n", "\n").replace("\r", "\n")
+        return "".join(f"&#{ord(char)};" if char in "\\|`*_{}[]()~!:" else html.escape(char, quote=False)
+                       for char in value).replace("\n", "<br>")
+    rows = [_SHEET_HEADERS, ("---",) * len(_SHEET_HEADERS), *_sheet_rows(pack)]
+    return "\n".join("| " + " | ".join(cell(value) for value in row) + " |" for row in rows)
+
+
+def _sheet_html(pack):
+    def cell(value):
+        return html.escape(value.replace("\r\n", "\n").replace("\r", "\n")).replace("\n", "<br>")
+    header = "".join(f"<th scope='col'>{label}</th>" for label in _SHEET_HEADERS)
+    rows = []
+    for row in _sheet_rows(pack):
+        rows.append("<tr>" + "".join(f"<th scope='row'>{cell(value)}</th>" if index == 0 else
+                                     f"<td>{cell(value)}</td>" for index, value in enumerate(row)) + "</tr>")
+    return "<table class='storyboard-sheet'><thead><tr>" + header + "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
 
 
 def _documents(pack):
@@ -80,7 +113,8 @@ def markdown(project, pack, historical=False):
     title, metadata = _metadata(project, pack, historical)
     sections = [f"# {title}", "\n".join(metadata)]
     for field, label in _documents(pack):
-        sections.append(f"## {label}\n\n{getattr(pack, field)}")
+        text = _sheet_markdown(pack) if field == "storyboard" and pack.sheet_format == "storyboard_sheet" else getattr(pack, field)
+        sections.append(f"## {label}\n\n{text}")
     if pack.sources:
         sections.append("## Supporting references\n\n" + "\n".join(f"- {_source_text(source)}" for source in pack.sources))
     sections.append("## Input manifest\n\n```json\n" + json.dumps(pack.inputs.model_dump(mode="json"), indent=2, ensure_ascii=False) + "\n```")
@@ -91,7 +125,9 @@ def printable_html(project, pack, historical=False):
     title, metadata = _metadata(project, pack, historical)
     blocks = [f"<h1>{html.escape(title)}</h1>", "<div class='metadata'>" + "".join(f"<p>{html.escape(line)}</p>" for line in metadata) + "</div>"]
     for field, label in _documents(pack):
-        blocks.append(f"<section><h2>{label}</h2><pre>{html.escape(getattr(pack, field))}</pre></section>")
+        content = (_sheet_html(pack) if field == "storyboard" and pack.sheet_format == "storyboard_sheet"
+                   else f"<pre>{html.escape(getattr(pack, field))}</pre>")
+        blocks.append(f"<section><h2>{label}</h2>{content}</section>")
     if pack.sources:
         blocks.append("<section><h2>Supporting references</h2><ul>" + "".join(f"<li>{html.escape(_source_text(source))}</li>" for source in pack.sources) + "</ul></section>")
     blocks.append("<section><h2>Input manifest</h2><pre class='manifest'>" + html.escape(json.dumps(pack.inputs.model_dump(mode="json"), indent=2, ensure_ascii=False)) + "</pre></section>")
@@ -99,7 +135,10 @@ def printable_html(project, pack, historical=False):
         "body{font:15px/1.55 system-ui,sans-serif;color:#172033;background:white;max-width:960px;margin:36px auto;padding:0 24px}"
         "h1{font-size:30px}h2{font-size:21px;margin-top:32px}.metadata{font-size:12px;color:#475569}.metadata p{margin:3px 0}"
         "pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}.manifest{font:11px/1.5 monospace}li{margin:10px 0}"
-        "@media print{body{margin:0;max-width:none;font-size:11pt}h2{break-after:avoid}pre{font-size:10pt}section{break-inside:auto}}"
+        "table{border-collapse:collapse;width:100%;table-layout:fixed}th,td{border:1px solid #94a3b8;padding:7px;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap;text-align:left}"
+        "thead{display:table-header-group;background:#f1f5f9}thead th{font-size:12px}tr{break-inside:avoid}th:first-child{width:4%}"
+        "@page{size:A4 landscape;margin:12mm}@media print{body{margin:0;padding:0;max-width:none;font-size:9pt;line-height:1.35}"
+        "h2{break-after:avoid}pre{font-size:9pt}section{break-inside:auto}thead th{font-size:9pt}th,td{padding:5px}}"
     ) + "</style></head><body>" + "".join(blocks) + "</body></html>"
 
 

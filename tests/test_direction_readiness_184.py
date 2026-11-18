@@ -28,7 +28,8 @@ def inspect(client, store, project, content_id, *, expected=200):
     assert store.get(project.id) == before
     if expected == 200:
         result = response.json()
-        assert set(result) == {"direction_current", "code", "message", "direction_id", "revision", "project_version"}
+        assert set(result) == {"direction_current", "code", "message", "direction_id", "revision", "project_version",
+                               "production_ready", "production_requirements"}
         assert result["project_version"] == before.version
     return response.json()
 

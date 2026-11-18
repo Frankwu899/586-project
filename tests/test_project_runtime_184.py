@@ -212,3 +212,54 @@ def test_capabilities_report_actual_media_limit_and_live_speech_profile_without_
     assert second.json()["transcription_model"] == "gpt-transcribe"
     assert second.json()["media_limits"]["max_bytes"] == 123 * 1024 * 1024
     assert second.json()["configured"] is True and "offline-private-placeholder" not in second.text
+
+
+def test_failed_synthesis_freezes_exact_stage_inputs_and_retry_reuses_sources(runtime_client):
+    from backend.app.project_workspace.models import BriefRevision, Fact
+    client, runtime, project, recognizer, synthesis, _, _ = runtime_client
+    ids = [resource.id for resource in project.resources]
+    runtime.store.update(project.id, None, lambda state: state.briefs.append(BriefRevision(revision=1,
+        facts=[Fact(key="audience", value="Private target audience from the saved user brief")])) )
+    bound_during_request = []
+    original = synthesis.json_response
+    def observed(*args, **kwargs):
+        if args[3] == "project_reference_analysis":
+            parent_id = kwargs["metadata"]["job_id"]
+            parent = next(job for job in runtime.store.get(project.id).jobs if job.id == parent_id)
+            bound_during_request.append(deepcopy(parent.model_dump().get("inputs")))
+        return original(*args, **kwargs)
+    synthesis.json_response = observed
+    synthesis.bad_citation = True
+    admitted = post(client, project, "/analyze", {"resource_ids": ids})
+    failed, parent = settled(client, project, admitted_analysis(admitted)["id"])
+    assert parent["status"] == "failed"
+    manifest = parent.get("inputs")
+    assert manifest is not None
+    assert bound_during_request == [manifest]
+    assert manifest["resource_ids"] == ids
+    assert manifest["brief_revision"] == 1
+    assert manifest["selection_revision"] == failed["selection"]["revision"]
+    assert manifest["evidence_revisions"] == {resource["id"]: resource["evidence"][-1]["revision"] for resource in failed["resources"]}
+    expected_cores = {core["resource_id"]: core["id"] for core in failed["single_video_analyses"] if core["status"] == "succeeded"}
+    assert manifest["single_analysis_ids"] == expected_cores
+    assert manifest["model"] and manifest["instruction_digest"]
+    assert manifest["analysis_language"] == "English" and manifest["analysis_config_digest"]
+    cores = deepcopy(failed["single_video_analyses"])
+    recognition_calls, single_calls = list(recognizer.calls), synthesis.single_calls
+    runtime.store.update(project.id, None, lambda state: state.briefs.append(BriefRevision(revision=2,
+        facts=[Fact(key="audience", value="A newer private audience")])) )
+    synthesis.bad_citation = False
+    retry = post(client, project, "/analyze", {"resource_ids": ids, "synthesis_only": True})
+    saved, retried = settled(client, project, admitted_analysis(retry)["id"])
+    assert retried["status"] in {"succeeded", "partial"}
+    assert retried["inputs"]["brief_revision"] == 2
+    assert retried["inputs"]["single_analysis_ids"] == expected_cores
+    assert next(job for job in saved["jobs"] if job["id"] == parent["id"])["inputs"] == manifest
+    assert saved["single_video_analyses"] == cores
+    assert recognizer.calls == recognition_calls and synthesis.single_calls == single_calls
+    assert "Private target audience" not in str(manifest) and "One less thing" not in str(manifest)
+
+
+def test_legacy_jobs_default_to_unrecorded_inputs():
+    legacy = Job.model_validate({"id": "job_legacy", "kind": "analyze", "status": "failed"})
+    assert legacy.model_dump().get("inputs", "MISSING") is None

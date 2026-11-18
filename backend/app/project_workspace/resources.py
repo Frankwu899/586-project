@@ -481,7 +481,7 @@ class ResourceService:
             self._verified_playback[str(path)] = fingerprint
         return path
 
-    def _media(self, root: Path, resource: Resource, path: Path):
+    def _media(self, root: Path, resource: Resource, path: Path, *, rebuild_preview=False):
         settings = self.media_settings
         data = json.loads(_run([settings.ffprobe, "-v", "error", "-protocol_whitelist", "file,pipe", "-show_streams", "-show_format", "-of", "json", str(path)], settings.probe_timeout_seconds))
         streams = data.get("streams", [])
@@ -507,25 +507,52 @@ class ResourceService:
             timing = probe_frame_timing(path, settings)
             duration = timing.frame_boundaries_seconds[-1]
             metadata.update({"width": width, "height": height, "video_codec": video.get("codec_name"),
+                             "pixel_format": video.get("pix_fmt"), "video_profile": video.get("profile"),
                              "duration_seconds": duration, "frame_timing": timing.model_dump(mode="json")})
             _run([settings.ffmpeg, "-hide_banner", "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe", "-i", str(path), "-map", "0:v:0", "-map", "0:a?", "-f", "null", "-"], settings.decode_timeout_seconds)
-            browser_native = path.suffix.lower() == ".mp4" and video.get("codec_name") == "h264" and (not audios or audios[0].get("codec_name") == "aac")
+            browser_native = (path.suffix.lower() == ".mp4" and video.get("codec_name") == "h264"
+                              and "mp4" in str(metadata["format_name"]).split(",")
+                              and video.get("pix_fmt") == "yuv420p"
+                              and (not audios or audios[0].get("codec_name") == "aac"))
             if browser_native:
                 resource.playback_path = resource.original_path
             else:
                 relative = f"cache/playback/{resource.id}-{resource.sha256[:12]}.mp4"
                 playback = _safe_path(root, relative, create_parent=True)
-                if not playback.is_file():
+                def validated_preview(candidate):
+                    probe = json.loads(_run([settings.ffprobe, "-v", "error", "-protocol_whitelist", "file,pipe", "-show_streams", "-show_format", "-of", "json", str(candidate)], settings.probe_timeout_seconds))
+                    candidate_videos = [item for item in probe.get("streams", []) if item.get("codec_type") == "video"]
+                    candidate_audios = [item for item in probe.get("streams", []) if item.get("codec_type") == "audio"]
+                    if ("mp4" not in probe.get("format", {}).get("format_name", "").split(",")
+                            or len(candidate_videos) != 1 or candidate_videos[0].get("codec_name") != "h264"
+                            or candidate_videos[0].get("pix_fmt") != "yuv420p"
+                            or len(candidate_audios) != len(audios)
+                            or any(item.get("codec_name") != "aac" for item in candidate_audios)):
+                        raise ValueError("The cached preview is not compatible H.264/AAC MP4.")
+                    _run([settings.ffmpeg, "-hide_banner", "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe", "-i", str(candidate), "-map", "0:v:0", "-map", "0:a?", "-f", "null", "-"], settings.decode_timeout_seconds)
+                    derivative_timing = probe_frame_timing(candidate, settings)
+                    validate_frame_correspondence(path, candidate, timing, derivative_timing, settings)
+                    return derivative_timing
+                derivative_timing = None
+                if playback.is_file() and not rebuild_preview:
+                    try:
+                        derivative_timing = validated_preview(playback)
+                    except (ValueError, KeyError, TypeError):
+                        # Disposable bytes are reusable only after compatibility,
+                        # full decode and source correspondence have been checked.
+                        pass
+                if derivative_timing is None:
                     temporary = playback.with_name(playback.stem + ".pending.mp4")
                     try:
                         _run([settings.ffmpeg, "-hide_banner", "-v", "error", "-y", "-protocol_whitelist", "file,pipe", "-i", str(path), "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-fps_mode", "passthrough", "-c:a", "aac", "-movflags", "+faststart", str(temporary)], settings.transcode_timeout_seconds)
-                        derivative_timing = probe_frame_timing(temporary, settings)
-                        validate_frame_correspondence(path, temporary, timing, derivative_timing, settings)
+                        derivative_timing = validated_preview(temporary)
                         temporary.replace(playback)
                     finally:
                         temporary.unlink(missing_ok=True)
                 resource.playback_path = relative
-                metadata["playback_frame_timing"] = probe_frame_timing(playback, settings).model_dump(mode="json")
+                metadata["playback_frame_timing"] = derivative_timing.model_dump(mode="json")
+                metadata.update({"playback_video_codec": "h264", "playback_pixel_format": "yuv420p",
+                                 "playback_audio_codec": "aac" if audios else None, "playback_format_name": "mp4"})
             thumbnail_relative = f"cache/thumbnails/{resource.id}-{resource.sha256[:12]}.jpg"
             thumbnail = _safe_path(root, thumbnail_relative, create_parent=True)
             if not thumbnail.is_file():
@@ -548,7 +575,7 @@ class ResourceService:
             resource.playback_path = resource.original_path
         resource.duration_seconds, resource.media_metadata = duration, metadata
 
-    def extract(self, project_id, resource_id) -> Project:
+    def extract(self, project_id, resource_id, *, rebuild_preview=False) -> Project:
         resource = _resource(self.store.get(project_id), resource_id).model_copy(deep=True)
         def start(project):
             item = _resource(project, resource_id)
@@ -562,7 +589,7 @@ class ResourceService:
             suffix = path.suffix.lower()
             blocks, warnings = [], []
             if resource.kind in {"video", "audio"}:
-                self._media(root, resource, path)
+                self._media(root, resource, path, rebuild_preview=rebuild_preview)
             elif suffix in {".docx", ".pptx", ".xlsx"}:
                 blocks, warnings = extract_office(path)
             elif suffix == ".pdf":
